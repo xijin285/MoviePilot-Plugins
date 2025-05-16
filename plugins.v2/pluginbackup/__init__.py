@@ -2,7 +2,7 @@ import glob
 import os
 import shutil
 import time
-import tempfile 
+import tempfile # 导入 tempfile 模块
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, List, Dict, Tuple, Optional
@@ -25,7 +25,7 @@ class PluginBackup(_PluginBase):
     # 插件图标 (建议使用新图标)
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins1/refs/heads/main/icons/backup.png"
     # 插件版本
-    plugin_version = "1.2" # 版本号保持一致或根据需要更新
+    plugin_version = "1.2" # 版本号增加，表示有功能更新
     # 插件作者
     plugin_author = "jinxi" # Or your name if you adapted it
     # 作者主页
@@ -131,6 +131,7 @@ class PluginBackup(_PluginBase):
         if self._cnt is not None and int(self._cnt) >= 0: # 确保 cnt 是有效的非负整数
             num_to_keep = int(self._cnt)
             # 获取指定路径下所有以 "bk_plugins_config_" 开头的文件，按创建时间从旧到新排序
+            # Ensure bk_storage_path is a string for glob
             # 使用 Path().glob().iterdir() 更pythonic
             files = sorted(bk_storage_path.glob("bk_plugins_config_*.zip"), key=os.path.getctime)
 
@@ -207,7 +208,6 @@ class PluginBackup(_PluginBase):
                 full_path = plugins_config_source_dir / entry.name
                 try:
                     # 排除备份文件存放的目录 itself
-                    # 使用 .resolve() 确保路径是绝对且规范化的，方便比较
                     if full_path.resolve() == exclusion_path.resolve():
                         logger.debug(f"排除备份目录: {full_path}")
                         continue
@@ -215,12 +215,10 @@ class PluginBackup(_PluginBase):
                     # 复制文件或目录到临时目录
                     dest_path = temp_dir / entry.name
                     if entry.is_dir():
-                        # copytree 可以处理目录及其内容
                         shutil.copytree(full_path, dest_path)
                         logger.debug(f"复制目录 {full_path} 到 {dest_path}")
                     else:
-                        # copy2 保留文件的元数据
-                        shutil.copy2(full_path, dest_path)
+                        shutil.copy2(full_path, dest_path) # copy2 保留元数据
                         logger.debug(f"复制文件 {full_path} 到 {dest_path}")
 
                 except Exception as copy_error:
@@ -387,10 +385,9 @@ class PluginBackup(_PluginBase):
         }
         return form_structure, default_data
 
-    # get_page 方法已删除
-    # def get_page(self) -> List[dict]:
-    #     # 如果插件有自定义页面，在此定义其结构
-    #     return []
+    def get_page(self) -> List[dict]:
+        # 如果插件有自定义页面，在此定义其结构
+        return []
 
     def stop_service(self):
         """
