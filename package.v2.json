@@ -1,7 +1,7 @@
 {
     "PluginBackup": {
         "name": "插件配置备份",
-        "description": "测试版插件备份。",
+        "description": "自动备份 MoviePilot 所有插件的配置文件。",
         "labels": "备份",
         "version": "1.0",
         "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/backup.png",
