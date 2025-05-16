@@ -22,7 +22,7 @@ class PluginBackup(_PluginBase):
     # 插件描述
     plugin_desc = "自动备份 MoviePilot 所有插件的配置文件。"
     # 插件图标 (建议使用新图标)
-    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins1/refs/heads/main/icons/backup.png"
+    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/backup.png"
     # 插件版本
     plugin_version = "1.1"
     # 插件作者
