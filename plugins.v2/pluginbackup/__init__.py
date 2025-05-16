@@ -25,7 +25,7 @@ class PluginBackup(_PluginBase):
     # 插件图标 (建议使用新图标)
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins1/refs/heads/main/icons/backup.png"
     # 插件版本
-    plugin_version = "1.2" # 版本号保持一致或根据需要更新
+    plugin_version = "1.1" # 版本号保持一致或根据需要更新
     # 插件作者
     plugin_author = "jinxi" # Or your name if you adapted it
     # 作者主页
