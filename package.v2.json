@@ -1,0 +1,15 @@
+{
+    "PluginBackup": {
+        "name": "插件配置备份",
+        "description": "测试版插件备份。",
+        "labels": "备份",
+        "version": "1.1",
+        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins1/refs/heads/main/icons/1.png",
+        "author": "jinxi",
+        "level": 2,
+        "history": {
+            "v1.1": "修复ico。",
+            "v1.0": "初始版本。"
+        }
+    }
+}
