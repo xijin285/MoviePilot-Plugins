@@ -4,7 +4,7 @@
         "description": "测试版插件备份。",
         "labels": "备份",
         "version": "1.1",
-        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins1/refs/heads/main/icons/1.png",
+        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/backup.png",
         "author": "jinxi",
         "level": 2,
         "history": {
