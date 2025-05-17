@@ -30,7 +30,7 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "1.0.0"
+    plugin_version = "1.1.1"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
@@ -55,6 +55,7 @@ class IkuaiRouterBackup(_PluginBase):
     _notify: bool = False
     _retry_count: int = 3
     _retry_interval: int = 60
+    _notification_style: int = 1
     
     _ikuai_url: str = ""
     _ikuai_username: str = "admin"
@@ -72,6 +73,7 @@ class IkuaiRouterBackup(_PluginBase):
             self._notify = bool(config.get("notify", False))
             self._retry_count = int(config.get("retry_count", 3))
             self._retry_interval = int(config.get("retry_interval", 60))
+            self._notification_style = int(config.get("notification_style", 1))
             self._ikuai_url = str(config.get("ikuai_url", "")).rstrip('/')
             self._ikuai_username = str(config.get("ikuai_username", "admin"))
             self._ikuai_password = str(config.get("ikuai_password", ""))
@@ -140,6 +142,7 @@ class IkuaiRouterBackup(_PluginBase):
             "ikuai_password": self._ikuai_password,
             "backup_path": self._backup_path,
             "keep_backup_num": self._keep_backup_num,
+            "notification_style": self._notification_style,
         })
 
     def get_state(self) -> bool:
@@ -210,18 +213,19 @@ class IkuaiRouterBackup(_PluginBase):
                         'content': [
                              {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_count', 'label': '最大重试次数', 'type': 'number', 'placeholder': '3'}}]},
                              {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_interval', 'label': '重试间隔(秒)', 'type': 'number', 'placeholder': '60'}}]},
+                             {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSelect', 'props': {'model': 'notification_style', 'label': '通知样式', 'items': [{'title': '样式1 - 简约星线', 'value': 1}, {'title': '样式2 - 方块花边', 'value': 2}, {'title': '样式3 - 箭头主题', 'value': 3}]}}]},
                         ],
                     },
                     {
                         'component': 'VRow',
-                        'content': [{'component': 'VCol', 'props': {'cols': 12}, 'content': [{'component': 'VAlert', 'props': {'type': 'info', 'variant': 'tonal', 'text': f'【使用说明】\n1. 填写爱快路由的访问地址、用户名和密码。\n2. 备份文件存储路径：可留空，默认为{default_backup_location_desc}。或指定一个绝对路径。确保MoviePilot有权访问和写入此路径。\n3. 设置执行周期，例如每天凌晨3点执行 (0 3 * * *)。\n4. 设置备份文件保留数量，旧的备份会被自动删除。\n5. 可选开启通知，在备份完成后收到结果通知。\n6. 启用插件并保存即可。\n7. 备份文件将以.bak后缀保存。'}}]}]
+                        'content': [{'component': 'VCol', 'props': {'cols': 12}, 'content': [{'component': 'VAlert', 'props': {'type': 'info', 'variant': 'tonal', 'text': f'【使用说明】\n1. 填写爱快路由的访问地址、用户名和密码。\n2. 备份文件存储路径：可留空，默认为{default_backup_location_desc}。或指定一个绝对路径。确保MoviePilot有权访问和写入此路径。\n3. 设置执行周期，例如每天凌晨3点执行 (0 3 * * *)。\n4. 设置备份文件保留数量，旧的备份会被自动删除。\n5. 可选开启通知，在备份完成后收到结果通知，并可选择不同通知样式。\n6. 启用插件并保存即可。\n7. 备份文件将以.bak后缀保存。'}}]}]
                     }
                 ]
             }
         ], {
             "enabled": False, "notify": False, "cron": "0 3 * * *", "onlyonce": False,
             "retry_count": 3, "retry_interval": 60, "ikuai_url": "", "ikuai_username": "admin",
-            "ikuai_password": "", "backup_path": "", "keep_backup_num": 7
+            "ikuai_password": "", "backup_path": "", "keep_backup_num": 7, "notification_style": 1
         }
 
     def get_page(self) -> List[dict]:
@@ -688,13 +692,71 @@ class IkuaiRouterBackup(_PluginBase):
         title += "成功" if success else "失败"
         status_emoji = "✅" if success else "❌"
         
-        text_content = f"状态：{status_emoji} {'备份成功' if success else '备份失败'}\n"
-        text_content += f"路由：{self._ikuai_url}\n"
+        # 根据选择的通知样式设置分隔符和风格
+        if self._notification_style == 1:
+            # 样式1 - 简约星线
+            divider = "★━━━━━━━━━━━━━━━━━━━━━━━★"
+            status_prefix = "📌"
+            router_prefix = "🌐"
+            file_prefix = "📁"
+            info_prefix = "ℹ️"
+            congrats = "\n🎉 备份任务已顺利完成！"
+            error_msg = "\n⚠️ 备份失败，请检查日志了解详情。"
+        elif self._notification_style == 2:
+            # 样式2 - 方块花边
+            divider = "■□■□■□■□■□■□■□■□■□■□■□■□■"
+            status_prefix = "🔰"
+            router_prefix = "🔹"
+            file_prefix = "📂"
+            info_prefix = "📝"
+            congrats = "\n🎊 太棒了！备份成功保存！"
+            error_msg = "\n🚨 警告：备份过程中出现错误！"
+        elif self._notification_style == 3:
+            # 样式3 - 箭头主题
+            divider = "➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤"
+            status_prefix = "🔔"
+            router_prefix = "📡"
+            file_prefix = "💾"
+            info_prefix = "📢"
+            congrats = "\n🏆 备份任务圆满完成！"
+            error_msg = "\n🔥 错误：备份未能完成！"
+        else:
+            # 默认样式
+            divider = "━━━━━━━━━━━━━━━━━━━━━━━━━"
+            status_prefix = "📣"
+            router_prefix = "🔗"
+            file_prefix = "📄"
+            info_prefix = "📋"
+            congrats = "\n✨ 备份已成功完成！"
+            error_msg = "\n❗ 备份失败，请检查配置和连接！"
+        
+        # 失败时的特殊处理 - 添加额外的警告指示
+        if not success:
+            divider_failure = "❌" + divider[1:-1] + "❌"
+            text_content = f"{divider_failure}\n"
+        else:
+            text_content = f"{divider}\n"
+            
+        text_content += f"{status_prefix} 状态：{status_emoji} {'备份成功' if success else '备份失败'}\n\n"
+        text_content += f"{router_prefix} 路由：{self._ikuai_url}\n"
         if filename:
-            text_content += f"文件：{filename}\n"
+            text_content += f"{file_prefix} 文件：{filename}\n"
         if message:
-            text_content += f"详情：{message.strip()}\n"
-        text_content += f"\n⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            text_content += f"{info_prefix} 详情：{message.strip()}\n"
+        
+        # 添加底部分隔线和时间戳
+        if not success:
+            text_content += f"\n{divider_failure}\n"
+        else:
+            text_content += f"\n{divider}\n"
+            
+        text_content += f"⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        
+        # 根据成功/失败添加不同信息
+        if success:
+            text_content += congrats
+        else:
+            text_content += error_msg
         
         try:
             self.post_message(mtype=NotificationType.Plugin, title=title, text=text_content)
