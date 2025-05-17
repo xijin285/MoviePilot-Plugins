@@ -24,15 +24,15 @@ from app.schemas.types import NotificationType
 
 class IkuaiRouterBackup(_PluginBase):
     # 插件名称
-    plugin_name = "爱快路由备份"
+    plugin_name = "爱快路由备份助手"
     # 插件描述
     plugin_desc = "自动备份爱快路由配置，并管理备份文件。"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/router.png"
+    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
     plugin_version = "1.0.0"
     # 插件作者
-    plugin_author = "xijin285"
+    plugin_author = "jinxi"
     # 作者主页
     author_url = "https://github.com/xijin285"
     # 插件配置项ID前缀
