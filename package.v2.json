@@ -1,14 +1,20 @@
 {
-    "AutoBackup": {
-        "name": "爱快路由自动备份",
-        "description": "自动备份 Ikuai 所有插件的配置文件。",
-        "labels": "备份",
-        "version": "1.0",
-        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/backup.png",
-        "author": "jinxi",
-        "level": 2,
-        "history": {
-            "v1.0": "初始版本。"
+    "name": "爱快路由自动备份",
+    "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份",
+    "labels": ["备份", "网络设备", "ikuai"],
+    "version": "1.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/main/icons/backup.png",
+    "author": "jinxi",
+    "level": 2,
+    "entry": "ikuai_backup_plugin.IkuaiBackupPlugin",  // 插件入口（类路径）
+    "config_schema": {  // 可选：配置表单 schema（若有）
+        "type": "object",
+        "properties": {
+            "ikuai_url": {"type": "string", "title": "爱快路由地址"},
+            "username": {"type": "string", "title": "用户名"}
         }
+    },
+    "history": {
+        "v1.0": "初始版本，实现登录认证、自动备份、文件清理功能"
     }
 }
