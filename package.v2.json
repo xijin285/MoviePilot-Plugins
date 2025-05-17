@@ -3,12 +3,11 @@
         "name": "爱快路由备份助手",
         "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
         "labels": "备份",
-        "version": "1.0.9",
+        "version": "1.0.0",
         "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
         "author": "jinxi",
         "level": 2,
         "history": {
-            "v1.0.9": "修复备份报错",
             "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
         }
     }

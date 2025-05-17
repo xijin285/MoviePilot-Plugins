@@ -20,7 +20,7 @@ from apscheduler.triggers.cron import CronTrigger
 from app.core.config import settings
 from app.log import logger
 from app.plugins import _PluginBase
-from app.schemas.types import NotificationType
+from app.schemas import NotificationType
 
 class IkuaiRouterBackup(_PluginBase):
     # 插件名称
@@ -30,7 +30,7 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "1.0.9"
+    plugin_version = "1.0.0"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
@@ -46,7 +46,6 @@ class IkuaiRouterBackup(_PluginBase):
     _scheduler: Optional[BackgroundScheduler] = None
     _lock: Optional[threading.Lock] = None
     _running: bool = False
-    _history_file_path: Optional[Path] = None
     _max_history_entries: int = 100 # Max number of history entries to keep
 
     # 配置属性
@@ -66,13 +65,6 @@ class IkuaiRouterBackup(_PluginBase):
     def init_plugin(self, config: Optional[dict] = None):
         self._lock = threading.Lock()
         self.stop_service()
-        plugin_data_root = Path(self.get_data_path())
-        try:
-            plugin_data_root.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            logger.error(f"{self.plugin_name} 创建插件数据根目录失败 {plugin_data_root}: {e}")
-        self._history_file_path = plugin_data_root / "backup_history.json"
-
         if config:
             self._enabled = bool(config.get("enabled", False))
             self._cron = str(config.get("cron", "0 3 * * *"))
@@ -85,7 +77,7 @@ class IkuaiRouterBackup(_PluginBase):
             self._ikuai_password = str(config.get("ikuai_password", ""))
             configured_backup_path = str(config.get("backup_path", "")).strip()
             if not configured_backup_path:
-                self._backup_path = str(plugin_data_root / "actual_backups")
+                self._backup_path = str(self.get_data_path() / "actual_backups")
                 logger.info(f"{self.plugin_name} 备份文件存储路径未配置，使用默认: {self._backup_path}")
             else:
                 self._backup_path = configured_backup_path
@@ -118,32 +110,22 @@ class IkuaiRouterBackup(_PluginBase):
                     logger.error(f"启动一次性 {self.plugin_name} 任务失败: {str(e)}")
     
     def _load_backup_history(self) -> List[Dict[str, Any]]:
-        if not self._history_file_path or not self._history_file_path.exists():
+        history = self.get_data('backup_history')
+        if history is None:
             return []
-        try:
-            with open(self._history_file_path, 'r', encoding='utf-8') as f:
-                history = json.load(f)
-                return history if isinstance(history, list) else []
-        except json.JSONDecodeError:
-            logger.error(f"{self.plugin_name} 历史记录文件 {self._history_file_path} 格式错误。")
+        if not isinstance(history, list):
+            logger.error(f"{self.plugin_name} 历史记录数据格式不正确 (期望列表，得到 {type(history)})。将返回空历史。")
             return []
-        except Exception as e:
-            logger.error(f"{self.plugin_name} 加载历史记录 {self._history_file_path} 失败: {e}")
-            return []
+        return history
 
     def _save_backup_history_entry(self, entry: Dict[str, Any]):
-        if not self._history_file_path:
-            logger.error(f"{self.plugin_name} 历史记录文件路径未设置。")
-            return
         history = self._load_backup_history()
         history.insert(0, entry)
         if len(history) > self._max_history_entries:
             history = history[:self._max_history_entries]
-        try:
-            with open(self._history_file_path, 'w', encoding='utf-8') as f:
-                json.dump(history, f, ensure_ascii=False, indent=4)
-        except Exception as e:
-            logger.error(f"{self.plugin_name} 保存历史记录到 {self._history_file_path} 失败: {e}")
+        
+        self.save_data('backup_history', history)
+        logger.info(f"{self.plugin_name} 已保存备份历史，当前共 {len(history)} 条记录。")
 
     def __update_config(self):
         self.update_config({
@@ -244,13 +226,39 @@ class IkuaiRouterBackup(_PluginBase):
 
     def get_page(self) -> List[dict]:
         history_data = self._load_backup_history()
-        table_items = []
+        
+        if not history_data:
+            return [
+                {
+                    'component': 'VAlert',
+                    'props': {
+                        'type': 'info',
+                        'variant': 'tonal',
+                        'text': '暂无备份历史记录。当有备份操作后，历史将在此处显示。',
+                        'class': 'mb-2'
+                    }
+                }
+            ]
+            
+        history_rows = []
         for item in history_data:
-            table_items.append({
-                "timestamp": datetime.fromtimestamp(item.get("timestamp",0)).strftime('%Y-%m-%d %H:%M:%S') if item.get("timestamp") else "N/A",
-                "status": "成功" if item.get("success") else "失败",
-                "filename": item.get("filename", "N/A"),
-                "message": item.get("message", "")
+            timestamp_str = datetime.fromtimestamp(item.get("timestamp", 0)).strftime('%Y-%m-%d %H:%M:%S') if item.get("timestamp") else "N/A"
+            status_success = item.get("success", False)
+            status_text = "成功" if status_success else "失败"
+            status_color = "success" if status_success else "error"
+            filename_str = item.get("filename", "N/A")
+            message_str = item.get("message", "")
+
+            history_rows.append({
+                'component': 'tr',
+                'content': [
+                    {'component': 'td', 'props': {'class': 'text-caption'}, 'text': timestamp_str},
+                    {'component': 'td', 'content': [
+                        {'component': 'VChip', 'props': {'color': status_color, 'size': 'small', 'variant': 'outlined'}, 'text': status_text}
+                    ]},
+                    {'component': 'td', 'text': filename_str},
+                    {'component': 'td', 'text': message_str},
+                ]
             })
 
         return [
@@ -267,20 +275,31 @@ class IkuaiRouterBackup(_PluginBase):
                         "component": "VCardText",
                         "content": [
                             {
-                                "component": "VDataTable",
+                                "component": "VTable",
                                 "props": {
-                                    "headers": [
-                                        {"title": "时间", "key": "timestamp", "sortable": True},
-                                        {"title": "状态", "key": "status", "sortable": True},
-                                        {"title": "备份文件名 (.bak)", "key": "filename", "sortable": False},
-                                        {"title": "消息", "key": "message", "sortable": False},
-                                    ],
-                                    "items": table_items,
-                                    "items-per-page": 15,
-                                    "multi-sort": True,
                                     "hover": True,
                                     "density": "compact"
-                                }
+                                },
+                                "content": [
+                                    {
+                                        'component': 'thead',
+                                        'content': [
+                                            {
+                                                'component': 'tr',
+                                                'content': [
+                                                    {'component': 'th', 'text': '时间'},
+                                                    {'component': 'th', 'text': '状态'},
+                                                    {'component': 'th', 'text': '备份文件名 (.bak)'},
+                                                    {'component': 'th', 'text': '消息'}
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        'component': 'tbody',
+                                        'content': history_rows
+                                    }
+                                ]
                             }
                         ]
                     }
@@ -400,47 +419,73 @@ class IkuaiRouterBackup(_PluginBase):
         retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
         session.mount('http://', HTTPAdapter(max_retries=retries))
         session.mount('https://', HTTPAdapter(max_retries=retries))
+
+        # Consistent User-Agent for all requests in this session
+        browser_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+        session.headers.update({"User-Agent": browser_user_agent})
         
         sess_key_part = self._login_ikuai(session)
         if not sess_key_part:
             return False, "登录爱快路由失败，无法获取SESS_KEY", None
         
+        # Cookie is set on the session for subsequent requests
         cookie_string = f"username={quote(self._ikuai_username)}; {sess_key_part}; login=1"
-        session.headers.update({"Cookie": cookie_string, "User-Agent": settings.USER_AGENT})
+        session.headers.update({"Cookie": cookie_string})
         
         create_success, create_msg = self._create_backup_on_router(session)
         if not create_success:
             return False, f"创建备份失败: {create_msg}", None
-        logger.info(f"{self.plugin_name} 成功触发创建备份。等待5秒让备份生成...")
-        time.sleep(5)
+        logger.info(f"{self.plugin_name} 成功触发创建备份。等待2秒让备份生成和准备就绪...")
+        time.sleep(2)
 
         backup_list = self._get_backup_list(session)
         if backup_list is None:
-             return False, "获取备份文件列表时出错", None
+             return False, "获取备份文件列表时出错 (在下载前调用)", None
         if not backup_list:
-            return False, "路由器上没有找到任何备份文件", None
+            return False, "路由器上没有找到任何备份文件 (在下载前获取列表为空)", None
         
         latest_backup = backup_list[0]
-        actual_router_filename = latest_backup.get("name")
-        if not actual_router_filename:
+        actual_router_filename_from_api = latest_backup.get("name")
+        if not actual_router_filename_from_api:
             return False, "无法从备份列表中获取最新备份的文件名", None
             
-        if not isinstance(actual_router_filename, str):
-             logger.error(f"{self.plugin_name} Router filename is not a string: {actual_router_filename}")
-             return False, "路由器返回的文件名格式不正确", None
-
-        display_and_saved_filename = Path(actual_router_filename).stem + ".bak"
-        local_filepath_to_save = Path(self._backup_path) / display_and_saved_filename
-            
-        logger.info(f"{self.plugin_name} 最新备份文件在路由: {actual_router_filename}, 将保存为: {display_and_saved_filename}")
-
-        download_success, download_msg = self._download_backup_file(session, actual_router_filename, str(local_filepath_to_save))
-        if not download_success:
-            return False, f"下载备份文件 {actual_router_filename} (保存为 {display_and_saved_filename}) 失败: {download_msg}", None
+        # Filename to be used in the download URL is exactly what the API provided.
+        filename_for_download_url = actual_router_filename_from_api
         
-        logger.info(f"{self.plugin_name} 备份文件 {display_and_saved_filename} 已成功下载到 {local_filepath_to_save}")
+        # Determine the local filename, ensuring it has a .bak extension.
+        base_name_for_local_file = os.path.splitext(actual_router_filename_from_api)[0]
+        local_display_and_saved_filename = base_name_for_local_file + ".bak"
+        
+        local_filepath_to_save = Path(self._backup_path) / local_display_and_saved_filename
+
+        logger.info(f"{self.plugin_name} API列表最新备份名: {actual_router_filename_from_api}. 将尝试以此名下载.")
+        logger.info(f"{self.plugin_name} 最终本地保存文件名将为: {local_display_and_saved_filename}")
+
+        # Send EXPORT request before downloading
+        export_payload = {
+            "func_name": "backup",
+            "action": "EXPORT",
+            "param": { "srcfile": local_display_and_saved_filename }
+        }
+        export_url = urljoin(self._ikuai_url, "/Action/call")
+        try:
+            logger.info(f"{self.plugin_name} 尝试向 {export_url} 发送 EXPORT 请求...")
+            response = session.post(export_url, data=json.dumps(export_payload), headers={'Content-Type': 'application/json'}, timeout=10)
+            response.raise_for_status()
+            logger.info(f"{self.plugin_name} EXPORT 请求发送成功。响应: {response.text[:200]}")
+        except requests.exceptions.RequestException as e:
+            error_detail = f"尝试向 {export_url} 发送 EXPORT 请求失败: {e}"
+            logger.error(f"{self.plugin_name} {error_detail}")
+            return False, error_detail, None
+
+        download_success, download_msg = self._download_backup_file(session, filename_for_download_url, str(local_filepath_to_save))
+        if not download_success:
+            error_detail = f"尝试下载 {filename_for_download_url} (API原始名: {actual_router_filename_from_api}) 失败: {download_msg}"
+            return False, error_detail, None
+        
+        logger.info(f"{self.plugin_name} 备份文件 {local_display_and_saved_filename} 已成功下载自 {filename_for_download_url} 并保存到 {local_filepath_to_save}")
         self._cleanup_old_backups()
-        return True, None, display_and_saved_filename
+        return True, None, local_display_and_saved_filename # Return the .bak filename for history
 
     def _login_ikuai(self, session: requests.Session) -> Optional[str]:
         login_url = urljoin(self._ikuai_url, "/Action/login")
@@ -448,7 +493,7 @@ class IkuaiRouterBackup(_PluginBase):
         login_data = {"username": self._ikuai_username, "passwd": password_md5}
         try:
             logger.info(f"{self.plugin_name} 尝试登录到 {self._ikuai_url}...")
-            response = session.post(login_url, data=json.dumps(login_data), headers={'Content-Type': 'application/json', "User-Agent": settings.USER_AGENT}, timeout=10)
+            response = session.post(login_url, data=json.dumps(login_data), headers={'Content-Type': 'application/json'}, timeout=10)
             response.raise_for_status()
             cookies = response.cookies
             sess_key_value = cookies.get("sess_key")
@@ -475,7 +520,14 @@ class IkuaiRouterBackup(_PluginBase):
         backup_data = {"func_name": "backup", "action": "create", "param": {}}
         try:
             logger.info(f"{self.plugin_name} 尝试在 {self._ikuai_url} 创建新备份...")
-            response = session.post(create_url, data=json.dumps(backup_data), headers={'Content-Type': 'application/json', "User-Agent": settings.USER_AGENT}, timeout=30)
+            request_headers = {
+                'Content-Type': 'application/json',
+                'Accept': '*/*',
+                'Origin': self._ikuai_url.rstrip('/'),
+                'Referer': self._ikuai_url.rstrip('/') + '/'
+            }
+            # User-Agent and Cookie are on session.headers
+            response = session.post(create_url, data=json.dumps(backup_data), headers=request_headers, timeout=30)
             response.raise_for_status()
             response_text = response.text.strip().lower()
             if "success" in response_text or response_text == '"success"':
@@ -511,7 +563,14 @@ class IkuaiRouterBackup(_PluginBase):
         list_data = {"func_name": "backup", "action": "show", "param": {"ORDER": "desc", "ORDER_BY": "time", "LIMIT": "0,50"}}
         try:
             logger.info(f"{self.plugin_name} 尝试从 {self._ikuai_url} 获取备份列表...")
-            response = session.post(list_url, data=json.dumps(list_data), headers={'Content-Type': 'application/json', "User-Agent": settings.USER_AGENT}, timeout=15)
+            request_headers = {
+                'Content-Type': 'application/json',
+                'Accept': '*/*',
+                'Origin': self._ikuai_url.rstrip('/'),
+                'Referer': self._ikuai_url.rstrip('/') + '/'
+            }
+            # User-Agent and Cookie are on session.headers
+            response = session.post(list_url, data=json.dumps(list_data), headers=request_headers, timeout=15)
             response.raise_for_status()
             res_json = response.json()
             if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
@@ -539,37 +598,41 @@ class IkuaiRouterBackup(_PluginBase):
 
     def _download_backup_file(self, session: requests.Session, router_filename: str, local_filepath_to_save: str) -> Tuple[bool, Optional[str]]:
         safe_router_filename = quote(router_filename)
-        download_url1 = urljoin(self._ikuai_url, f"/Download/{safe_router_filename}")
-        download_url2 = urljoin(self._ikuai_url, f"/Action/download?filename={safe_router_filename}")
-        urls_to_try = [download_url1, download_url2]
+        
+        # Only use /Action/download URL as per user instruction
+        download_url = urljoin(self._ikuai_url, f"/Action/download?filename={safe_router_filename}")
         last_error = None
 
-        for i, dl_url in enumerate(urls_to_try):
-            logger.info(f"{self.plugin_name} 尝试下载备份文件 {router_filename} 从 {dl_url} (尝试 {i+1}/{len(urls_to_try)}), 保存到 {local_filepath_to_save}...")
-            try:
-                with session.get(dl_url, stream=True, timeout=300, headers={"User-Agent": settings.USER_AGENT}) as r:
-                    r.raise_for_status()
-                    content_type = r.headers.get('Content-Type', '').lower()
-                    if 'text/html' in content_type and dl_url == download_url1:
-                        logger.warning(f"{self.plugin_name} 下载 {router_filename} 从 {dl_url} 收到HTML, 可能为错误页面。")
-                        last_error = f"收到HTML页面而不是文件从 {dl_url}"
-                        continue
-                    with open(local_filepath_to_save, 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
-                    logger.info(f"{self.plugin_name} 文件 {router_filename} 下载完成，保存至 {local_filepath_to_save}")
-                    return True, None
-            except requests.exceptions.HTTPError as e:
-                last_error = f"HTTP错误 ({e.response.status_code}) 从 {dl_url}: {e}"
-                logger.warning(f"{self.plugin_name} 下载 {router_filename} 从 {dl_url} 失败: {last_error}")
-            except requests.exceptions.RequestException as e:
-                last_error = f"请求错误从 {dl_url}: {e}"
-                logger.warning(f"{self.plugin_name} 下载 {router_filename} 从 {dl_url} 失败: {last_error}")
-            except Exception as e:
-                last_error = f"未知错误从 {dl_url}: {e}"
-                logger.error(f"{self.plugin_name} 下载 {router_filename} 从 {dl_url} 过程中发生未知错误: {last_error}")
+        # Mimic browser headers for GET download request
+        request_headers = {
+            "Referer": self._ikuai_url.rstrip('/') + "/",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+            # User-Agent and Cookie are handled by the session object automatically
+        }
+
+        logger.info(f"{self.plugin_name} 尝试下载备份文件 {router_filename} 从 {download_url}, 保存到 {local_filepath_to_save}...")
+        try:
+            # session.get will use session.headers (Cookie, UA) and merge/override with request_headers (Referer, Accept)
+            with session.get(download_url, stream=True, timeout=300, headers=request_headers) as r:
+                r.raise_for_status()
+                # No need to check content_type for HTML error page here, as we are only trying one URL that should directly serve the file or give a proper HTTP error.
+                
+                with open(local_filepath_to_save, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                logger.info(f"{self.plugin_name} 文件 {router_filename} 下载完成，保存至 {local_filepath_to_save}")
+                return True, None
+        except requests.exceptions.HTTPError as e:
+            last_error = f"HTTP错误 ({e.response.status_code}) 从 {download_url}: {e}"
+            logger.warning(f"{self.plugin_name} 下载 {router_filename} 从 {download_url} 失败: {last_error}")
+        except requests.exceptions.RequestException as e:
+            last_error = f"请求错误从 {download_url}: {e}"
+            logger.warning(f"{self.plugin_name} 下载 {router_filename} 从 {download_url} 失败: {last_error}")
+        except Exception as e:
+            last_error = f"未知错误从 {download_url}: {e}"
+            logger.error(f"{self.plugin_name} 下载 {router_filename} 从 {download_url} 过程中发生未知错误: {last_error}")
         
-        logger.error(f"{self.plugin_name} 所有尝试下载 {router_filename} 均失败。最后错误: {last_error}")
+        logger.error(f"{self.plugin_name} 尝试下载 {router_filename} 失败。最后错误: {last_error}")
         return False, last_error
 
     def _cleanup_old_backups(self):
@@ -634,7 +697,7 @@ class IkuaiRouterBackup(_PluginBase):
         text_content += f"\n⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         
         try:
-            self.post_message(mtype=NotificationType.PluginMessage, title=title, text=text_content)
+            self.post_message(mtype=NotificationType.Plugin, title=title, text=text_content)
             logger.info(f"{self.plugin_name} 发送通知: {title}")
         except Exception as e:
             logger.error(f"{self.plugin_name} 发送通知失败: {e}")
