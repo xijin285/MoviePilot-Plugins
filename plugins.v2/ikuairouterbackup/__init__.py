@@ -30,7 +30,7 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "1.0.0"
+    plugin_version = "1.0.9"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
@@ -421,7 +421,7 @@ class IkuaiRouterBackup(_PluginBase):
             return False, "路由器上没有找到任何备份文件", None
         
         latest_backup = backup_list[0]
-        actual_router_filename = latest_backup.get("file_name")
+        actual_router_filename = latest_backup.get("name")
         if not actual_router_filename:
             return False, "无法从备份列表中获取最新备份的文件名", None
             
@@ -483,10 +483,14 @@ class IkuaiRouterBackup(_PluginBase):
                  return True, None
             try:
                 res_json = response.json()
-                if res_json.get("Ret") == 0 and "success" in str(res_json.get("Data")).lower():
+                if res_json.get("result") == 30000 and res_json.get("errmsg", "").lower() == "success":
                     logger.info(f"{self.plugin_name} 备份创建请求成功 (JSON)。响应: {res_json}")
                     return True, None
-                err_msg = res_json.get("ErrMsg", "创建备份API未返回成功")
+                
+                err_msg = res_json.get("errmsg")
+                if not err_msg:
+                    err_msg = res_json.get("ErrMsg", "创建备份API未返回成功或指定错误信息")
+
                 logger.error(f"{self.plugin_name} 备份创建失败 (JSON)。响应: {res_json}, 错误: {err_msg}")
                 return False, f"路由器返回错误: {err_msg}"
             except json.JSONDecodeError:
@@ -510,18 +514,17 @@ class IkuaiRouterBackup(_PluginBase):
             response = session.post(list_url, data=json.dumps(list_data), headers={'Content-Type': 'application/json', "User-Agent": settings.USER_AGENT}, timeout=15)
             response.raise_for_status()
             res_json = response.json()
-            if res_json.get("Ret") == 0:
+            if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
                 data = res_json.get("Data", {})
-                total = data.get("total", 0)
                 backup_items = data.get("data", [])
-                if total > 0 and isinstance(backup_items, list) and backup_items:
-                    logger.info(f"{self.plugin_name} 成功获取到 {len(backup_items)} 条备份记录 (总计 {total})。")
+                if isinstance(backup_items, list) and backup_items:
+                    logger.info(f"{self.plugin_name} 成功获取到 {len(backup_items)} 条备份记录。")
                     return backup_items
                 else:
-                    logger.warning(f"{self.plugin_name} 获取备份列表成功，但列表为空或格式不正确。Total: {total}, Data: {backup_items}")
+                    logger.warning(f"{self.plugin_name} 获取备份列表成功，但列表为空或格式不正确。Data content: {data}")
                     return []
             else:
-                err_msg = res_json.get("ErrMsg", "获取列表API未返回成功")
+                err_msg = res_json.get("ErrMsg") or res_json.get("errmsg", "获取列表API未返回成功或指定错误信息")
                 logger.error(f"{self.plugin_name} 获取备份列表失败。响应: {res_json}, 错误: {err_msg}")
                 return None
         except requests.exceptions.RequestException as e:
