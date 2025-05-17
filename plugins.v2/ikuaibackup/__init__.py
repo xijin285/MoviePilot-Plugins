@@ -13,19 +13,26 @@ from app.utils.system import SystemUtils
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-# 插件配置项 ID 前缀
-PLUGIN_CONFIG_PREFIX = "ikuaibackup_"
-
-class IKuaiBackup(_PluginBase):
-    # 插件基础信息
+class ikuaibackup(_PluginBase):
+    # 插件名称
     plugin_name = "爱快路由备份"
-    plugin_desc = "定时备份爱快路由配置到本地"
-    plugin_version = "1.0.0"
-    plugin_author = "jinxi"
+    # 插件描述
+    plugin_desc = "定时备份爱快路由配置到本地。"
+    # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
+    # 插件版本
+    plugin_version = "1.0.0"
+    # 插件作者
+    plugin_author = "jinxi"
+    # 作者主页
     author_url = "https://github.com/xijin285"
-    auth_level = 1  # 普通用户可使用
-    plugin_order = 70  # 加载顺序
+    # 插件配置项ID前缀
+    plugin_config_prefix = "ikuaibackup_"
+    # 加载顺序
+    plugin_order = 0
+    # 可使用的用户级别
+    auth_level = 2
+
 
     # 配置项
     _enabled: bool = False          # 是否启用插件
