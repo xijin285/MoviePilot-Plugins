@@ -1,6 +1,6 @@
 {
     "IKuaiBackup": {
-        "name": "爱快路由自动备份助手",
+        "name": "爱快路由备份助手",
         "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
         "labels": "备份",
         "version": "1.0.0",
