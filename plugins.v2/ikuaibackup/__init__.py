@@ -22,7 +22,7 @@ class IKuaiBackup(_PluginBase):
     plugin_desc = "定时备份爱快路由配置到本地"
     plugin_version = "1.0.0"
     plugin_author = "jinxi"
-    plugin_icon = "https://ikuai8.com/favicon.ico"
+    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     author_url = "https://github.com/xijin285"
     auth_level = 1  # 普通用户可使用
     plugin_order = 70  # 加载顺序
