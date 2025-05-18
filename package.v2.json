@@ -3,12 +3,12 @@
         "name": "站点登录监控",
         "description": "监控站点多久没有登录访问，并发送通知。",
         "labels": "站点",
-        "version": "1.0.0",
-        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/monitor.png",
+        "version": "1.0",
+        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
         "author": "jinxi",
         "level": 2,
         "history": {
-            "v1.0.0": "初始版本"
+            "v1.0": "初始版本"
         }
     },
     "IkuaiRouterBackup": {
