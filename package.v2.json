@@ -17,7 +17,7 @@
         "description": "自动备份 OpenWrt 配置，并管理备份文件。",
         "labels": "备份",
         "version": "1.0.0",
-        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/main/icons/openwrt.png",
+        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.webp",
         "author": "jinxi",
         "level": 2,
         "history": {
