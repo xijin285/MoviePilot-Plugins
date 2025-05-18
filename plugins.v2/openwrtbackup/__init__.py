@@ -28,7 +28,7 @@ class OpenWrtBackup(_PluginBase):
     # 插件描述
     plugin_desc = "自动备份 OpenWrt 配置，并管理备份文件。"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/main/icons/openwrt.png" # Placeholder icon
+    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.webp" # Placeholder icon
     # 插件版本
     plugin_version = "1.0.0"
     # 插件作者
