@@ -16,7 +16,7 @@
         "name": "OpenWRT备份助手",
         "description": "自动备份 OpenWRT 固件，并管理备份文件。",
         "labels": "备份",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/main/icons/openwrt.webp",
         "author": "jinxi",
         "level": 2,
@@ -25,3 +25,4 @@
         }
     }
 }
+ 

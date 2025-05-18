@@ -24,21 +24,21 @@ from app.schemas import NotificationType
 
 class OpenWRTBackup(_PluginBase):
     # 插件名称
-    plugin_name = "OpenWRT备份助手"
+    plugin_name = "OpenWrt备份助手"
     # 插件描述
-    plugin_desc = "自动备份 OpenWRT 固件，并管理备份文件。"
+    plugin_desc = "自动备份OpenWrt路由配置，并管理备份文件。"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/main/icons/openwrt.webp"
+    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.webp"
     # 插件版本
     plugin_version = "1.0.0"
     # 插件作者
-    plugin_author = "jinxi" # 可以替换为你的名字
+    plugin_author = "jinxi"
     # 作者主页
-    author_url = "https://github.com/xijin285" # 可以替换为你的主页
+    author_url = "https://github.com/xijin285"
     # 插件配置项ID前缀
     plugin_config_prefix = "openwrt_backup_"
     # 加载顺序
-    plugin_order = 11 # 避免与现有插件冲突
+    plugin_order = 11 # 避免与ikuai插件冲突
     # 可使用的用户级别
     auth_level = 1
 
@@ -57,12 +57,14 @@ class OpenWRTBackup(_PluginBase):
     _retry_interval: int = 60
     _notification_style: int = 1
     
-    _openwrt_url: str = ""
+    _openwrt_url: str = "" # OpenWrt Luci地址，例如 http://192.168.1.1
     _openwrt_username: str = "root"
     _openwrt_password: str = ""
     _backup_path: str = ""
     _keep_backup_num: int = 7
-    _luci_compat_mode: bool = False # 用于兼容旧版LuCI
+    _backup_command: str = "sysupgrade -b /tmp/backup-${HOSTNAME}-$(date +%F).tar.gz" # OpenWrt备份命令，可能需要调整
+    _backup_download_path: str = "/tmp/" # OpenWrt上备份文件生成的临时路径，需与备份命令中的路径对应
+    _ssh_port: int = 22 # OpenWrt SSH端口
 
     def init_plugin(self, config: Optional[dict] = None):
         self._lock = threading.Lock()
@@ -75,17 +77,20 @@ class OpenWRTBackup(_PluginBase):
             self._retry_count = int(config.get("retry_count", 3))
             self._retry_interval = int(config.get("retry_interval", 60))
             self._notification_style = int(config.get("notification_style", 1))
-            self._openwrt_url = str(config.get("openwrt_url", "")).rstrip('/')
+            self._openwrt_url = str(config.get("openwrt_url", "")).rstrip(\'/\')
             self._openwrt_username = str(config.get("openwrt_username", "root"))
             self._openwrt_password = str(config.get("openwrt_password", ""))
+            self._ssh_port = int(config.get("ssh_port", 22))
+            self._backup_command = str(config.get("backup_command", "sysupgrade -b /tmp/backup-${HOSTNAME}-$(date +%F).tar.gz"))
+            self._backup_download_path = str(config.get("backup_download_path", "/tmp/")).rstrip(\'/\') + \'/\'
+            
             configured_backup_path = str(config.get("backup_path", "")).strip()
             if not configured_backup_path:
-                self._backup_path = str(self.get_data_path() / "actual_backups")
+                self._backup_path = str(self.get_data_path() / "openwrt_backups")
                 logger.info(f"{self.plugin_name} 备份文件存储路径未配置，使用默认: {self._backup_path}")
             else:
                 self._backup_path = configured_backup_path
             self._keep_backup_num = int(config.get("keep_backup_num", 7))
-            self._luci_compat_mode = bool(config.get("luci_compat_mode", False))
             self.__update_config()
 
         try:
@@ -102,7 +107,7 @@ class OpenWRTBackup(_PluginBase):
                     if self._scheduler.get_job(job_name):
                         self._scheduler.remove_job(job_name)
                     logger.info(f"{self.plugin_name} 服务启动，立即运行一次")
-                    self._scheduler.add_job(func=self.run_backup_job, trigger='date',
+                    self._scheduler.add_job(func=self.run_backup_job, trigger=\'date\',
                                          run_date=datetime.now(tz=pytz.timezone(settings.TZ)) + timedelta(seconds=3),
                                          name=job_name, id=job_name)
                     self._onlyonce = False
@@ -114,7 +119,7 @@ class OpenWRTBackup(_PluginBase):
                     logger.error(f"启动一次性 {self.plugin_name} 任务失败: {str(e)}")
     
     def _load_backup_history(self) -> List[Dict[str, Any]]:
-        history = self.get_data('backup_history')
+        history = self.get_data(\'backup_history\')
         if history is None:
             return []
         if not isinstance(history, list):
@@ -128,7 +133,7 @@ class OpenWRTBackup(_PluginBase):
         if len(history) > self._max_history_entries:
             history = history[:self._max_history_entries]
         
-        self.save_data('backup_history', history)
+        self.save_data(\'backup_history\', history)
         logger.info(f"{self.plugin_name} 已保存备份历史，当前共 {len(history)} 条记录。")
 
     def __update_config(self):
@@ -142,10 +147,12 @@ class OpenWRTBackup(_PluginBase):
             "openwrt_url": self._openwrt_url,
             "openwrt_username": self._openwrt_username,
             "openwrt_password": self._openwrt_password,
+            "ssh_port": self._ssh_port,
+            "backup_command": self._backup_command,
+            "backup_download_path": self._backup_download_path,
             "backup_path": self._backup_path,
             "keep_backup_num": self._keep_backup_num,
             "notification_style": self._notification_style,
-            "luci_compat_mode": self._luci_compat_mode,
         })
 
     def get_state(self) -> bool:
@@ -162,7 +169,7 @@ class OpenWRTBackup(_PluginBase):
             try:
                 if str(self._cron).strip().count(" ") == 4:
                     return [{
-                        "id": "OpenWRTBackupService",
+                        "id": "OpenWrtBackupService",
                         "name": f"{self.plugin_name}定时服务",
                         "trigger": CronTrigger.from_crontab(self._cron, timezone=settings.TZ),
                         "func": self.run_backup_job,
@@ -177,163 +184,163 @@ class OpenWRTBackup(_PluginBase):
         return []
 
     def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
-        default_backup_location_desc = "插件数据目录下的 actual_backups 子目录"
+        default_backup_location_desc = f"插件数据目录下的 openwrt_backups 子目录 (默认: {str(self.get_data_path() / 'openwrt_backups')})"
         return [
             {
-                'component': 'VForm',
-                'content': [
+                \'component\': \'VForm\',
+                \'content\': [
                     {
-                        'component': 'VRow',
-                        'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次'}}]},
+                        \'component\': \'VRow\',
+                        \'content\': [
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 4}, \'content\': [{\'component\': \'VSwitch\', \'props\': {\'model\': \'enabled\', \'label\': \'启用插件\'}}]},
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 4}, \'content\': [{\'component\': \'VSwitch\', \'props\': {\'model\': \'notify\', \'label\': \'发送通知\'}}]},
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 4}, \'content\': [{\'component\': \'VSwitch\', \'props\': {\'model\': \'onlyonce\', \'label\': \'立即运行一次\'}}]},
                         ],
                     },
                     {
-                        'component': 'VRow',
-                        'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'openwrt_url', 'label': 'OpenWRT地址', 'placeholder': '例如: http://192.168.1.1'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VCronField', 'props': {'model': 'cron', 'label': '执行周期'}}]}
+                        \'component\': \'VRow\',
+                        \'content\': [
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'openwrt_url\', \'label\': \'OpenWrt地址\', \'placeholder\': \'例如: http://192.168.1.1 或 192.168.1.1 (仅IP)\'}}]},
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VCronField\', \'props\': {\'model\': \'cron\', \'label\': \'执行周期\'}}]}
                         ],
                     },
                     {
-                        'component': 'VRow',
-                        'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'openwrt_username', 'label': '用户名', 'placeholder': '默认为 root'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'openwrt_password', 'label': '密码', 'type': 'password'}}]}
+                        \'component\': \'VRow\',
+                        \'content\': [
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'openwrt_username\', \'label\': \'SSH用户名\', \'placeholder\': \'默认为 root\'}}]},
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'openwrt_password\', \'label\': \'SSH密码\', \'type\': \'password\'}}]},
                         ],
                     },
                     {
-                        'component': 'VRow',
-                        'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'backup_path', 'label': '备份文件存储路径', 'placeholder': f'默认为 {default_backup_location_desc}'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'keep_backup_num', 'label': '保留备份文件数量', 'type': 'number', 'placeholder': '默认为7'}}]}
+                        \'component\': \'VRow\',
+                        \'content\': [
+                             {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'ssh_port\', \'label\': \'SSH端口\', \'type\': \'number\', \'placeholder\': \'默认为 22\'}}]},
+                             {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'backup_path\', \'label\': \'备份文件存储路径\', \'placeholder\': default_backup_location_desc}}]},
                         ],
                     },
                     {
-                        'component': 'VRow',
-                        'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'luci_compat_mode', 'label': 'LuCI兼容模式'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSelect', 'props': {'model': 'notification_style', 'label': '通知样式', 'items': [{ 'value': 1, 'title': '完整' }, { 'value': 2, 'title': '仅失败' }, { 'value': 3, 'title': '静默' }]}}]}
+                        \'component\': \'VRow\',
+                        \'content\': [
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 12}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'backup_command\', \'label\': \'OpenWrt备份命令\', \'placeholder\': \'例如: sysupgrade -b /tmp/backup-${HOSTNAME}-$(date +%F).tar.gz\'}}]},
                         ]
                     },
                     {
-                        'component': 'VRow',
-                        'content': [
+                        \'component\': \'VRow\',
+                        \'content\': [
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 12}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'backup_download_path\', \'label\': \'OpenWrt备份文件生成路径 (需与备份命令对应)\', \'placeholder\': \'例如: /tmp/\'}}]},
+                        ]
+                    },
+                    {
+                        \'component\': \'VRow\',
+                        \'content\': [
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'keep_backup_num\', \'label\': \'保留备份数量\', \'type\': \'number\'}}]},
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VSelect\', \'props\': {\'model\': \'notification_style\', \'label\': \'通知样式\', \'items\': [{\'title\': \'完整路径\', \'value\': 1}, {\'title\': \'仅文件名\', \'value\': 2}]}}]},
+                        ],
+                    },
+                    {
+                        \'component\': \'VRow\',
+                        \'content\': [
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'retry_count\', \'label\': \'重试次数\', \'type\': \'number\'}}]},
+                            {\'component\': \'VCol\', \'props\': {\'cols\': 12, \'md\': 6}, \'content\': [{\'component\': \'VTextField\', \'props\': {\'model\': \'retry_interval\', \'label\': \'重试间隔 (秒)\', \'type\': \'number\'}}]},
+                        ]
+                    },
+                ]
+            }
+        ], {
+            "enabled": self._enabled,
+            "notify": self._notify,
+            "cron": self._cron,
+            "onlyonce": self._onlyonce,
+            "retry_count": self._retry_count,
+            "retry_interval": self._retry_interval,
+            "openwrt_url": self._openwrt_url,
+            "openwrt_username": self._openwrt_username,
+            "openwrt_password": self._openwrt_password,
+            "ssh_port": self._ssh_port,
+            "backup_command": self._backup_command,
+            "backup_download_path": self._backup_download_path,
+            "backup_path": self._backup_path if self._backup_path != str(self.get_data_path() / "openwrt_backups") else "",
+            "keep_backup_num": self._keep_backup_num,
+            "notification_style": self._notification_style,
+        }
+
+    def get_page(self) -> List[dict]:
+        history_data = self._load_backup_history()
+        # 格式化时间戳以便在前端显示
+        for entry in history_data:
+            if \'timestamp\' in entry and isinstance(entry[\'timestamp\'], (int, float)):\n                try:\n                    dt_object = datetime.fromtimestamp(entry[\'timestamp\'], tz=pytz.timezone(settings.TZ))\n                    entry[\'formatted_time\'] = dt_object.strftime(\'%Y-%m-%d %H:%M:%S\')\n                except Exception as e:\n                    logger.warning(f"格式化时间戳 {entry['timestamp']} 失败: {e}")\n                    entry[\'formatted_time\'] = \'N/A\'\n            else:\n                entry[\'formatted_time\'] = \'N/A\' # 如果时间戳不存在或格式不正确
+
+        return [
+            {
+                \'name\': \'备份历史\',
+                \'component\': \'VCard\',
+                \'content\': [
+                    {
+                        \'component\': \'VDataTable\',
+                        \'props\': {
+                            \'headers\': [
+                                {\'title\': \'时间\', \'key\': \'formatted_time\', \'sortable\': True},
+                                {\'title\': \'状态\', \'key\': \'status\', \'sortable\': False},
+                                {\'title\': \'文件名\', \'key\': \'filename\', \'sortable\': False},
+                                {\'title\': \'消息\', \'key\': \'message\', \'sortable\': False},
+                                {\'title\': \'操作\', \'key\': \'actions\', \'sortable\': False},
+                            ],
+                            \'items\': history_data,
+                            \'items-per-page\': 10,
+                            \'search\': \'\', # 可以添加搜索功能
+                            \'item-key\': \'timestamp\', # 确保每个条目有唯一键
+                            \'no-data-text\': \'暂无备份历史记录\' 
+                        },
+                        # 使用 slot 来自定义列的显示
+                        \'slots\': [
                             {
-                                'component': 'VCol', 
-                                'props': {'cols': 12},
-                                'content': [
-                                    {'component': 'VBtn', 'props': {'color': 'primary', 'class': 'mr-2'}, 'content': '保存配置', 'events': {'click': 'onSave'}},
-                                    {'component': 'VBtn', 'props': {'color': 'secondary'}, 'content': '取消', 'events': {'click': 'onCancel'}}
-                                ]
+                                \'name\': \'item.status\',
+                                \'component\': \'VChip\',
+                                \'props\': {
+                                    \'color\': \'{item.status == "成功" ? "green" : "red"}\', # 根据状态显示不同颜色
+                                    \'text\': \'{item.status}\',
+                                    \'size\': \'small\'
+                                }
+                            },
+                            {
+                                \'name\': \'item.actions\',
+                                \'content\': [
+                                     {
+                                        \'component\': \'VBtn\',
+                                        \'props\': {
+                                            \'icon\': True,
+                                            \'size\': \'small\',
+                                            \'@click\': \'() => downloadBackup(item.filename)\', # 需要实现 downloadBackup 方法
+                                            \'title\': \'下载备份\' 
+                                        },
+                                        \'content\': [{\'component\': \'VIcon\', \'props\': {\'icon\': \'mdi-download\'}}]\n                                    },\n                                    {\n                                        \'component\': \'VBtn\',\n                                        \'props\': {\n                                            \'icon\': True,\n                                            \'size\': \'small\',\n                                            \'color\': \'red\',\n                                            \'@click\': \'() => deleteBackup(item.filename, item.timestamp)\', # 需要实现 deleteBackup 方法\n                                            \'title\': \'删除备份\' \n                                        },\n                                        \'content\': [{\'component\': \'VIcon\', \'props\': {\'icon\': \'mdi-delete\'}}]\n                                    }\n                                ]
                             }
                         ]
                     }
                 ]
             }
-        ], { # Default form values
-            'enabled': self._enabled,
-            'notify': self._notify,
-            'cron': self._cron,
-            'onlyonce': self._onlyonce,
-            'openwrt_url': self._openwrt_url,
-            'openwrt_username': self._openwrt_username,
-            'openwrt_password': self._openwrt_password,
-            'backup_path': self._backup_path if self._backup_path != str(self.get_data_path() / "actual_backups") else "",
-            'keep_backup_num': self._keep_backup_num,
-            'retry_count': self._retry_count,
-            'retry_interval': self._retry_interval,
-            'notification_style': self._notification_style,
-            'luci_compat_mode': self._luci_compat_mode,
-        }
-
-    def get_page(self) -> List[dict]:
-        return [
-            {
-                'path': '/openwrt-backup-history',
-                'name': 'OpenWRTBackupHistory',
-                'component': 'BackupHistoryPage',
-                'props': {
-                    'plugin_name': self.plugin_name,
-                    'load_history_func': self._load_backup_history,
-                    'delete_backup_func': self._delete_specific_backup, # Placeholder, need to implement
-                    'download_backup_func': self._download_specific_backup, # Placeholder, need to implement
-                    'column_headers': [
-                        {'title': '备份时间', 'key': 'timestamp', 'sortable': True},
-                        {'title': '文件名', 'key': 'filename', 'sortable': False},
-                        {'title': '大小', 'key': 'size', 'sortable': True},
-                        {'title': '状态', 'key': 'status', 'sortable': False},
-                        {'title': '消息', 'key': 'message', 'sortable': False},
-                        {'title': '操作', 'key': 'actions', 'sortable': False}
-                    ]
-                }
-            }
         ]
-    
-    def _delete_specific_backup(self, filename_to_delete: str) -> Tuple[bool, str]:
-        """删除指定的备份文件及其历史记录"""
-        history = self._load_backup_history()
-        new_history = [entry for entry in history if entry.get('filename') != filename_to_delete]
-        
-        backup_file_path = Path(self._backup_path) / filename_to_delete
-        
-        file_deleted = False
-        if backup_file_path.exists() and backup_file_path.is_file():
-            try:
-                backup_file_path.unlink()
-                file_deleted = True
-                logger.info(f"{self.plugin_name} 已删除备份文件: {filename_to_delete}")
-            except Exception as e:
-                logger.error(f"{self.plugin_name} 删除备份文件 {filename_to_delete} 失败: {e}")
-                return False, f"删除文件失败: {e}"
-        else:
-            logger.warning(f"{self.plugin_name} 尝试删除不存在的备份文件: {filename_to_delete}")
-            # If file doesn't exist but history entry does, we still update history
-            file_deleted = True 
-
-        if len(new_history) < len(history):
-            self.save_data('backup_history', new_history)
-            logger.info(f"{self.plugin_name} 已从历史记录中删除 {filename_to_delete}。")
-            return True, "备份文件及历史记录已删除。"
-        elif file_deleted:
-            return True, "备份文件已删除（历史记录中未找到）。"
-        else:
-            return False, "未找到指定的备份文件或历史记录。"
-
-    def _download_specific_backup(self, filename_to_download: str) -> Optional[Tuple[str, bytes]]:
-        """提供特定备份文件以供下载"""
-        backup_file_path = Path(self._backup_path) / filename_to_download
-        if backup_file_path.exists() and backup_file_path.is_file():
-            try:
-                content = backup_file_path.read_bytes()
-                return filename_to_download, content
-            except Exception as e:
-                logger.error(f"{self.plugin_name} 读取备份文件 {filename_to_download} 供下载失败: {e}")
-                return None
-        else:
-            logger.warning(f"{self.plugin_name} 请求下载不存在的备份文件: {filename_to_download}")
-            return None
 
     def stop_service(self):
         if self._scheduler and self._scheduler.running:
-            try:
-                self._scheduler.shutdown(wait=True)
-                self._scheduler = None
-                logger.info(f"{self.plugin_name} 服务已停止。")
-            except Exception as e:
-                logger.error(f"{self.plugin_name} 停止服务失败: {e}")
-        self._running = False
+            self._scheduler.shutdown()
+            self._scheduler = None
+            logger.info(f"{self.plugin_name} 服务已停止")
 
     def run_backup_job(self):
+        if not self._enabled and not self._onlyonce:
+            logger.info(f"{self.plugin_name} 未启用，跳过备份。")
+            return
+
+        if self._running:
+            logger.info(f"{self.plugin_name} 备份任务已在运行中，跳过本次执行。")
+            return
+
         with self._lock:
-            if self._running:
-                logger.info(f"{self.plugin_name} 备份任务已在运行中，跳过本次执行。")
-                return
             self._running = True
         
         logger.info(f"{self.plugin_name} 开始执行备份任务...")
+        
         success = False
         message = ""
         backup_filename = None
@@ -345,309 +352,343 @@ class OpenWRTBackup(_PluginBase):
                     logger.info(f"{self.plugin_name} 备份成功: {message}")
                     break
                 else:
-                    logger.error(f"{self.plugin_name} 备份尝试 {attempt + 1}/{self._retry_count + 1} 失败: {message}")
-                    if attempt < self._retry_count:
-                        logger.info(f"{self.plugin_name} 将在 {self._retry_interval} 秒后重试...")
-                        time.sleep(self._retry_interval)
-                    else:
-                        logger.error(f"{self.plugin_name} 所有备份尝试均失败。")
+                    logger.error(f"{self.plugin_name} 备份失败 (尝试 {attempt + 1}/{self._retry_count + 1}): {message}")
             except Exception as e:
-                logger.error(f"{self.plugin_name} 备份尝试 {attempt + 1}/{self._retry_count + 1} 出现意外错误: {e}")
-                message = f"意外错误: {str(e)}"
-                if attempt < self._retry_count:
-                    logger.info(f"{self.plugin_name} 将在 {self._retry_interval} 秒后重试...")
-                    time.sleep(self._retry_interval)
-                else:
-                    logger.error(f"{self.plugin_name} 所有备份尝试均因意外错误而失败。")
+                logger.error(f"{self.plugin_name} 备份过程中发生严重错误 (尝试 {attempt + 1}/{self._retry_count + 1}): {e}")
+                message = str(e)
+            
+            if attempt < self._retry_count:
+                logger.info(f"{self.plugin_name} 将在 {self._retry_interval} 秒后重试...")
+                time.sleep(self._retry_interval)
         
-        if success and backup_filename:
-            self._cleanup_old_backups()
-            history_entry = {
-                "timestamp": datetime.now(tz=pytz.timezone(settings.TZ)).strftime('%Y-%m-%d %H:%M:%S'),
-                "filename": backup_filename,
-                "status": "成功",
-                "message": message,
-                "size": self._get_file_size_str(Path(self._backup_path) / backup_filename)
-            }
-        else:
-            history_entry = {
-                "timestamp": datetime.now(tz=pytz.timezone(settings.TZ)).strftime('%Y-%m-%d %H:%M:%S'),
-                "filename": "N/A",
-                "status": "失败",
-                "message": message,
-                "size": "0 B"
-            }
+        # 保存历史记录
+        history_entry = {
+            "timestamp": time.time(),
+            "status": "成功" if success else "失败",
+            "filename": backup_filename if backup_filename else "N/A",
+            "message": message if message else ("备份成功完成" if success else "备份失败"),
+            "filesize": os.path.getsize(Path(self._backup_path) / backup_filename) if success and backup_filename and (Path(self._backup_path) / backup_filename).exists() else 0,
+        }
         self._save_backup_history_entry(history_entry)
-        self._send_notification(success, message, backup_filename)
-        
+
+        if self._notify:
+            self._send_notification(success, message, backup_filename)
+
+        if success:
+            self._cleanup_old_backups()
+            
         with self._lock:
             self._running = False
         logger.info(f"{self.plugin_name} 备份任务执行完毕。")
 
     def _perform_backup_once(self) -> Tuple[bool, Optional[str], Optional[str]]:
-        """执行单次备份尝试，返回 (是否成功, 消息, 备份文件名)"""
-        if not self._openwrt_url or not self._openwrt_username or not self._openwrt_password:
-            return False, "OpenWRT URL、用户名或密码未配置。", None
+        """
+        通过SSH连接到OpenWrt，执行备份命令，然后通过SCP下载备份文件。
+        返回: (是否成功, 消息, 本地备份文件名)
+        """
+        try:
+            import paramiko
+        except ImportError:
+            logger.error(f"{self.plugin_name}: 依赖 paramiko 未安装，请在MoviePilot中安装此依赖。")
+            return False, "Python模块 'paramiko' 未安装，无法执行SSH操作。", None
 
-        session = requests.Session()
-        retries = Retry(total=3, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
-        session.mount('http://', HTTPAdapter(max_retries=retries))
-        session.mount('https://', HTTPAdapter(max_retries=retries))
-
-        # 1. 登录 OpenWRT
-        token = self._login_openwrt(session)
-        if not token:
-            return False, "登录 OpenWRT 失败。", None
-        logger.info(f"{self.plugin_name} 成功登录 OpenWRT。")
-
-        # 2. 请求生成备份
-        # OpenWRT 通常通过特定 cgi-bin URL 生成备份并直接下载
-        # /cgi-bin/luci/admin/system/backup
-        # 或者 /cgi-bin/luci/admin/system/flashops (旧版)
-        # POST 到 /cgi-bin/luci/admin/system/backup (或对应 flashops URL)
-        # payload 通常包含一个 'sessionid' (即token) 和一个触发备份的参数
-        # 不同的 OpenWRT 版本和 LuCI 主题可能会有差异
-
-        backup_url_path = f"/cgi-bin/luci/admin/system/backup?auth={token}" if not self._luci_compat_mode else f"/cgi-bin/luci/admin/system/flashops?auth={token}"
-        # 有些版本可能不需要 ?auth={token} 在URL中，而是作为POST数据的一部分
-        # 或者通过 header X-LuCI-Login: token
-        # 对于备份请求，通常是一个GET请求直接下载，或者一个POST请求触发然后GET下载
-        # OpenWRT备份是直接下载，没有创建后再下载的步骤
-
-        logger.info(f"{self.plugin_name} 尝试从 {backup_url_path} 下载备份...")
+        openwrt_host = self._openwrt_url.replace("http://", "").replace("https://", "").split("/")[0]
         
+        ssh = None
         try:
-            backup_download_url = urljoin(self._openwrt_url, backup_url_path)
-            # OpenWRT的备份通常不需要额外的POST数据来触发，直接GET就能下载
-            # 有些版本可能需要在请求备份的页面先点击 "生成备份" 按钮，该按钮的POST请求会设置一些session变量
-            # 然后点击下载按钮才真正下载。
-            # 此处我们简化为直接GET下载。如果失败，用户可能需要检查其OpenWRT版本特性。
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            logger.info(f"{self.plugin_name}: 尝试SSH连接到 {openwrt_host}:{self._ssh_port} 用户: {self._openwrt_username}")
+            ssh.connect(openwrt_host, port=self._ssh_port, username=self._openwrt_username, password=self._openwrt_password, timeout=30)
+            logger.info(f"{self.plugin_name}: SSH连接成功。")
+
+            # 1. 执行备份命令
+            logger.info(f"{self.plugin_name}: 在OpenWrt上执行备份命令: {self._backup_command}")
+            stdin, stdout, stderr = ssh.exec_command(self._backup_command)
+            exit_status = stdout.channel.recv_exit_status() # 等待命令完成
             
-            # 如果需要先POST触发，类似这样:
-            # post_data = {
-            #     'sessionid': token, # 或 'ubus_rpc_session': token
-            #     'action': 'backup' # 或其他特定参数
-            # }
-            # headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-            # pre_response = session.post(urljoin(self._openwrt_url, "/cgi-bin/luci/rpc/sys"), data={
-            #     'jsonrpc': '2.0',
-            #     'id': 1,
-            #     'method': 'call',
-            #     'params': [token, 'system', 'backup_generate', {}] # 示例 RPC 调用
-            # }, headers={'Content-Type': 'application/json'})
-            # if pre_response.status_code != 200 or not pre_response.json().get('result'):
-            #     logger.error(f"预备份请求失败: {pre_response.status_code} - {pre_response.text}")
-            #     return False, "预备份请求失败", None
+            cmd_output = stdout.read().decode(\'utf-8\', errors=\'ignore\').strip()
+            cmd_error = stderr.read().decode(\'utf-8\', errors=\'ignore\').strip()
 
-            response = session.get(backup_download_url, stream=True, timeout=300) # 增加超时时间
-            response.raise_for_status() # 如果状态码不是200-299，则抛出HTTPError
-
-            # 从 Content-Disposition 获取文件名
-            content_disposition = response.headers.get('Content-Disposition')
-            if content_disposition:
-                match = re.search(r'filename="?([^"]+)"?', content_disposition)
+            if exit_status != 0:
+                error_msg = f"OpenWrt备份命令执行失败 (退出码: {exit_status})。输出: {cmd_output}。错误: {cmd_error}"
+                logger.error(f"{self.plugin_name}: {error_msg}")
+                return False, error_msg, None
+            logger.info(f"{self.plugin_name}: OpenWrt备份命令执行成功。输出: {cmd_output}")
+            
+            # 从命令输出或预设路径中提取备份文件名
+            # 假设备份命令如 sysupgrade -b /tmp/backup-OpenWrt-2023-10-27.tar.gz
+            # 或者命令直接输出文件名
+            remote_filename = None
+            if cmd_output and (".tar.gz" in cmd_output or ".img" in cmd_output or ".bin" in cmd_output) : # 尝试从命令输出解析
+                 # 简单提取文件名逻辑，可能需要根据实际命令输出调整
+                match = re.search(r\'([\w\-\.]+\.(tar\.gz|img|bin))\', cmd_output)
                 if match:
-                    router_filename = match.group(1)
+                    remote_filename = match.group(1)
+                    logger.info(f"{self.plugin_name}: 从命令输出中解析得到远程文件名: {remote_filename}")
+
+            if not remote_filename: # 如果无法从输出解析，尝试从备份命令和下载路径推断
+                # 这是一个更复杂的场景，需要根据 self._backup_command 和 self._backup_download_path 动态生成
+                # 例如，如果命令是 sysupgrade -b /tmp/backup-$(date +%F).tar.gz
+                # 需要模拟 date +%F 的输出。为了简化，我们先假设备份文件名是固定的或者可以通过列出目录获取。
+                # 更可靠的方式是让备份命令直接输出完整路径和文件名，或者备份到固定文件名。
+                # 这里我们假设备份文件名遵循某种模式，比如包含日期
+                logger.info(f"{self.plugin_name}: 无法从命令输出解析文件名，尝试从 {self._backup_download_path} 列出最新的备份文件。")
+                stdin, stdout, stderr = ssh.exec_command(f"ls -t {self._backup_download_path}*.tar.gz {self._backup_download_path}*.img {self._backup_download_path}*.bin 2>/dev/null | head -n 1")
+                potential_file = stdout.read().decode().strip()
+                if potential_file and stdout.channel.recv_exit_status() == 0:
+                    remote_filename = os.path.basename(potential_file)
+                    logger.info(f"{self.plugin_name}: 在远程目录找到最新备份文件: {remote_filename}")
                 else:
-                    # 默认文件名格式，如果无法从header获取
-                    router_filename = f"backup-openwrt-{datetime.now().strftime('%Y-%m-%d-%H%M%S')}.tar.gz"
-            else:
-                router_filename = f"backup-openwrt-{datetime.now().strftime('%Y-%m-%d-%H%M%S')}.tar.gz"
+                    err_msg = f"无法确定远程备份文件名。请确保备份命令输出文件名，或备份到固定文件名，或检查 '{self._backup_download_path}' 路径设置。"
+                    logger.error(f"{self.plugin_name}: {err_msg}")
+                    return False, err_msg, None
             
-            # 确保文件名安全
-            safe_filename = "".join(c if c.isalnum() or c in ('.', '-', '_') else '_' for c in router_filename)
-            local_filepath = Path(self._backup_path) / safe_filename
+            remote_filepath = self._backup_download_path.rstrip(\'/\') + \'/\' + remote_filename
+            local_filename = f"openwrt_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{remote_filename}"
+            local_filepath_to_save = str(Path(self._backup_path) / local_filename)
 
-            with open(local_filepath, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            logger.info(f"{self.plugin_name} 备份文件已下载并保存到: {local_filepath}")
-            return True, f"备份成功下载: {safe_filename}", safe_filename
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"{self.plugin_name} 下载备份文件失败: {e}")
-            return False, f"下载备份文件失败: {str(e)}", None
-        except Exception as e:
-            logger.error(f"{self.plugin_name} 处理备份时发生未知错误: {e}")
-            return False, f"处理备份时发生未知错误: {str(e)}", None
-
-    def _login_openwrt(self, session: requests.Session) -> Optional[str]:
-        """登录到 OpenWRT 并返回 session token"""
-        login_url = urljoin(self._openwrt_url, '/cgi-bin/luci/')
-        try:
-            # 尝试获取登录页面，某些版本可能直接允许无密码登录或已保存session
-            # 但标准流程是POST用户名密码到 /cgi-bin/luci/
-            # 旧版 /cgi-bin/luci/admin/index
-            # 新版 /cgi-bin/luci/rpc/auth  (JSON-RPC)
-            
-            # 尝试 JSON-RPC 登录 (适用于较新版本的 LuCI)
-            rpc_auth_url = urljoin(self._openwrt_url, '/cgi-bin/luci/rpc/auth')
-            payload = {
-                "id": 1,
-                "method": "login",
-                "params": [self._openwrt_username, self._openwrt_password]
-            }
+            # 2. 下载备份文件
+            logger.info(f"{self.plugin_name}: 准备从 {openwrt_host}:{remote_filepath} 下载备份文件到 {local_filepath_to_save}")
+            sftp = None
             try:
-                response = session.post(rpc_auth_url, json=payload, timeout=10)
-                response.raise_for_status()
-                auth_data = response.json()
-                if auth_data.get("result") and len(auth_data["result"]) == 32: # LuCI token is typically 32 chars
-                    token = auth_data["result"]
-                    # 验证token是否有效，可以尝试访问一个受保护的资源
-                    # 例如 /cgi-bin/luci/rpc/sys?auth=<token> method get_board_name
-                    # 或者在后续请求中直接使用，如果失败则认为token无效
-                    logger.info(f"{self.plugin_name} 通过 JSON-RPC 登录成功，获得 token。")
-                    session.headers.update({'X-LuCI-Login': token}) # 有些 LuCI 版本可能需要这个 header
-                    return token
-                elif auth_data.get("error"):
-                     logger.warning(f"{self.plugin_name} JSON-RPC 登录失败: {auth_data.get('error')}")
-                else:
-                    logger.warning(f"{self.plugin_name} JSON-RPC 登录响应未知: {response.text}")
-            except (requests.exceptions.RequestException, json.JSONDecodeError) as e:
-                logger.warning(f"{self.plugin_name} JSON-RPC 登录尝试失败 ({rpc_auth_url}): {e}. 将尝试传统登录。")
-
-            # 尝试传统表单登录 (适用于旧版本或未启用RPC的LuCI)
-            form_login_url = urljoin(self._openwrt_url, '/cgi-bin/luci/') 
-            # 首先GET一次获取可能的CSRF token或stok (虽然老版本LuCI不常用CSRF)
-            try:
-                session.get(form_login_url, timeout=5) 
-            except requests.exceptions.RequestException:
-                pass # 忽略错误，可能因为需要登录而重定向
-
-            login_data = {
-                'luci_username': self._openwrt_username,
-                'luci_password': self._openwrt_password
-            }
-            response = session.post(form_login_url, data=login_data, timeout=10, allow_redirects=False)
-            
-            # 成功登录后，通常会重定向，并且cookie中会包含 sysauth (或类似名称) 的 token
-            # 或者，某些版本重定向后的URL中会包含stok=<token>
-            if response.status_code in [200, 301, 302]: # 200表示可能登录成功且停留在页面，30x表示重定向
-                # 检查cookie中的 sysauth (旧版) 或 ubus_rpc_session (新版)
-                token = session.cookies.get('sysauth') or session.cookies.get('ubus_rpc_session')
-                if token:
-                    logger.info(f"{self.plugin_name} 通过传统表单登录成功，从 Cookie 获得 token。")
-                    return token
+                sftp = ssh.open_sftp()
+                sftp.get(remote_filepath, local_filepath_to_save)
+                logger.info(f"{self.plugin_name}: 文件下载成功: {local_filepath_to_save}")
                 
-                # 检查重定向URL中的stok (另一种token形式)
-                if response.status_code in [301, 302] and 'Location' in response.headers:
-                    location_url = response.headers['Location']
-                    stok_match = re.search(r'[?;]stok=([0-9a-fA-F]{32,})', location_url)
-                    if stok_match:
-                        token = stok_match.group(1)
-                        logger.info(f"{self.plugin_name} 通过传统表单登录成功，从重定向 URL 获得 stok token。")
-                        # 将 stok 加入 session 后续请求的参数中，或作为 header
-                        # 注意：stok 通常作为 URL 参数，而不是 cookie
-                        # 为了统一，我们仍然返回这个token，后续请求需要特殊处理
-                        # 如果用stok，则后续请求URL需要类似 /cgi-bin/luci/;stok=<token>/path/to/resource
-                        # 为了简化，我们主要依赖 sysauth/ubus_rpc_session。如果只拿到stok，可能需要调整备份下载逻辑
-                        # 这里我们还是返回它，并在备份下载时尝试使用。 
-                        # 更稳妥的做法是，如果用stok，则后续每个请求都需要构造带stok的URL。
-                        # 为简单起见，我们优先使用cookie中的token。
-                        # 如果要完全支持stok, _perform_backup_once的backup_url_path需要修改
-                        # 例如: backup_url_path = f"/cgi-bin/luci/;stok={token}/admin/system/backup"
-                        return token # 返回stok，备份函数需要能处理它
+                # 3. (可选) 清理远程服务器上的备份文件
+                try:
+                    logger.info(f"{self.plugin_name}: 尝试删除远程备份文件: {remote_filepath}")
+                    sftp.remove(remote_filepath)
+                    logger.info(f"{self.plugin_name}: 远程备份文件 {remote_filepath} 删除成功。")
+                except Exception as e_rm:
+                    logger.warning(f"{self.plugin_name}: 删除远程备份文件 {remote_filepath} 失败: {e_rm}。这可能不是一个严重问题。")
 
-                # 如果没有明显token，但状态码是200，检查页面内容是否是已登录状态
-                if response.status_code == 200 and "logout" in response.text.lower():
-                    logger.info(f"{self.plugin_name} 通过传统表单登录成功（页面包含登出按钮）。假定基于Cookie的会话已建立。")
-                    # 在这种情况下，没有明确的token可返回，依赖session cookie
-                    # 返回一个非空的虚拟token，表示登录成功
-                    return "session_cookie_based"
-
-            logger.error(f"{self.plugin_name} 传统表单登录失败。状态码: {response.status_code}, 响应: {response.text[:200]}")
-            return None
-
-        except requests.exceptions.Timeout:
-            logger.error(f"{self.plugin_name} 登录 OpenWRT 超时 ({login_url}).")
-            return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"{self.plugin_name} 登录 OpenWRT 失败: {e}")
-            return None
+                return True, f"备份文件 {local_filename} 已成功下载。", local_filename
+            except FileNotFoundError:
+                err_msg = f"SFTP错误：远程文件 {remote_filepath} 未找到。请检查OpenWrt上的备份命令和路径。"
+                logger.error(f"{self.plugin_name}: {err_msg}")
+                return False, err_msg, None
+            except Exception as e_sftp:
+                err_msg = f"SFTP下载备份文件失败: {e_sftp}"
+                logger.error(f"{self.plugin_name}: {err_msg}")
+                return False, err_msg, None
+            finally:
+                if sftp:
+                    sftp.close()
+        
+        except paramiko.AuthenticationException:
+            error_msg = f"SSH认证失败。请检查OpenWrt的地址、端口、用户名和密码。"
+            logger.error(f"{self.plugin_name}: {error_msg}")
+            return False, error_msg, None
+        except paramiko.SSHException as sshException:
+            error_msg = f"SSH连接错误: {sshException}。请检查OpenWrt的地址和端口。"
+            logger.error(f"{self.plugin_name}: {error_msg}")
+            return False, error_msg, None
+        except TimeoutError: # socket.timeout often manifested as TimeoutError by paramiko
+            error_msg = f"SSH连接超时。请检查OpenWrt是否可达，以及防火墙设置。"
+            logger.error(f"{self.plugin_name}: {error_msg}")
+            return False, error_msg, None
         except Exception as e:
-            logger.error(f"{self.plugin_name} 登录 OpenWRT 时发生未知错误: {e}")
-            return None
+            error_msg = f"执行备份操作时发生未知错误: {e}"
+            logger.error(f"{self.plugin_name}: {error_msg}")
+            return False, error_msg, None
+        finally:
+            if ssh:
+                ssh.close()
+                logger.info(f"{self.plugin_name}: SSH连接已关闭。")
+        return False, "由于未知原因，备份失败。", None
+
 
     def _cleanup_old_backups(self):
-        if not self._backup_path or self._keep_backup_num <= 0:
+        if self._keep_backup_num <= 0:
+            logger.info(f"{self.plugin_name}: 保留备份数量设置为不限制，不清理旧备份。")
             return
 
-        logger.info(f"{self.plugin_name} 开始清理旧备份，保留最新的 {self._keep_backup_num} 个文件...")
+        logger.info(f"{self.plugin_name}: 开始清理旧备份，保留最新的 {self._keep_backup_num} 个文件...")
         try:
             backup_dir = Path(self._backup_path)
             if not backup_dir.exists() or not backup_dir.is_dir():
-                logger.warning(f"{self.plugin_name} 备份目录 {self._backup_path} 不存在，无需清理。")
+                logger.warning(f"{self.plugin_name}: 备份目录 {self._backup_path} 不存在或不是一个目录，跳过清理。")
                 return
 
-            # 获取所有 tar.gz 或 .bin 文件 (OpenWRT备份通常是 .tar.gz, 但有些可能是 .bin)
-            backup_files = sorted(
-                [f for f in backup_dir.iterdir() if f.is_file() and (f.name.endswith('.tar.gz') or f.name.endswith('.bin'))],
+            files = sorted(
+                [f for f in backup_dir.iterdir() if f.is_file() and (f.name.startswith("openwrt_backup_") and (f.name.endswith(".tar.gz") or f.name.endswith(".img") or f.name.endswith(".bin")))],
                 key=lambda f: f.stat().st_mtime,
                 reverse=True
             )
 
-            if len(backup_files) > self._keep_backup_num:
-                files_to_delete = backup_files[self._keep_backup_num:]
+            if len(files) > self._keep_backup_num:
+                files_to_delete = files[self._keep_backup_num:]
                 deleted_count = 0
                 for file_to_delete in files_to_delete:
                     try:
                         file_to_delete.unlink()
-                        logger.info(f"{self.plugin_name} 已删除旧备份文件: {file_to_delete.name}")
+                        logger.info(f"{self.plugin_name}: 已删除旧备份文件: {file_to_delete.name}")
                         deleted_count += 1
                     except Exception as e:
-                        logger.error(f"{self.plugin_name} 删除旧备份文件 {file_to_delete.name} 失败: {e}")
-                logger.info(f"{self.plugin_name} 旧备份清理完成，共删除 {deleted_count} 个文件。")
+                        logger.error(f"{self.plugin_name}: 删除旧备份文件 {file_to_delete.name} 失败: {e}")
+                if deleted_count > 0:
+                     logger.info(f"{self.plugin_name}: 清理完成，共删除了 {deleted_count} 个旧备份文件。")
+                else:
+                    logger.info(f"{self.plugin_name}: 没有需要删除的旧备份文件。")
             else:
-                logger.info(f"{self.plugin_name} 备份文件数量 ({len(backup_files)}) 未超过限制 ({self._keep_backup_num})，无需清理。")
+                logger.info(f"{self.plugin_name}: 当前备份数量 ({len(files)}) 未超过限制 ({self._keep_backup_num})，无需清理。")
 
         except Exception as e:
-            logger.error(f"{self.plugin_name} 清理旧备份文件时出错: {e}")
-    
-    def _get_file_size_str(self, filepath: Path) -> str:
-        try:
-            size_bytes = filepath.stat().st_size
-            if size_bytes < 1024:
-                return f"{size_bytes} B"
-            elif size_bytes < 1024 * 1024:
-                return f"{size_bytes / 1024:.2f} KB"
-            elif size_bytes < 1024 * 1024 * 1024:
-                return f"{size_bytes / (1024 * 1024):.2f} MB"
-            else:
-                return f"{size_bytes / (1024 * 1024 * 1024):.2f} GB"
-        except Exception:
-            return "N/A"
+            logger.error(f"{self.plugin_name}: 清理旧备份文件时发生错误: {e}")
 
     def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None):
         if not self._notify:
             return
-        
-        # 根据通知样式决定是否发送
-        if self._notification_style == 2 and success: # 仅失败时通知
-            return
-        if self._notification_style == 3: # 静默，不通知
-            return
 
         title = f"{self.plugin_name} - {'备份成功' if success else '备份失败'}"
-        content = message
+        
+        content = message if message else ("备份成功完成" if success else "备份失败，请检查日志。")
         if success and filename:
-            content += f"\n备份文件: {filename}"
-            file_path = Path(self._backup_path) / filename
-            content += f"\n文件大小: {self._get_file_size_str(file_path)}" 
+            if self._notification_style == 1: # 完整路径
+                content = f"备份文件: {Path(self._backup_path) / filename}\\n{message}"
+            else: # 仅文件名
+                content = f"备份文件: {filename}\\n{message}"
+        
+        self.system_notify(
+            title=title,
+            message=content,
+            ttype=NotificationType.Plugin,
+            image_url=self.plugin_icon
+        )
+        logger.info(f"{self.plugin_name}: 已发送通知 - 标题: {title}, 内容: {content[:100]}...")
 
-        if settings.ENABLE_NOTIFICATION:
+
+    # --- 和前端页面交互的方法 ---
+    def download_backup_api(self, filename: str) -> Dict[str, Any]:
+        """API端点，用于下载指定的备份文件。"""
+        if not filename or '..' in filename or filename.startswith('/'): # 基本安全检查
+            logger.error(f"{self.plugin_name}: 无效的文件名请求下载: {filename}")
+            return {"success": False, "message": "无效的文件名", "filepath": None}
+
+        file_path = Path(self._backup_path) / filename
+        if file_path.exists() and file_path.is_file() and file_path.parent.resolve() == Path(self._backup_path).resolve():
+            # 确认文件在预期的备份目录下
+            logger.info(f"{self.plugin_name}: 请求下载备份文件: {file_path}")
+            # MoviePilot框架会自动处理StaticFiles的下载，这里只需要返回文件路径
+            # 注意：这里返回的是绝对路径，或者相对于MoviePilot定义的静态目录的路径
+            # 为简单起见，如果MoviePilot支持从插件数据目录直接提供下载，则可以直接返回
+            # 否则，可能需要将文件复制到一个公共可访问的临时目录
+            
+            # 假设可以直接从插件数据目录提供下载，返回一个可供前端构造下载链接的标识
+            # 或者如果框架要求返回绝对路径以供内部处理：
+            # return {"success": True, "message": "文件准备就绪", "filepath": str(file_path.resolve())}
+            
+            # 简化处理：返回一个标志，前端将构造一个指向特定API的链接，该API负责流式传输文件
+            # 这个API需要在这里定义，并在get_api中注册
+            # 为了演示，我们假设可以直接下载，或者前端通过其他方式获取
+             return {"success": True, "message": "请通过GET请求 /api/v1/plugins/file/{self.plugin_config_prefix}{filename} 下载", "filename": filename}
+
+        else:
+            logger.error(f"{self.plugin_name}: 请求下载的文件不存在或无权访问: {filename}")
+            return {"success": False, "message": "文件不存在或无法访问", "filepath": None}
+
+    def delete_backup_api(self, filename: str, timestamp: float) -> Dict[str, Any]:
+        """API端点，用于删除指定的备份文件和相关的历史记录。"""
+        if not filename or '..' in filename or filename.startswith('/'): # 基本安全检查
+            logger.error(f"{self.plugin_name}: 无效的文件名请求删除: {filename}")
+            return {"success": False, "message": "无效的文件名"}
+
+        file_path = Path(self._backup_path) / filename
+        deleted_from_disk = False
+        if file_path.exists() and file_path.is_file() and file_path.parent.resolve() == Path(self._backup_path).resolve():
             try:
-                self.system_notify(title=title, content=content,
-                                   notify_type=NotificationType.PluginMessage)
-                logger.info(f"{self.plugin_name} 已发送通知。")
+                file_path.unlink()
+                logger.info(f"{self.plugin_name}: 已从磁盘删除备份文件: {filename}")
+                deleted_from_disk = True
             except Exception as e:
-                logger.error(f"{self.plugin_name} 发送通知失败: {e}")
+                logger.error(f"{self.plugin_name}: 删除磁盘备份文件 {filename} 失败: {e}")
+                return {"success": False, "message": f"删除磁盘文件失败: {e}"}
+        else:
+            logger.warning(f"{self.plugin_name}: 请求删除的文件在磁盘上不存在: {filename}，仅尝试清理历史记录。")
+            # 即使文件不在磁盘上，也可能需要清理历史记录
 
-# 以下是 MoviePilot 插件加载所必需的
-def register():
-    return OpenWRTBackup
+        # 清理历史记录
+        history = self._load_backup_history()
+        original_history_len = len(history)
+        # 使用 timestamp (float) 进行匹配，因为文件名可能重复（虽然不太可能同时发生）
+        history_to_keep = [entry for entry in history if not (entry.get('filename') == filename and abs(entry.get('timestamp', 0) - timestamp) < 0.001 )]
+        
+        if len(history_to_keep) < original_history_len:
+            self.save_data('backup_history', history_to_keep)
+            logger.info(f"{self.plugin_name}: 已从历史记录中删除关于 {filename} (时间戳: {timestamp}) 的条目。")
+            action_message = "文件和历史记录已删除。" if deleted_from_disk else "历史记录已删除（文件未在磁盘找到）。"
+            return {"success": True, "message": action_message}
+        elif deleted_from_disk: # 文件从磁盘删除，但历史记录中没有完全匹配的项（不太可能）
+             return {"success": True, "message": "文件已从磁盘删除，但未在历史记录中找到精确匹配项。"}
+        else: # 文件不在磁盘，历史记录也没有匹配项
+            return {"success": False, "message": "文件未在磁盘找到，也未在历史记录中找到相关条目。"}
 
-def unregister():
-    plugin = OpenWRTBackup()
-    plugin.stop_service()
-    return True
+
+    def get_api(self) -> List[Dict[str, Any]]:
+        """注册API端点"""
+        apis = super().get_api()
+        apis.extend([
+            {
+                "path": "/download_backup/{filename}",
+                "endpoint": self.download_backup_api_route, # 需要一个包装器来处理路径参数
+                "methods": ["GET"],
+                "summary": "下载备份文件"
+            },
+            {
+                "path": "/delete_backup", # 使用查询参数或请求体
+                "endpoint": self.delete_backup_api_route,
+                "methods": ["POST"], # 使用POST更安全，因为是删除操作
+                "summary": "删除备份文件和历史记录"
+            }
+        ])
+        return apis
+
+    # --- API路由包装器 ---
+    # FastAPI 会自动处理路径参数和查询/请求体参数的注入
+    # 我们需要确保这些方法能被 MoviePilot 的插件加载器正确识别和路由
+
+    async def download_backup_api_route(self, filename: str):
+        """
+        实际处理下载请求的路由。
+        MoviePilot 内部可能使用 FastAPI，可以直接返回 FileResponse。
+        如果不是，则需要找到 MoviePilot 提供的文件响应方式。
+        """
+        from fastapi.responses import FileResponse
+        from fastapi import HTTPException
+
+        if not filename or '..' in filename or filename.startswith('/'):
+            raise HTTPException(status_code=400, detail="无效的文件名")
+
+        file_path = Path(self._backup_path) / filename
+        if file_path.exists() and file_path.is_file() and file_path.parent.resolve() == Path(self._backup_path).resolve():
+            logger.info(f"{self.plugin_name}: 提供文件下载: {file_path}")
+            # 生成一个安全的文件名供浏览器下载
+            safe_filename = quote(filename)
+            return FileResponse(path=str(file_path.resolve()), filename=safe_filename, media_type='application/gzip') # 或者 application/octet-stream
+        else:
+            logger.error(f"{self.plugin_name}: 请求下载的文件不存在或无权访问: {filename}")
+            raise HTTPException(status_code=404, detail="文件未找到")
+            
+    async def delete_backup_api_route(self, request: Dict[str, Any]): # 假设请求体是JSON {"filename": "...", "timestamp": ...}
+        """
+        实际处理删除请求的路由。
+        前端应该发送一个 JSON body，例如: {"filename": "xxx.tar.gz", "timestamp": 1678886400.0}
+        """
+        from fastapi import HTTPException
+        filename = request.get("filename")
+        timestamp = request.get("timestamp")
+
+        if not filename or not isinstance(timestamp, (int,float)):
+            raise HTTPException(status_code=400, detail="请求参数 'filename' 和 'timestamp' 是必需的。")
+        
+        result = self.delete_backup_api(filename=str(filename), timestamp=float(timestamp))
+        if result.get("success"):
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result.get("message", "删除失败"))
+
+
+# MoviePilot加载时会实例化这个类
+plugin_instance = OpenWRTBackup()
