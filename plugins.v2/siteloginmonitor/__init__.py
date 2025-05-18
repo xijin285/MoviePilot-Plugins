@@ -13,8 +13,6 @@ class SiteLoginMonitor(PluginBase):
     plugin_desc = "监控站点多久没有登录访问，并发送通知"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png"
-    # 主题色
-    plugin_color = "#ff6b6b"
     # 插件版本
     plugin_version = "1.0"
     # 插件作者
