@@ -16,7 +16,7 @@
     "name": "简易随机图片",
     "description": "提供简单的随机图片API服务，支持多个图片源，自动重试和缓存机制",
     "labels": "API,图片,工具",
-    "version": "1.0",
+    "version": "1.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
     "author": "jinxi",
     "level": 2,
