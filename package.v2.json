@@ -17,7 +17,7 @@
     "description": "提供随机图片API服务，支持多种图片格式和分类。",
     "labels": "API,图片",
     "version": "1.0",
-    "icon": "https://raw.githubusercontent.com/Nei-Xin/random-pic-api/main/static/logo.png",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
     "author": "jinxi",
     "level": 2,
     "history": {
