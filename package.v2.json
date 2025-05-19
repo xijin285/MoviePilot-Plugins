@@ -4,7 +4,7 @@
     "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
     "labels": "备份",
     "version": "1.1.1",
-    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
+    "icon": "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/sitemonitor.png",
     "author": "jinxi",
     "level": 2,
     "history": {
@@ -12,12 +12,12 @@
         "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
   },
-  "SimpleRandomImage": {
+  "simple_random_image": {
     "name": "简易随机图片",
     "description": "提供简单的随机图片API服务，支持多个图片源，自动重试和缓存机制",
     "labels": "API,图片,工具",
     "version": "1.1",
-    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
+    "icon": "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/image.png",
     "author": "jinxi",
     "level": 2,
     "history": {
