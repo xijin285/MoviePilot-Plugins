@@ -17,12 +17,9 @@ from requests.adapters import HTTPAdapter
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from app.core.config import settings
-from app.log import logger
-from app.plugins import _PluginBase
-from app.schemas import NotificationType
+from moviepilot.core.plugin import PluginBase
 
-class IkuaiRouterBackup(_PluginBase):
+class IkuaiRouterBackup(PluginBase):
     # 插件名称
     plugin_name = "爱快路由备份助手"
     # 插件描述
@@ -36,11 +33,11 @@ class IkuaiRouterBackup(_PluginBase):
     # 作者主页
     author_url = "https://github.com/xijin285"
     # 插件配置项ID前缀
-    plugin_config_prefix = "ikuai_backup_"
+    _config_prefix = "ikuai_backup_"
     # 加载顺序
     plugin_order = 10
     # 可使用的用户级别
-    auth_level = 1
+    user_level = 1
 
     # 私有属性
     _scheduler: Optional[BackgroundScheduler] = None
