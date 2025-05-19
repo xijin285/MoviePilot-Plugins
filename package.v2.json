@@ -1,27 +1,28 @@
 {
-    "IkuaiRouterBackup": {
-        "name": "爱快路由备份助手",
-        "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
-        "labels": "备份",
-        "version": "1.1.1",
-        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
-        "author": "jinxi",
-        "level": 2,
-        "history": {
-            "v1.1.1": "优化通知样式，添加通知样式选择",
-            "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
-        }
-    },
-    "ImageHosting": {
-        "name": "图床上传助手",
-        "description": "支持多种图床的图片上传功能，目前支持SM.MS图床。",
-        "labels": "工具",
-        "version": "1.0.0",
-        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/image.png",
-        "author": "Your Name",
-        "level": 2,
-        "history": {
-            "v1.0.0": "初始版本，支持SM.MS图床上传"
-        }
+  "IkuaiRouterBackup": {
+    "name": "爱快路由备份助手",
+    "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
+    "labels": "备份",
+    "version": "1.1.1",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
+    "author": "jinxi",
+    "level": 2,
+    "history": {
+        "v1.1.1": "优化通知样式，添加通知样式选择",
+        "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
-}
+  },
+  "ImageHosting": {
+    "name": "图床上传助手",
+    "description": "支持多种图床的图片上传功能，目前支持SM.MS图床。",
+    "labels": "工具",
+    "version": "1.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/image.png",
+    "author": "Your Name",
+    "level": 2,
+    "history": {
+        "v1.0.0": "初始版本，支持SM.MS图床上传"
+    }
+  }
+
+} 
