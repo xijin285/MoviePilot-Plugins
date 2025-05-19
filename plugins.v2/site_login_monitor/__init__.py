@@ -19,7 +19,7 @@ class SiteLoginMonitor(PluginManager, metaclass=Singleton):
     # 插件描述
     plugin_desc = "监控站点登录状态，超过指定天数未登录时发送通知"
     # 插件图标
-    plugin_icon = "monitor.png"
+    plugin_icon = "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/sitemonitor.png"
     # 插件版本
     plugin_version = "1.0"
     # 插件作者
