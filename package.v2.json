@@ -12,17 +12,16 @@
         "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
   },
-  "RandomImageService": {
-    "name": "随机API服务",
-    "description": "提供一个API接口，用于获取随机图片。",
-    "labels": "图床, API服务",
-    "version": "0.2.0",
-    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
+  "RandomPicApi": {
+    "name": "随机图片API",
+    "description": "提供随机图片API服务，支持移动端和PC端自适应，自动识别设备类型并提供相应的图片。",
+    "labels": "API,图片",
+    "version": "1.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/random.png",
     "author": "jinxi",
     "level": 2,
     "history": {
-        "v0.2.0": "更新元数据信息。",
-        "v0.1.0": "初始版本，提供随机图片API接口。"
+        "v1.0.0": "初始版本，提供随机图片API服务"
     }
   }
-} 
+}
