@@ -11,18 +11,17 @@
         "v1.1.1": "优化通知样式，添加通知样式选择",
         "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
-
   },
-  "SimpleRandomImage": {
+  "SimpleRandomImagePlugin": {
     "name": "简易随机图片",
-    "description": "提供简单的随机图片API服务，支持多个图片源",
+    "description": "提供简单的随机图片API服务，支持多个图片源，自动重试和缓存机制",
     "labels": "API,图片,工具",
-    "version": "1.0.0",
+    "version": "1.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/image.png",
     "author": "jinxi",
     "level": 2,
     "history": {
-        "v1.0.0": "初始版本，提供基础的随机图片API功能"
+        "v1.0": "初始版本，提供基础的随机图片API功能，支持多图片源、缓存和自动重试"
     }
   }
 }
