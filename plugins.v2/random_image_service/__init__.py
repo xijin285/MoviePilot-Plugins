@@ -1,62 +1,11 @@
 import os
 import random
 from pathlib import Path
-from flask import jsonify, send_from_directory, current_app
+from flask import jsonify, send_from_directory
 
-# 假设 MoviePilot 的 PluginBase 和 logger 可用
-# from moviepilot.core.plugin import PluginBase
-# from moviepilot.utils.logger import logger # 假设 logger 的导入方式
-# 如果没有通用的 PluginBase，我们需要定义一个或者简化
+from moviepilot.core.plugin import PluginBase
+from moviepilot.utils.logger import logger
 
-# 临时模拟 PluginBase，如果实际环境中没有提供
-class PluginBase:
-    plugin_name = "Base Plugin"
-    
-    def __init__(self, app=None):
-        self._app = app # MoviePilot app instance
-
-    def init_plugin(self, config: dict = None):
-        pass
-
-    def get_data_path(self):
-        # 模拟获取插件数据路径的方法
-        # 理想情况下，这应该由 MoviePilot 的 PluginBase 提供
-        # 返回插件目录下的 'data' 文件夹
-        # 注意：这里的 __file__ 指向 __init__.py
-        return Path(os.path.dirname(__file__)) / 'data'
-
-    def get_api(self) -> list:
-        return []
-
-    # 其他 PluginBase 可能需要的方法
-    def get_state(self) -> bool:
-        return True # 示例
-
-    def get_command(self) -> list:
-        return []
-
-    def get_service(self) -> list:
-        return []
-
-    def get_form(self) -> tuple[list, dict]:
-        return [], {}
-
-    def get_page(self) -> list:
-        return []
-    
-    def stop_service(self):
-        pass
-
-# 全局 logger 模拟 (实际应由 MoviePilot 提供)
-class LoggerMock:
-    def info(self, msg):
-        print(f"INFO: {msg}")
-    def error(self, msg):
-        print(f"ERROR: {msg}")
-    def warning(self, msg):
-        print(f"WARNING: {msg}")
-
-logger = LoggerMock() # 使用模拟的 logger
 
 class RandomImageService(PluginBase):
     # 插件名称
