@@ -5,7 +5,7 @@ from pathlib import Path
 from .image_processor import setup_image_directories
 from app.plugins import PluginBase
 
-class RandomPicApi(PluginBase):
+class random_pic_api(PluginBase):
     # 插件名称
     plugin_name = "随机图片API"
     # 插件描述
@@ -83,6 +83,20 @@ class RandomPicApi(PluginBase):
         
         # 设置图片目录并处理图片
         setup_image_directories()
+        
+        # 检查图片目录是否为空，如果为空则返回404错误
+        if not any(self.PORTRAIT_DIR.glob("*")) and not any(self.LANDSCAPE_DIR.glob("*")):
+            return {
+                "name": self.plugin_name,
+                "description": self.plugin_desc,
+                "version": self.plugin_version,
+                "author": self.plugin_author,
+                "url": self.author_url,
+                "priority": self.plugin_order,
+                "app": self.app,
+                "api_prefix": "/random_pic_api",
+                "error": "404-Not Found: 图片目录为空，请先添加图片。"
+            }
         
         return {
             "name": self.plugin_name,
