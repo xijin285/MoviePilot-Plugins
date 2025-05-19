@@ -13,7 +13,7 @@ class RandomApi(PluginBase):
     # 插件名称
     plugin_name = "随机图片API"
     # 插件描述
-    plugin_desc = "提供随机图片API服务"
+    plugin_desc = "提供随机图片API服务，支持多个图片源"
     # 插件版本
     plugin_version = "1.0"
     # 插件作者
@@ -30,7 +30,12 @@ class RandomApi(PluginBase):
     def __init__(self):
         super().__init__()
         self._enabled = False
-        self._api_url = "https://api.example.com/random"  # 这里需要替换为实际的API地址
+        self._api_urls = {
+            "unsplash": "https://api.unsplash.com/photos/random",
+            "picsum": "https://picsum.photos/800/600",
+            "randomuser": "https://randomuser.me/api/portraits/men/1.jpg"
+        }
+        self._current_api = "picsum"  # 默认使用picsum
 
     def get_state(self) -> bool:
         return self._enabled
@@ -67,19 +72,36 @@ class RandomApi(PluginBase):
         获取随机图片
         """
         try:
+            api_url = self._api_urls.get(self._current_api)
+            if not api_url:
+                return {
+                    "code": -1,
+                    "msg": "未配置有效的API地址",
+                    "data": None
+                }
+
             async with aiohttp.ClientSession() as session:
-                async with session.get(self._api_url) as response:
+                async with session.get(api_url) as response:
                     if response.status == 200:
-                        data = await response.json()
-                        return {
-                            "code": 0,
-                            "msg": "success",
-                            "data": data
-                        }
+                        if self._current_api == "picsum":
+                            return {
+                                "code": 0,
+                                "msg": "success",
+                                "data": {
+                                    "url": str(response.url)
+                                }
+                            }
+                        else:
+                            data = await response.json()
+                            return {
+                                "code": 0,
+                                "msg": "success",
+                                "data": data
+                            }
                     else:
                         return {
                             "code": -1,
-                            "msg": "获取图片失败",
+                            "msg": f"获取图片失败: HTTP {response.status}",
                             "data": None
                         }
         except Exception as e:
@@ -112,6 +134,32 @@ class RandomApi(PluginBase):
                                     "props": {
                                         "model": "enabled",
                                         "label": "启用插件",
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "component": "VRow",
+                    "content": [
+                        {
+                            "component": "VCol",
+                            "props": {
+                                "cols": 12,
+                                "md": 6
+                            },
+                            "content": [
+                                {
+                                    "component": "VSelect",
+                                    "props": {
+                                        "model": "api_source",
+                                        "label": "图片源",
+                                        "items": [
+                                            {"title": "Picsum", "value": "picsum"},
+                                            {"title": "Unsplash", "value": "unsplash"},
+                                            {"title": "RandomUser", "value": "randomuser"}
+                                        ]
                                     }
                                 }
                             ]
