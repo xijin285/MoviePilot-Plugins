@@ -11,6 +11,9 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from moviepilot.core.plugin import PluginBase
+from moviepilot.core.logger import logger
+from moviepilot.core.settings import settings
+from moviepilot.core.notification import NotificationType
 
 class SiteLoginMonitor(PluginBase):
     # 插件名称
@@ -20,7 +23,7 @@ class SiteLoginMonitor(PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png"
     # 插件版本
-    plugin_version = "1.0"
+    plugin_version = "1.0.0"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
