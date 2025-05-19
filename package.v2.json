@@ -19,7 +19,7 @@
         "version": "1.0.0",
         "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/image.png",
         "author": "Your Name",
-        "level": 1,
+        "level": 2,
         "history": {
             "v1.0.0": "初始版本，支持SM.MS图床上传"
         }
