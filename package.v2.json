@@ -14,14 +14,14 @@
   },
   "RandomPicApi": {
     "name": "随机图片API",
-    "description": "提供随机图片API服务，支持移动端和PC端自适应，自动识别设备类型并提供相应的图片。",
-    "labels": "API,图片",
+    "description": "提供简单的随机图片API服务，支持多种图片格式，可用作本地图床。",
+    "labels": "API,图片,图床",
     "version": "1.0.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/random.png",
     "author": "jinxi",
     "level": 2,
     "history": {
-        "v1.0.0": "初始版本，提供随机图片API服务"
+        "v1.0.0": "初始版本，简化功能，提供基础随机图片API服务"
     }
   }
 }
