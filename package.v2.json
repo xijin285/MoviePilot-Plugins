@@ -11,17 +11,18 @@
         "v1.1.1": "优化通知样式，添加通知样式选择",
         "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
+
   },
-  "RandomImageAPI": {
-    "name": "随机图片API",
-    "description": "提供随机图片API服务，支持PC和移动端不同尺寸的图片，可自定义配置多个图片源",
-    "labels": "API,图片",
-    "version": "1.0.1",
+  "SimpleRandomImage": {
+    "name": "简易随机图片",
+    "description": "提供简单的随机图片API服务，支持多个图片源",
+    "labels": "API,图片,工具",
+    "version": "1.0.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/image.png",
-    "author": "jinxi",
-    "level": 2,
+    "author": "Your Name",
+    "level": 1,
     "history": {
-        "v1.0.1": "初始版本发布，支持PC和移动端图片，可自定义图片源，实现缓存机制"
+        "v1.0.0": "初始版本，提供基础的随机图片API功能"
     }
   }
 }
