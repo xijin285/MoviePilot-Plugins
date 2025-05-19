@@ -12,16 +12,17 @@
         "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
   },
-  "simple_random_image": {
-    "name": "简易随机图片",
-    "description": "提供简单的随机图片API服务，支持多个图片源，自动重试和缓存机制",
-    "labels": "API,图片,工具",
-    "version": "1.1",
-    "icon": "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/image.png",
+  "RandomImageService": {
+    "name": "随机API服务",
+    "description": "提供一个API接口，用于获取随机图片。",
+    "labels": "图床, API服务",
+    "version": "0.2.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
     "author": "jinxi",
     "level": 2,
     "history": {
-        "v1.1": "初始版本，提供基础的随机图片API功能，支持多图片源、缓存和自动重试"
+        "v0.2.0": "更新元数据信息。",
+        "v0.1.0": "初始版本，提供随机图片API接口。"
     }
   }
 }
