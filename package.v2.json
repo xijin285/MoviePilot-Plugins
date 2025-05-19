@@ -1,16 +1,4 @@
 {
-    "SiteLoginMonitor": {
-        "name": "站点登录监控",
-        "description": "监控指定站点的登录状态，支持自定义检查间隔和超时时间。",
-        "labels": "监控",
-        "version": "1.0",
-        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
-        "author": "jinxi",
-        "level": 2,
-        "history": {
-            "v1.0": "初始版本"
-      }
-    },
     "IkuaiRouterBackup": {
         "name": "爱快路由备份助手",
         "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
