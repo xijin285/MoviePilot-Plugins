@@ -18,11 +18,11 @@ class RandomPicPlugin(PluginBase):
     # 插件版本
     plugin_version = "1.0.0"
     # 插件作者
-    plugin_author = "xijin285"
+    plugin_author = "jinxi"
     # 作者主页
     author_url = "https://github.com/xijin285"
     # 插件配置项ID前缀
-    _config_prefix = "random_pic_"
+    _config_prefix = "randompic_"
     # 加载顺序
     plugin_order = 10
     # 可使用的用户级别
