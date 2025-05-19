@@ -1,15 +1,14 @@
 import os
 import random
-from flask import Flask, send_file, request
+from flask import Flask, send_file
 from pathlib import Path
-from .image_processor import setup_image_directories
-from app.plugins import PluginBase
+from moviepilot.core.plugin import PluginBase
 
 class random_pic_api(PluginBase):
     # 插件名称
     plugin_name = "随机图片API"
     # 插件描述
-    plugin_desc = "提供随机图片API服务，支持移动端和PC端自适应"
+    plugin_desc = "提供简单的随机图片API服务"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/random.png"
     # 插件版本
@@ -29,63 +28,40 @@ class random_pic_api(PluginBase):
 
     # 获取插件根目录
     PLUGIN_ROOT = Path(__file__).parent
+    # 图片目录
+    IMAGES_DIR = PLUGIN_ROOT / "images"
 
-    # 图片目录配置
-    PORTRAIT_DIR = PLUGIN_ROOT / "portrait"  # 竖屏图片目录
-    LANDSCAPE_DIR = PLUGIN_ROOT / "landscape"  # 横屏图片目录
-    IMAGES_DIR = PLUGIN_ROOT / "images"  # 原始图片目录
-
-    def get_random_image(self, directory):
-        """获取指定目录下的随机图片"""
-        if not directory.exists():
+    def get_random_image(self):
+        """获取图片目录下的随机图片"""
+        if not self.IMAGES_DIR.exists():
             return None
-        images = [f for f in directory.glob("*") if f.suffix.lower() in ['.jpg', '.jpeg', '.png', '.gif', '.webp']]
+        
+        # 支持的图片格式
+        image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp']
+        
+        # 获取所有支持格式的图片
+        images = []
+        for ext in image_extensions:
+            images.extend(self.IMAGES_DIR.glob(f"*{ext}"))
+            images.extend(self.IMAGES_DIR.glob(f"*{ext.upper()}"))
+        
         return random.choice(images) if images else None
 
     @app.route('/random')
     def random_image(self):
         """随机返回一张图片"""
-        # 检测用户代理判断设备类型
-        user_agent = request.headers.get('User-Agent', '').lower()
-        is_mobile = any(device in user_agent for device in ['mobile', 'android', 'iphone'])
-        
-        # 根据设备类型选择图片目录
-        target_dir = self.PORTRAIT_DIR if is_mobile else self.LANDSCAPE_DIR
-        image_path = self.get_random_image(target_dir)
-        
+        image_path = self.get_random_image()
         if not image_path:
-            return "No images found", 404
-        
-        return send_file(str(image_path))
-
-    @app.route('/random/mobile')
-    def random_mobile(self):
-        """返回竖屏图片"""
-        image_path = self.get_random_image(self.PORTRAIT_DIR)
-        if not image_path:
-            return "No images found", 404
-        return send_file(str(image_path))
-
-    @app.route('/random/pc')
-    def random_pc(self):
-        """返回横屏图片"""
-        image_path = self.get_random_image(self.LANDSCAPE_DIR)
-        if not image_path:
-            return "No images found", 404
+            return "没有找到图片", 404
         return send_file(str(image_path))
 
     def init_plugin(self):
         """插件初始化函数"""
         # 确保图片目录存在
-        self.PORTRAIT_DIR.mkdir(exist_ok=True)
-        self.LANDSCAPE_DIR.mkdir(exist_ok=True)
         self.IMAGES_DIR.mkdir(exist_ok=True)
         
-        # 设置图片目录并处理图片
-        setup_image_directories()
-        
-        # 检查图片目录是否为空，如果为空则返回404错误
-        if not any(self.PORTRAIT_DIR.glob("*")) and not any(self.LANDSCAPE_DIR.glob("*")):
+        # 检查图片目录是否为空
+        if not any(self.IMAGES_DIR.glob("*")):
             return {
                 "name": self.plugin_name,
                 "description": self.plugin_desc,
@@ -95,7 +71,7 @@ class random_pic_api(PluginBase):
                 "priority": self.plugin_order,
                 "app": self.app,
                 "api_prefix": "/random_pic_api",
-                "error": "404-Not Found: 图片目录为空，请先添加图片。"
+                "error": "404-Not Found: 图片目录为空，请先在 plugins.v2/random_pic_api/images 目录添加图片"
             }
         
         return {
