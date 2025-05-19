@@ -10,13 +10,13 @@ import requests
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 
-class SimpleRandomImage(PluginBase):
+class simple_random_image(PluginBase):
     # 插件名称
     plugin_name = "简易随机图片"
     # 插件描述
     plugin_desc = "提供简单的随机图片API服务，支持多个图片源，自动重试和缓存机制"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png"
+    plugin_icon = "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/image.png"
     # 插件版本
     plugin_version = "1.1"
     # 插件作者
@@ -28,7 +28,7 @@ class SimpleRandomImage(PluginBase):
     # 加载顺序
     plugin_order = 10
     # 可使用的用户级别
-    user_level = 1
+    user_level = 2
 
     # 私有属性
     _scheduler: Optional[Scheduler] = None
