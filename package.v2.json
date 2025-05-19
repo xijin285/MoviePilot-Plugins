@@ -12,13 +12,13 @@
         "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
   },
-  "RandomPicAPI": {
+  "RandomPicPlugin": {
     "name": "随机图片API",
     "description": "提供随机图片API服务，支持横竖屏图片分类，支持多种图片格式。",
     "labels": "API,图片",
     "version": "1.0.0",
     "icon": "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/random.png",
-    "author": "xijin285",
+    "author": "jinxi",
     "level": 2,
     "history": {
         "v1.0.0": "初始版本，支持横竖屏图片分类和通知功能"
