@@ -4,7 +4,7 @@ from flask import Flask, send_file
 from pathlib import Path
 from moviepilot.core.plugin import PluginBase
 
-class random_pic_api(PluginBase):
+class RandomPicApi(PluginBase):
     # 插件名称
     plugin_name = "随机图片API"
     # 插件描述
