@@ -1,0 +1,16 @@
+{
+    "check_interval": 60,
+    "timeout_hours": 24,
+    "sites": [
+        {
+            "name": "站点1",
+            "url": "https://example1.com",
+            "last_login_time": null
+        },
+        {
+            "name": "站点2",
+            "url": "https://example2.com",
+            "last_login_time": null
+        }
+    ]
+} 

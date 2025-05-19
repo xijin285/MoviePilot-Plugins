@@ -1,14 +1,26 @@
 {
     "SiteLoginMonitor": {
         "name": "站点登录监控",
-        "description": "监控站点多久没有登录访问，并发送通知。",
-        "labels": "站点",
+        "description": "监控指定站点的登录状态，支持自定义检查间隔和超时时间。",
+        "labels": "监控",
         "version": "1.0",
-        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
+        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/monitor.png",
         "author": "jinxi",
         "level": 2,
         "history": {
             "v1.0": "初始版本"
+        }
+    },
+    "ImageHosting": {
+        "name": "图床助手",
+        "description": "支持多种图床服务的图片上传和管理工具。",
+        "labels": "工具",
+        "version": "1.0.0",
+        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/image.png",
+        "author": "jinxi",
+        "level": 2,
+        "history": {
+            "v1.0.0": "初始版本"
         }
     },
     "IkuaiRouterBackup": {
