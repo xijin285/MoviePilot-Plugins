@@ -29,7 +29,7 @@ class SiteLoginMonitor(PluginBase):
     # 作者主页
     author_url = "https://github.com/xijin285"
     # 插件配置项ID前缀
-    _config_prefix = "site_login_monitor_"
+    _config_prefix = "siteloginmonitor_"
     # 加载顺序
     plugin_order = 10
     # 可使用的用户级别
@@ -50,8 +50,12 @@ class SiteLoginMonitor(PluginBase):
     _sites: List[Dict[str, Any]] = []  # 站点列表
 
     def init_plugin(self, config: Optional[dict] = None):
+        """
+        初始化插件
+        """
         self._lock = threading.Lock()
         self.stop_service()
+        
         if config:
             self._enabled = bool(config.get("enabled", False))
             self._cron = str(config.get("cron", "0 9 * * *"))
@@ -82,6 +86,9 @@ class SiteLoginMonitor(PluginBase):
                     logger.error(f"启动一次性 {self.plugin_name} 任务失败: {str(e)}")
 
     def __update_config(self):
+        """
+        更新配置
+        """
         self.update_config({
             "enabled": self._enabled,
             "notify": self._notify,
@@ -92,15 +99,27 @@ class SiteLoginMonitor(PluginBase):
         })
 
     def get_state(self) -> bool:
+        """
+        获取插件状态
+        """
         return self._enabled
 
     def get_command(self) -> List[Dict[str, Any]]:
+        """
+        获取插件命令
+        """
         return []
 
     def get_api(self) -> List[Dict[str, Any]]:
+        """
+        获取插件API
+        """
         return []
 
     def get_service(self) -> List[Dict[str, Any]]:
+        """
+        获取插件服务
+        """
         if self._enabled and self._cron:
             try:
                 if str(self._cron).strip().count(" ") == 4:
@@ -120,6 +139,9 @@ class SiteLoginMonitor(PluginBase):
         return []
 
     def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
+        """
+        获取插件表单
+        """
         return [
             {
                 'component': 'VForm',
@@ -163,6 +185,9 @@ class SiteLoginMonitor(PluginBase):
         }
 
     def get_page(self) -> List[dict]:
+        """
+        获取插件页面
+        """
         return [
             {
                 'component': 'VAlert',
@@ -176,6 +201,9 @@ class SiteLoginMonitor(PluginBase):
         ]
 
     def stop_service(self):
+        """
+        停止服务
+        """
         try:
             if self._scheduler:
                 job_name = f"{self.plugin_name}服务_onlyonce"
@@ -199,6 +227,9 @@ class SiteLoginMonitor(PluginBase):
             logger.error(f"{self.plugin_name} 退出插件失败：{str(e)}")
 
     def run_check_job(self):
+        """
+        运行检查任务
+        """
         if not self._lock: self._lock = threading.Lock()
         if not self._lock.acquire(blocking=False):
             logger.debug(f"{self.plugin_name} 已有任务正在执行，本次调度跳过！")
@@ -228,6 +259,9 @@ class SiteLoginMonitor(PluginBase):
             logger.info(f"{self.plugin_name} 任务执行完成。")
 
     def _check_site_login(self, site: Dict[str, Any]):
+        """
+        检查站点登录状态
+        """
         site_name = site.get('name', '未知站点')
         site_url = site.get('url', '')
         username = site.get('username', '')
@@ -273,6 +307,9 @@ class SiteLoginMonitor(PluginBase):
                 logger.error(f"{self.plugin_name} 计算站点 {site_name} 未登录天数时出错: {str(e)}")
 
     def _send_notification(self, message: str):
+        """
+        发送通知
+        """
         if not self._notify:
             return
         try:
