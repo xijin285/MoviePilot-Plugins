@@ -1,0 +1,14 @@
+{
+    "check_interval": 24,
+    "notify_threshold": 7,
+    "sites": {
+        "站点1": {
+            "url": "https://example1.com",
+            "last_login": null
+        },
+        "站点2": {
+            "url": "https://example2.com",
+            "last_login": null
+        }
+    }
+} 
