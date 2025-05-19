@@ -19,7 +19,7 @@ class RandomImageAPI(PluginBase):
     plugin_name = "随机图片API"
     plugin_desc = "提供随机图片API服务，支持PC和移动端不同尺寸的图片，可自定义配置多个图片源"
     plugin_icon = "image"
-    plugin_version = "1.0.0"
+    plugin_version = "1.0.1"
     plugin_author = "jinxi"
     author_url = "https://github.com/xijin285"
     plugin_order = 10

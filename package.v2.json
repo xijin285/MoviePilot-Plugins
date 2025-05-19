@@ -16,12 +16,12 @@
     "name": "随机图片API",
     "description": "提供随机图片API服务，支持PC和移动端不同尺寸的图片，可自定义配置多个图片源",
     "labels": "API,图片",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/image.png",
     "author": "jinxi",
     "level": 2,
     "history": {
-        "v1.0.0": "初始版本发布，支持PC和移动端图片，可自定义图片源，实现缓存机制"
+        "v1.0.1": "初始版本发布，支持PC和移动端图片，可自定义图片源，实现缓存机制"
     }
   }
 }
