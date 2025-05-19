@@ -3,7 +3,7 @@
         "name": "站点登录监控",
         "description": "监控站点登录状态，超过指定天数未登录时发送通知。",
         "labels": "监控",
-        "version": "1.0.0",
+        "version": "1.0",
         "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
         "author": "jinxi",
         "level": 2,
