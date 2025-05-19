@@ -15,13 +15,13 @@ class ImageHosting(_PluginBase):
     # 插件描述
     plugin_desc = "支持多种图床的图片上传功能"
     # 插件图标
-    plugin_icon = "image.png"
+    plugin_icon = "sitemonitor.png"
     # 插件版本
     plugin_version = "1.0"
     # 插件作者
-    plugin_author = "Your Name"
+    plugin_author = "jinxi"
     # 作者主页
-    author_url = "https://github.com/yourusername"
+    author_url = "https://github.com/xijin285/MoviePilot-Plugins/"
     # 插件配置项ID前缀
     plugin_config_prefix = "imagehosting_"
     # 加载顺序
