@@ -9,7 +9,6 @@
         "level": 2,
         "history": {
             "v1.0": "初始版本"
-        }
     },
     "ImageHosting": {
         "name": "图床助手",
