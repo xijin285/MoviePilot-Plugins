@@ -1,19 +1,17 @@
 from typing import Any, Dict, List, Optional
 from pathlib import Path
 import random
-import aiohttp
-import asyncio
+import os
 from app.core.config import settings
 from app.log import logger
 from app.plugins import PluginBase
 from app.schemas.types import EventType, Event
-from app.utils.http import RequestUtils
 
 class RandomApi(PluginBase):
     # 插件名称
     plugin_name = "随机图片API"
     # 插件描述
-    plugin_desc = "提供随机图片API服务，支持多个图片源"
+    plugin_desc = "提供随机图片API服务"
     # 插件版本
     plugin_version = "1.0"
     # 插件作者
@@ -30,12 +28,10 @@ class RandomApi(PluginBase):
     def __init__(self):
         super().__init__()
         self._enabled = False
-        self._api_urls = {
-            "unsplash": "https://api.unsplash.com/photos/random",
-            "picsum": "https://picsum.photos/800/600",
-            "randomuser": "https://randomuser.me/api/portraits/men/1.jpg"
-        }
-        self._current_api = "picsum"  # 默认使用picsum
+        self._image_dir = os.path.join(os.path.dirname(__file__), "images")
+        # 确保图片目录存在
+        if not os.path.exists(self._image_dir):
+            os.makedirs(self._image_dir)
 
     def get_state(self) -> bool:
         return self._enabled
@@ -67,43 +63,34 @@ class RandomApi(PluginBase):
             "description": "返回一个随机图片URL"
         }]
 
-    async def get_random_pic(self) -> Dict[str, Any]:
+    def get_random_pic(self) -> Dict[str, Any]:
         """
         获取随机图片
         """
         try:
-            api_url = self._api_urls.get(self._current_api)
-            if not api_url:
+            # 获取图片目录下的所有图片文件
+            image_files = [f for f in os.listdir(self._image_dir) 
+                         if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp'))]
+            
+            if not image_files:
                 return {
                     "code": -1,
-                    "msg": "未配置有效的API地址",
+                    "msg": "图片目录为空",
                     "data": None
                 }
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(api_url) as response:
-                    if response.status == 200:
-                        if self._current_api == "picsum":
-                            return {
-                                "code": 0,
-                                "msg": "success",
-                                "data": {
-                                    "url": str(response.url)
-                                }
-                            }
-                        else:
-                            data = await response.json()
-                            return {
-                                "code": 0,
-                                "msg": "success",
-                                "data": data
-                            }
-                    else:
-                        return {
-                            "code": -1,
-                            "msg": f"获取图片失败: HTTP {response.status}",
-                            "data": None
-                        }
+            # 随机选择一张图片
+            random_image = random.choice(image_files)
+            image_path = os.path.join(self._image_dir, random_image)
+            
+            # 返回图片URL
+            return {
+                "code": 0,
+                "msg": "success",
+                "data": {
+                    "url": f"/api/v1/randompic/image/{random_image}"
+                }
+            }
         except Exception as e:
             logger.error(f"获取随机图片失败: {str(e)}")
             return {
@@ -134,32 +121,6 @@ class RandomApi(PluginBase):
                                     "props": {
                                         "model": "enabled",
                                         "label": "启用插件",
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "component": "VRow",
-                    "content": [
-                        {
-                            "component": "VCol",
-                            "props": {
-                                "cols": 12,
-                                "md": 6
-                            },
-                            "content": [
-                                {
-                                    "component": "VSelect",
-                                    "props": {
-                                        "model": "api_source",
-                                        "label": "图片源",
-                                        "items": [
-                                            {"title": "Picsum", "value": "picsum"},
-                                            {"title": "Unsplash", "value": "unsplash"},
-                                            {"title": "RandomUser", "value": "randomuser"}
-                                        ]
                                     }
                                 }
                             ]
