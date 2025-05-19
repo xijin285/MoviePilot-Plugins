@@ -12,17 +12,17 @@
         "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
   },
-  "ImageHosting": {
-    "name": "图床上传助手",
-    "description": "支持多种图床的图片上传功能，目前支持SM.MS图床。",
-    "labels": "工具",
+  "RandomPicAPI": {
+    "name": "随机图片API",
+    "description": "提供随机图片API服务，支持横竖屏图片分类，支持多种图片格式。",
+    "labels": "API,图片",
     "version": "1.0.0",
-    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/image.png",
-    "author": "jinxi",
+    "icon": "https://raw.githubusercontent.com/madrays/MoviePilot-Plugins/main/icons/random.png",
+    "author": "xijin285",
     "level": 2,
     "history": {
-        "v1.0.0": "初始版本，支持SM.MS图床上传"
+        "v1.0.0": "初始版本，支持横竖屏图片分类和通知功能"
     }
   }
-
-} 
+}
+ 
