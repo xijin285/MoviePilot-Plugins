@@ -9,19 +9,19 @@
         "level": 2,
         "history": {
             "v1.0.0": "初始版本"
-          }
-        },
-        "IkuaiRouterBackup": {
-          "name": "爱快路由备份助手",
-          "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
-          "labels": "备份",
-          "version": "1.1.1",
-          "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
-          "author": "jinxi",
-          "level": 2,
-          "history": {
-              "v1.1.1": "优化通知样式，添加通知样式选择",
-              "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
-          }
         }
-      }
+    },
+    "IkuaiRouterBackup": {
+        "name": "爱快路由备份助手",
+        "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
+        "labels": "备份",
+        "version": "1.1.1",
+        "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
+        "author": "jinxi",
+        "level": 2,
+        "history": {
+            "v1.1.1": "优化通知样式，添加通知样式选择",
+            "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
+        }
+    }
+}
