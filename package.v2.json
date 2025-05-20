@@ -1,14 +1,14 @@
 {
-  "LocalImageUrl": {
-    "name": "本地图片URL映射",
-    "description": "将本地图片文件映射为可访问的URL链接，支持多个目录映射。",
-    "version": "1.0",
+  "ImageUrl": {
+    "name": "图片URL插件",
+    "description": "自动处理图片URL，支持图片上传和转换。",
+    "version": "1.0.0",
     "author": "jinxi",
     "labels": "图片",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/sitemonitor.png",
     "level": 2,
     "history": {
-      "v1.0": "初始版本"
+      "v1.0.0": "初始版本：支持图片URL处理和转换"
     }
   },
   "IkuaiRouterBackup": {
