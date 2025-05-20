@@ -1,5 +1,5 @@
 {
-  "ImageUrl": {
+  "ImageUrlPlugin": {
     "name": "图片URL插件",
     "description": "自动处理图片URL，支持图片上传和转换。",
     "version": "1.0.0",
