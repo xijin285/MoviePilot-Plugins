@@ -1,0 +1,40 @@
+{
+    "name": "随机图片",
+    "description": "获取随机图片的插件",
+    "version": "1.0",
+    "author": "MoviePilot插件社区",
+    "author_url": "https://github.com/MoviePilot-Plugins",
+    "plugin_order": 20,
+    "auth_level": 1,
+    "requirements": [],
+    "configField": [
+        {
+            "field": "api_source",
+            "type": "select",
+            "label": "图片来源",
+            "options": [
+                {
+                    "value": "picsum",
+                    "label": "Lorem Picsum"
+                },
+                {
+                    "value": "unsplash",
+                    "label": "Unsplash"
+                }
+            ],
+            "default": "picsum"
+        },
+        {
+            "field": "width",
+            "type": "text",
+            "label": "图片宽度",
+            "default": "1920"
+        },
+        {
+            "field": "height",
+            "type": "text",
+            "label": "图片高度",
+            "default": "1080"
+        }
+    ]
+} 

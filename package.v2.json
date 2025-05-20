@@ -1,7 +1,7 @@
 {
-  "LocalImageAPI": {
-    "name": "本地图片API",
-    "description": "将本地图片文件夹映射为随机图片API服务",
+  "RandomPic": {
+    "name": "随机图片",
+    "description": "获取随机图片的插件",
     "version": "1.0",
     "author": "jinxi",
     "labels": "图片",
