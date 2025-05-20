@@ -9,7 +9,6 @@
     "labels": ["API", "图片", "图床"], 
     "category": "工具", 
     "url": "https://github.com/xijin285/MoviePilot-Plugins", 
-    "v2": true,
     "history": {
         "v1.0.0": "初始版本，支持本地图片目录映射为随机图片API服务"
     }
