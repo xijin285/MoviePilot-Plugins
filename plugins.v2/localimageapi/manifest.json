@@ -1,0 +1,33 @@
+{
+  "name": "本地图片API",
+  "description": "将本地图片文件夹映射为随机图片API服务",
+  "version": "1.0",
+  "author": "jinxi",
+  "requirements": [],
+  "configField": [
+    {
+      "fieldName": "image_path",
+      "fieldType": "String",
+      "label": "图片文件夹路径",
+      "defaultValue": "",
+      "helperText": "请输入本地图片文件夹的绝对路径",
+      "required": true
+    },
+    {
+      "fieldName": "api_path",
+      "fieldType": "String",
+      "label": "API访问路径",
+      "defaultValue": "random_image",
+      "helperText": "API访问的URL路径，例如：random_image",
+      "required": true
+    },
+    {
+      "fieldName": "allowed_extensions",
+      "fieldType": "String",
+      "label": "允许的图片格式",
+      "defaultValue": "jpg,jpeg,png,gif",
+      "helperText": "允许的图片文件扩展名，用逗号分隔",
+      "required": true
+    }
+  ]
+} 
