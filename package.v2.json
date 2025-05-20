@@ -2,7 +2,7 @@
   "RandomPicApi": {
     "name": "本地图片API",
     "description": "将本地图片文件夹映射为随机图片API服务，支持通过MoviePilot接口访问",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/main/icons/random.png", 
     "author": "jinxi",
     "level": 2,
