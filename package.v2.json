@@ -1,7 +1,7 @@
 {
-  "RandomPic": {
-    "name": "随机图片",
-    "description": "获取随机图片的插件",
+  "LocalImageUrl": {
+    "name": "本地图片URL映射",
+    "description": "将本地图片文件映射为可访问的URL链接，支持多个目录映射。",
     "version": "1.0",
     "author": "jinxi",
     "labels": "图片",
