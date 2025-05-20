@@ -1,30 +1,15 @@
 {
-  "RandomPicApi": {
-    "name": "本地图片API",
-    "description": "将本地图片文件夹映射为随机图片API服务，支持通过MoviePilot接口访问",
-    "version": "1.0.3",
-    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/main/icons/random.png", 
-    "author": "jinxi",
-    "level": 2,
-    "labels": ["API", "图片", "图床"], 
-    "category": "工具", 
-    "url": "https://github.com/xijin285/MoviePilot-Plugins", 
-    "history": {
-        "v1.0.0": "初始版本，支持本地图片目录映射为随机图片API服务"
-    }
-  },
-"IkuaiRouterBackup": {
-  "name": "爱快路由备份助手",
-  "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
-  "labels": "路由器,备份",
-  "version": "1.1.1",
-  "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
-  "author": "jinxi",
-  "level": 2,
-  "history": {
-    "v1.1.1": "优化通知样式，添加通知样式选择",
-    "v1.0.0": "初始版本，感谢madrays(三佬)指点有了此项目"
+  "IkuaiRouterBackup": {
+      "name": "爱快路由备份助手",
+      "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
+      "labels": "备份",
+      "version": "1.1.1",
+      "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
+      "author": "jinxi",
+      "level": 2,
+      "history": {
+          "v1.1.1": "优化通知样式，添加通知样式选择",
+          "v1.0": "初始版本，感谢madrays(三佬)指点有了此项目"
+      }
   }
 }
-
-} 
