@@ -13,15 +13,15 @@
     }
   },
   "RandomPicApi": {
-    "name": "随机图片API",
-    "description": "提供简单的随机图片API服务，支持多种图片格式，可用作本地图床。",
+    "name": "本地图片API",
+    "description": "将本地图片文件夹映射为随机图片API服务，支持通过MoviePilot接口访问",
     "labels": "API,图片,图床",
     "version": "1.0.0",
-    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/random.png",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/main/icons/random.png",
     "author": "jinxi",
     "level": 2,
     "history": {
-        "v1.0.0": "初始版本，简化功能，提供基础随机图片API服务"
+        "v1.0.0": "初始版本，支持本地图片目录映射为随机图片API服务"
     }
   }
 }
