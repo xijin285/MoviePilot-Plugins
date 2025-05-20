@@ -31,6 +31,7 @@ class LocalImageAPI(_PluginBase):
     _image_files: List[str] = []
     _last_scan_time: float = 0
     _scan_interval: int = 3600  # 扫描间隔1小时
+    _initialized_successfully: bool = False
 
     def init_plugin(self, config: Dict[str, Any]) -> None:
         self.image_path = config.get("image_path", "")
@@ -38,11 +39,16 @@ class LocalImageAPI(_PluginBase):
         self.allowed_extensions = config.get("allowed_extensions", "jpg,jpeg,png,gif").split(",")
         
         if not self.image_path or not os.path.exists(self.image_path):
-            logger.error(f"图片文件夹路径 {self.image_path} 不存在")
+            logger.error(f"图片文件夹路径 {self.image_path} 不存在，插件 {self.plugin_name} 初始化失败。")
+            self._initialized_successfully = False
             return
         
         # 初始扫描图片文件
         self._scan_images()
+        # 即使扫描可能因为某些原因没有找到图片，但只要路径有效，我们认为基础初始化是成功的
+        # 功能是否正常取决于是否有图片以及API调用是否成功
+        self._initialized_successfully = True
+        logger.info(f"插件 {self.plugin_name} 初始化成功。")
 
     def _scan_images(self) -> None:
         """
@@ -116,4 +122,4 @@ class LocalImageAPI(_PluginBase):
             return {"code": 500, "message": f"读取图片文件出错: {str(e)}"}
 
     def get_state(self) -> bool:
-        return True 
+        return self._initialized_successfully 
