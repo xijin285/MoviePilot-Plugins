@@ -1,0 +1,58 @@
+{
+    "id": "imagehost",
+    "name": "图床上传助手",
+    "description": "将本地图片上传到图床并获取URL",
+    "version": "1.0.0",
+    "author": "jinxi",
+    "homepage": "https://github.com/yourusername/MoviePilot-Plugins",
+    "type": "tool",
+    "supported_versions": ["2.0.0"],
+    "icon": "imagehost.png",
+    "settings": {
+        "enabled": {
+            "type": "switch",
+            "label": "启用插件",
+            "default": false
+        },
+        "notify": {
+            "type": "switch",
+            "label": "发送通知",
+            "default": false
+        },
+        "api_key": {
+            "type": "text",
+            "label": "API密钥",
+            "description": "图床服务的API密钥",
+            "default": ""
+        },
+        "upload_url": {
+            "type": "text",
+            "label": "上传地址",
+            "description": "图床服务的上传API地址",
+            "default": "https://api.example.com/upload"
+        },
+        "retry_count": {
+            "type": "number",
+            "label": "最大重试次数",
+            "description": "上传失败时的重试次数",
+            "default": 3
+        },
+        "retry_interval": {
+            "type": "number",
+            "label": "重试间隔(秒)",
+            "description": "重试之间的等待时间",
+            "default": 60
+        },
+        "notification_style": {
+            "type": "select",
+            "label": "通知样式",
+            "description": "选择通知消息的显示样式",
+            "default": 1,
+            "options": [
+                {"label": "样式1 - 简约星线", "value": 1},
+                {"label": "样式2 - 方块花边", "value": 2},
+                {"label": "样式3 - 箭头主题", "value": 3}
+            ]
+        }
+    }
+} 
