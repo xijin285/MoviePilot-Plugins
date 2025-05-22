@@ -625,7 +625,7 @@ class CnlangSigninV2(_PluginBase):
                                                             'model': 'notify_style',
                                                             'label': '通知样式',
                                                             'items': [
-                                                                {'title': '简约现代风格', 'value': 'style1', 'prepend-icon': 'mdi-view-dashboard'},
+                                                                {'title': '简约风格', 'value': 'style1', 'prepend-icon': 'mdi-view-dashboard'},
                                                                 {'title': '清新风格', 'value': 'style2', 'prepend-icon': 'mdi-flower'},
                                                                 {'title': '科技风格', 'value': 'style3', 'prepend-icon': 'mdi-rocket'},
                                                                 {'title': '商务风格', 'value': 'style4', 'prepend-icon': 'mdi-briefcase'},
