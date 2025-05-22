@@ -1,16 +1,4 @@
 {
-  "ImageHostPlugin": {
-    "name": "图床上传助手",
-    "description": "将本地图片上传到图床并获取URL，支持多种图床服务。",
-    "version": "1.0.0",
-    "author": "jinxi",
-    "labels": "图片",
-    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/imagehost.png",
-    "level": 2,
-    "history": {
-      "v1.0.0": "初始版本：支持图片上传和URL获取"
-    }
-  },
   "IkuaiRouterBackup": {
     "name": "爱快路由备份助手",
     "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
