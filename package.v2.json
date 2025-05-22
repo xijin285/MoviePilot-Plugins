@@ -1,7 +1,7 @@
 {
   "IkuaiRouterBackup": {
     "name": "爱快路由备份助手",
-    "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
+    "description": "自动备份爱快路由系统配置及插件数据，支持本地备份和WebDAV远程备份，提供定时备份任务和智能清理过期备份文件功能。",
     "labels": "备份",
     "version": "1.1.6",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
