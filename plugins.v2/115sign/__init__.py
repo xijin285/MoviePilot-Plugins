@@ -31,7 +31,7 @@ class _115sign(_PluginBase):
     # 插件描述
     plugin_desc = "自动完成115云盘每日签到，支持相关配置功能"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/jxxghp/MoviePilot-Plugins/main/icons/115.png"
+    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/115.png"
     # 插件版本
     plugin_version = "1.0.0"
     # 插件作者
