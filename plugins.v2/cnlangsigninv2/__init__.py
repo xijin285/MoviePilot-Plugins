@@ -23,7 +23,7 @@ class CnlangSigninV2(_PluginBase):
     # 插件描述
     plugin_desc = "国语视界签到，定时、通知、历史一站式搞定。"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/xijin285/cnlangsigninv2/main/cnlang.png"
+    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png"
     # 插件版本
     plugin_version = "2.2"
     # 插件作者
