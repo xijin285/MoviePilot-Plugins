@@ -60,7 +60,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 ## 🙏 致谢
 
-特别感谢 [madrays(三佬)](https://github.com/madrays) 的悉心指导，让这个项目得以实现。
+特别感谢 [madrays(三佬)](https://github.com/madrays) 悉心指导得以实现此项目。
 
 ## 📄 许可证
 
