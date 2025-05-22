@@ -176,7 +176,7 @@ class CnlangSigninV2(_PluginBase):
             
             # 根据选择的样式发送通知
             if self._notify_style == "style1":
-                # 简约现代风格
+                # 简约风格
                 title = "🎬 国语视界签到"
                 content = f"━━━━━━━━━━━━━━━━━━━━━━\n" \
                          f"✅ 签到成功\n" \
