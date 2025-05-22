@@ -58,6 +58,10 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 欢迎提交Issue和Pull Request来帮助改进插件。
 
+## 🙏 致谢
+
+特别感谢 [madrays(三佬)](https://github.com/madrays) 的悉心指导，让这个项目得以实现。
+
 ## 📄 许可证
 
 本项目采用MIT许可证，详见[LICENSE](LICENSE)文件。
