@@ -6,7 +6,7 @@ import time
 import threading
 from datetime import datetime, timedelta
 from typing import Any, List, Dict, Tuple, Optional
-from urllib.parse import urljoin, quote
+from urllib.parse import urljoin, quote, urlparse
 from pathlib import Path
 
 import pytz
@@ -26,11 +26,11 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件名称
     plugin_name = "爱快路由备份助手"
     # 插件描述
-    plugin_desc = "自动备份爱快路由配置，并管理备份文件。"
+    plugin_desc = "自动备份爱快路由配置，并管理备份文件。支持本地备份和WebDAV远程备份。"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "1.1.1"
+    plugin_version = "1.1.6"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
@@ -63,6 +63,14 @@ class IkuaiRouterBackup(_PluginBase):
     _backup_path: str = ""
     _keep_backup_num: int = 7
 
+    # WebDAV配置属性
+    _enable_webdav: bool = False
+    _webdav_url: str = ""
+    _webdav_username: str = ""
+    _webdav_password: str = ""
+    _webdav_path: str = ""
+    _webdav_keep_backup_num: int = 7
+
     def init_plugin(self, config: Optional[dict] = None):
         self._lock = threading.Lock()
         self.stop_service()
@@ -84,6 +92,12 @@ class IkuaiRouterBackup(_PluginBase):
             else:
                 self._backup_path = configured_backup_path
             self._keep_backup_num = int(config.get("keep_backup_num", 7))
+            self._enable_webdav = bool(config.get("enable_webdav", False))
+            self._webdav_url = str(config.get("webdav_url", ""))
+            self._webdav_username = str(config.get("webdav_username", ""))
+            self._webdav_password = str(config.get("webdav_password", ""))
+            self._webdav_path = str(config.get("webdav_path", ""))
+            self._webdav_keep_backup_num = int(config.get("webdav_keep_backup_num", 7))
             self.__update_config()
 
         try:
@@ -143,6 +157,12 @@ class IkuaiRouterBackup(_PluginBase):
             "backup_path": self._backup_path,
             "keep_backup_num": self._keep_backup_num,
             "notification_style": self._notification_style,
+            "enable_webdav": self._enable_webdav,
+            "webdav_url": self._webdav_url,
+            "webdav_username": self._webdav_username,
+            "webdav_password": self._webdav_password,
+            "webdav_path": self._webdav_path,
+            "webdav_keep_backup_num": self._webdav_keep_backup_num,
         })
 
     def get_state(self) -> bool:
@@ -180,52 +200,144 @@ class IkuaiRouterBackup(_PluginBase):
                 'component': 'VForm',
                 'content': [
                     {
-                        'component': 'VRow',
+                        'component': 'VCard',
+                        'props': {'variant': 'outlined', 'class': 'mb-4'},
                         'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次'}}]},
-                        ],
+                            {
+                                'component': 'VCardTitle',
+                                'props': {'class': 'text-h6'},
+                                'text': '⚙️ 基础设置'
+                            },
+                            {
+                                'component': 'VCardText',
+                                'content': [
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件', 'color': 'primary'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success'}}]},
+                                        ],
+                                    },
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_url', 'label': '爱快路由地址', 'placeholder': '例如: http://10.0.0.1', 'prepend-inner-icon': 'mdi-router-network'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VCronField', 'props': {'model': 'cron', 'label': '执行周期', 'prepend-inner-icon': 'mdi-clock-outline'}}]}
+                                        ],
+                                    },
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_username', 'label': '用户名', 'placeholder': '默认为 admin', 'prepend-inner-icon': 'mdi-account'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_password', 'label': '密码', 'type': 'password', 'placeholder': '请输入密码', 'prepend-inner-icon': 'mdi-lock'}}]},
+                                        ],
+                                    },
+                                ]
+                            }
+                        ]
                     },
                     {
-                        'component': 'VRow',
+                        'component': 'VCard',
+                        'props': {'variant': 'outlined', 'class': 'mb-4'},
                         'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_url', 'label': '爱快路由地址', 'placeholder': '例如: http://10.0.0.1'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VCronField', 'props': {'model': 'cron', 'label': '执行周期'}}]}
-                        ],
+                            {
+                                'component': 'VCardTitle',
+                                'props': {'class': 'text-h6'},
+                                'text': '📦 备份设置'
+                            },
+                            {
+                                'component': 'VCardText',
+                                'content': [
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'backup_path', 'label': '备份文件存储路径', 'placeholder': f'默认为{default_backup_location_desc}', 'prepend-inner-icon': 'mdi-folder'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'keep_backup_num', 'label': '备份保留数量', 'type': 'number', 'placeholder': '例如: 7', 'prepend-inner-icon': 'mdi-counter'}}]},
+                                        ],
+                                    },
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_count', 'label': '最大重试次数', 'type': 'number', 'placeholder': '3', 'prepend-inner-icon': 'mdi-refresh'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_interval', 'label': '重试间隔(秒)', 'type': 'number', 'placeholder': '60', 'prepend-inner-icon': 'mdi-timer'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSelect', 'props': {'model': 'notification_style', 'label': '通知样式', 'items': [{'title': '样式1 - 简约星线', 'value': 1}, {'title': '样式2 - 方块花边', 'value': 2}, {'title': '样式3 - 箭头主题', 'value': 3}, {'title': '样式4 - 波浪边框', 'value': 4}, {'title': '样式5 - 科技风格', 'value': 5}], 'prepend-inner-icon': 'mdi-palette'}}]},
+                                        ],
+                                    },
+                                ]
+                            }
+                        ]
                     },
                     {
-                        'component': 'VRow',
+                        'component': 'VCard',
+                        'props': {'variant': 'outlined', 'class': 'mb-4'},
                         'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_username', 'label': '用户名', 'placeholder': '默认为 admin'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_password', 'label': '密码', 'type': 'password', 'placeholder': '请输入密码'}}]},
-                        ],
+                            {
+                                'component': 'VCardTitle',
+                                'props': {'class': 'text-h6'},
+                                'text': '☁️ WebDAV远程备份设置'
+                            },
+                            {
+                                'component': 'VCardText',
+                                'content': [
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enable_webdav', 'label': '启用WebDAV远程备份', 'color': 'primary'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_url', 'label': 'WebDAV服务器地址', 'placeholder': '例如: https://dav.example.com', 'prepend-inner-icon': 'mdi-cloud'}}]},
+                                        ],
+                                    },
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_username', 'label': 'WebDAV用户名', 'placeholder': '请输入WebDAV用户名', 'prepend-inner-icon': 'mdi-account-key'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_password', 'label': 'WebDAV密码', 'type': 'password', 'placeholder': '请输入WebDAV密码', 'prepend-inner-icon': 'mdi-lock-check'}}]},
+                                        ],
+                                    },
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_path', 'label': 'WebDAV备份路径', 'placeholder': '例如: /backups/ikuai', 'prepend-inner-icon': 'mdi-folder-cloud'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_keep_backup_num', 'label': 'WebDAV备份保留数量', 'type': 'number', 'placeholder': '例如: 7', 'prepend-inner-icon': 'mdi-counter'}}]},
+                                        ],
+                                    },
+                                ]
+                            }
+                        ]
                     },
                     {
-                        'component': 'VRow',
+                        'component': 'VCard',
+                        'props': {'variant': 'outlined', 'class': 'mb-4'},
                         'content': [
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'backup_path', 'label': '备份文件存储路径', 'placeholder': f'默认为{default_backup_location_desc}'}}]},
-                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'keep_backup_num', 'label': '备份保留数量', 'type': 'number', 'placeholder': '例如: 7'}}]},
-                        ],
-                    },
-                    {
-                        'component': 'VRow',
-                        'content': [
-                             {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_count', 'label': '最大重试次数', 'type': 'number', 'placeholder': '3'}}]},
-                             {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_interval', 'label': '重试间隔(秒)', 'type': 'number', 'placeholder': '60'}}]},
-                             {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSelect', 'props': {'model': 'notification_style', 'label': '通知样式', 'items': [{'title': '样式1 - 简约星线', 'value': 1}, {'title': '样式2 - 方块花边', 'value': 2}, {'title': '样式3 - 箭头主题', 'value': 3}]}}]},
-                        ],
-                    },
-                    {
-                        'component': 'VRow',
-                        'content': [{'component': 'VCol', 'props': {'cols': 12}, 'content': [{'component': 'VAlert', 'props': {'type': 'info', 'variant': 'tonal', 'text': f'【使用说明】\n1. 填写爱快路由的访问地址、用户名和密码。\n2. 备份文件存储路径：可留空，默认为{default_backup_location_desc}。或指定一个绝对路径。确保MoviePilot有权访问和写入此路径。\n3. 设置执行周期，例如每天凌晨3点执行 (0 3 * * *)。\n4. 设置备份文件保留数量，旧的备份会被自动删除。\n5. 可选开启通知，在备份完成后收到结果通知，并可选择不同通知样式。\n6. 启用插件并保存即可。\n7. 备份文件将以.bak后缀保存。'}}]}]
+                            {
+                                'component': 'VCardTitle',
+                                'props': {'class': 'text-h6'},
+                                'text': '📖 使用说明'
+                            },
+                            {
+                                'component': 'VCardText',
+                                'content': [
+                                    {
+                                        'component': 'VAlert',
+                                        'props': {
+                                            'type': 'info',
+                                            'variant': 'tonal',
+                                            'text': f'【使用说明】\n1. 填写爱快路由的访问地址、用户名和密码。\n2. 备份文件存储路径：可留空，默认为{default_backup_location_desc}。或指定一个绝对路径。确保MoviePilot有权访问和写入此路径。\n3. 设置执行周期，例如每天凌晨3点执行 (0 3 * * *)。\n4. 设置备份文件保留数量，旧的备份会被自动删除。\n5. 可选开启通知，在备份完成后收到结果通知，并可选择不同通知样式。\n6. WebDAV远程备份：\n   - 启用后，备份文件会同时上传到WebDAV服务器\n   - 填写WebDAV服务器地址、用户名和密码\n   - 设置WebDAV备份路径和保留数量\n   - 支持常见的WebDAV服务，如坚果云、NextCloud等\n7. 启用插件并保存即可。\n8. 备份文件将以.bak后缀保存。',
+                                            'class': 'mb-2'
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ]
             }
         ], {
             "enabled": False, "notify": False, "cron": "0 3 * * *", "onlyonce": False,
             "retry_count": 3, "retry_interval": 60, "ikuai_url": "", "ikuai_username": "admin",
-            "ikuai_password": "", "backup_path": "", "keep_backup_num": 7, "notification_style": 1
+            "ikuai_password": "", "backup_path": "", "keep_backup_num": 7, "notification_style": 1,
+            "enable_webdav": False, "webdav_url": "", "webdav_username": "", "webdav_password": "",
+            "webdav_path": "", "webdav_keep_backup_num": 7
         }
 
     def get_page(self) -> List[dict]:
@@ -488,7 +600,21 @@ class IkuaiRouterBackup(_PluginBase):
             return False, error_detail, None
         
         logger.info(f"{self.plugin_name} 备份文件 {local_display_and_saved_filename} 已成功下载自 {filename_for_download_url} 并保存到 {local_filepath_to_save}")
+        
+        # 清理本地旧备份
         self._cleanup_old_backups()
+
+        # 如果启用了WebDAV，上传到WebDAV服务器
+        if self._enable_webdav:
+            webdav_success, webdav_msg = self._upload_to_webdav(str(local_filepath_to_save), local_display_and_saved_filename)
+            if webdav_success:
+                logger.info(f"{self.plugin_name} 成功上传备份到WebDAV服务器")
+                # 清理WebDAV上的旧备份
+                self._cleanup_webdav_backups()
+            else:
+                logger.error(f"{self.plugin_name} 上传备份到WebDAV服务器失败: {webdav_msg}")
+                return False, f"本地备份成功但WebDAV上传失败: {webdav_msg}", None
+
         return True, None, local_display_and_saved_filename # Return the .bak filename for history
 
     def _login_ikuai(self, session: requests.Session) -> Optional[str]:
@@ -686,6 +812,301 @@ class IkuaiRouterBackup(_PluginBase):
         except Exception as e:
             logger.error(f"{self.plugin_name} 清理旧备份文件时发生错误: {e}")
 
+    def _create_webdav_directories(self, auth, base_url: str, path: str) -> Tuple[bool, Optional[str]]:
+        """递归创建WebDAV目录"""
+        try:
+            import requests
+            from urllib.parse import urljoin
+
+            # 分割路径
+            path_parts = [p for p in path.split('/') if p]
+            current_path = base_url.rstrip('/')
+
+            # 逐级创建目录
+            for part in path_parts:
+                current_path = urljoin(current_path + '/', part)
+                
+                # 检查当前目录是否存在
+                check_response = requests.request(
+                    'PROPFIND',
+                    current_path,
+                    auth=auth,
+                    headers={
+                        'Depth': '0',
+                        'User-Agent': 'MoviePilot/1.0',
+                        'Connection': 'keep-alive'
+                    },
+                    timeout=10,
+                    verify=False
+                )
+
+                if check_response.status_code == 404:
+                    # 目录不存在，创建它
+                    logger.info(f"{self.plugin_name} 创建WebDAV目录: {current_path}")
+                    mkdir_response = requests.request(
+                        'MKCOL',
+                        current_path,
+                        auth=auth,
+                        headers={
+                            'User-Agent': 'MoviePilot/1.0',
+                            'Connection': 'keep-alive'
+                        },
+                        timeout=10,
+                        verify=False
+                    )
+                    
+                    if mkdir_response.status_code not in [200, 201, 204]:
+                        return False, f"创建WebDAV目录失败 {current_path}, 状态码: {mkdir_response.status_code}, 响应: {mkdir_response.text}"
+                elif check_response.status_code not in [200, 207]:
+                    return False, f"检查WebDAV目录失败 {current_path}, 状态码: {check_response.status_code}, 响应: {check_response.text}"
+
+            return True, None
+        except Exception as e:
+            return False, f"创建WebDAV目录时发生错误: {str(e)}"
+
+    def _upload_to_webdav(self, local_file_path: str, filename: str) -> Tuple[bool, Optional[str]]:
+        """上传文件到WebDAV服务器"""
+        if not self._enable_webdav or not self._webdav_url:
+            return False, "WebDAV未启用或URL未配置"
+
+        try:
+            import requests
+            from urllib.parse import urljoin, urlparse
+            import base64
+            from requests.auth import HTTPBasicAuth, HTTPDigestAuth
+            import socket
+
+            # 验证WebDAV URL格式
+            parsed_url = urlparse(self._webdav_url)
+            if not parsed_url.scheme or not parsed_url.netloc:
+                return False, f"WebDAV URL格式无效: {self._webdav_url}"
+
+            # 检查服务器连接
+            try:
+                host = parsed_url.netloc.split(':')[0]
+                port = int(parsed_url.port or (443 if parsed_url.scheme == 'https' else 80))
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(5)
+                result = sock.connect_ex((host, port))
+                sock.close()
+                if result != 0:
+                    return False, f"无法连接到WebDAV服务器 {host}:{port}，请检查服务器地址和端口是否正确"
+            except Exception as e:
+                return False, f"检查WebDAV服务器连接时出错: {str(e)}"
+
+            # 构建WebDAV基础URL
+            base_url = self._webdav_url.rstrip('/')
+            webdav_path = self._webdav_path.lstrip('/')
+            upload_url = urljoin(base_url + '/', f"{webdav_path}/{filename}")
+
+            # 准备认证信息
+            auth_methods = [
+                HTTPBasicAuth(self._webdav_username, self._webdav_password),
+                HTTPDigestAuth(self._webdav_username, self._webdav_password),
+                (self._webdav_username, self._webdav_password)
+            ]
+
+            # 首先尝试检查目录是否存在
+            auth_success = False
+            last_error = None
+            successful_auth = None
+
+            for auth in auth_methods:
+                try:
+                    logger.info(f"{self.plugin_name} 尝试使用认证方式 {type(auth).__name__} 连接WebDAV服务器...")
+                    
+                    # 测试连接
+                    test_response = requests.request(
+                        'PROPFIND',
+                        base_url,
+                        auth=auth,
+                        headers={
+                            'Depth': '0',
+                            'User-Agent': 'MoviePilot/1.0',
+                            'Accept': '*/*',
+                            'Connection': 'keep-alive'
+                        },
+                        timeout=10,
+                        verify=False
+                    )
+
+                    if test_response.status_code in [200, 207]:
+                        logger.info(f"{self.plugin_name} WebDAV认证成功，使用认证方式: {type(auth).__name__}")
+                        auth_success = True
+                        successful_auth = auth
+                        break
+                    elif test_response.status_code == 401:
+                        last_error = f"认证失败，状态码: 401, 响应: {test_response.text}"
+                        continue
+                    else:
+                        last_error = f"检查WebDAV服务器失败，状态码: {test_response.status_code}, 响应: {test_response.text}"
+                        continue
+
+                except requests.exceptions.RequestException as e:
+                    last_error = f"连接WebDAV服务器失败: {str(e)}"
+                    continue
+
+            if not auth_success:
+                return False, f"所有认证方式均失败。最后错误: {last_error}"
+
+            # 创建目录结构
+            if webdav_path:
+                create_success, create_error = self._create_webdav_directories(successful_auth, base_url, webdav_path)
+                if not create_success:
+                    return False, create_error
+
+            # 读取文件内容
+            try:
+                with open(local_file_path, 'rb') as f:
+                    file_content = f.read()
+            except Exception as e:
+                return False, f"读取本地文件失败: {str(e)}"
+
+            # 准备上传请求
+            headers = {
+                'Content-Type': 'application/octet-stream',
+                'Content-Length': str(len(file_content)),
+                'User-Agent': 'MoviePilot/1.0',
+                'Accept': '*/*',
+                'Connection': 'keep-alive'
+            }
+
+            # 发送PUT请求上传文件
+            try:
+                response = requests.put(
+                    upload_url,
+                    data=file_content,
+                    auth=successful_auth,
+                    headers=headers,
+                    timeout=30,
+                    verify=False
+                )
+
+                if response.status_code in [200, 201, 204]:
+                    logger.info(f"{self.plugin_name} 成功上传文件到WebDAV: {upload_url}")
+                    return True, None
+                else:
+                    error_msg = f"WebDAV上传失败，状态码: {response.status_code}, 响应: {response.text}"
+                    if response.status_code == 401:
+                        error_msg += "\n可能原因：\n1. 用户名或密码错误\n2. 服务器要求特定的认证方式\n3. 认证信息格式不正确"
+                    elif response.status_code == 403:
+                        error_msg += "\n可能原因：\n1. 用户没有写入权限\n2. 服务器禁止PUT请求\n3. 认证信息不正确"
+                    elif response.status_code == 404:
+                        error_msg += "\n可能原因：目标路径不存在"
+                    elif response.status_code == 507:
+                        error_msg += "\n可能原因：服务器存储空间不足"
+                    logger.error(f"{self.plugin_name} {error_msg}")
+                    return False, error_msg
+
+            except requests.exceptions.Timeout:
+                return False, "WebDAV上传请求超时"
+            except requests.exceptions.ConnectionError:
+                return False, "无法连接到WebDAV服务器，请检查网络连接和服务器地址"
+            except requests.exceptions.RequestException as e:
+                return False, f"WebDAV上传请求失败: {str(e)}"
+
+        except Exception as e:
+            error_msg = f"WebDAV上传过程中发生错误: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg
+
+    def _cleanup_webdav_backups(self):
+        """清理WebDAV上的旧备份文件"""
+        if not self._enable_webdav or not self._webdav_url or self._webdav_keep_backup_num <= 0:
+            return
+
+        try:
+            import requests
+            from urllib.parse import urljoin
+            from xml.etree import ElementTree
+
+            # 构建WebDAV列表URL
+            webdav_url = urljoin(self._webdav_url.rstrip('/') + '/', self._webdav_path.lstrip('/'))
+
+            # 发送PROPFIND请求获取文件列表
+            response = requests.request(
+                'PROPFIND',
+                webdav_url,
+                auth=(self._webdav_username, self._webdav_password),
+                headers={'Depth': '1'},
+                timeout=30
+            )
+
+            if response.status_code != 207:
+                logger.error(f"{self.plugin_name} 获取WebDAV文件列表失败，状态码: {response.status_code}")
+                return
+
+            # 解析XML响应
+            root = ElementTree.fromstring(response.content)
+            files = []
+
+            # 遍历所有文件
+            for response in root.findall('.//{DAV:}response'):
+                href = response.find('.//{DAV:}href')
+                if href is None:
+                    continue
+
+                # 获取文件名
+                file_path = href.text
+                if not file_path:
+                    continue
+
+                # 只处理.bak文件
+                if not file_path.lower().endswith('.bak'):
+                    continue
+
+                # 获取文件修改时间
+                propstat = response.find('.//{DAV:}propstat')
+                if propstat is None:
+                    continue
+
+                prop = propstat.find('.//{DAV:}prop')
+                if prop is None:
+                    continue
+
+                getlastmodified = prop.find('.//{DAV:}getlastmodified')
+                if getlastmodified is None:
+                    continue
+
+                try:
+                    # 解析时间字符串
+                    from email.utils import parsedate_to_datetime
+                    file_time = parsedate_to_datetime(getlastmodified.text).timestamp()
+                    files.append({
+                        'path': file_path,
+                        'time': file_time
+                    })
+                except Exception as e:
+                    logger.error(f"{self.plugin_name} 解析WebDAV文件时间失败: {e}")
+
+            # 按时间排序
+            files.sort(key=lambda x: x['time'], reverse=True)
+
+            # 删除超出保留数量的旧文件
+            if len(files) > self._webdav_keep_backup_num:
+                files_to_delete = files[self._webdav_keep_backup_num:]
+                logger.info(f"{self.plugin_name} 找到 {len(files_to_delete)} 个WebDAV旧备份文件需要删除")
+
+                for file_info in files_to_delete:
+                    try:
+                        delete_url = urljoin(self._webdav_url.rstrip('/') + '/', file_info['path'].lstrip('/'))
+                        delete_response = requests.delete(
+                            delete_url,
+                            auth=(self._webdav_username, self._webdav_password),
+                            timeout=30
+                        )
+
+                        if delete_response.status_code in [200, 201, 204]:
+                            logger.info(f"{self.plugin_name} 成功删除WebDAV旧备份文件: {file_info['path']}")
+                        else:
+                            logger.error(f"{self.plugin_name} 删除WebDAV旧备份文件失败: {file_info['path']}, 状态码: {delete_response.status_code}")
+
+                    except Exception as e:
+                        logger.error(f"{self.plugin_name} 删除WebDAV文件时发生错误: {e}")
+
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 清理WebDAV旧备份文件时发生错误: {e}")
+
     def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None):
         if not self._notify: return
         title = f"🛠️ {self.plugin_name} "
@@ -720,6 +1141,24 @@ class IkuaiRouterBackup(_PluginBase):
             info_prefix = "📢"
             congrats = "\n🏆 备份任务圆满完成！"
             error_msg = "\n🔥 错误：备份未能完成！"
+        elif self._notification_style == 4:
+            # 样式4 - 波浪边框
+            divider = "≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈"
+            status_prefix = "🌊"
+            router_prefix = "🌍"
+            file_prefix = "📦"
+            info_prefix = "💫"
+            congrats = "\n🌟 备份任务完美收官！"
+            error_msg = "\n💥 备份任务遇到波折！"
+        elif self._notification_style == 5:
+            # 样式5 - 科技风格
+            divider = "▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣"
+            status_prefix = "⚡"
+            router_prefix = "🔌"
+            file_prefix = "💿"
+            info_prefix = "📊"
+            congrats = "\n🚀 系统备份成功完成！"
+            error_msg = "\n⚠️ 系统备份出现异常！"
         else:
             # 默认样式
             divider = "━━━━━━━━━━━━━━━━━━━━━━━━━"
