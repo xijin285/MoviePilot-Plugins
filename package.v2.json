@@ -12,11 +12,11 @@
       "v1.0": "初始版本，感谢madrays(三佬)指点有了此项目"
     }
   },
-  "_115sign": {
+  "Sign115": {
     "name": "115云盘签到",
-    "description": "自动完成115云盘每日签到，支持相关配置功能。",
+    "description": "自动完成115云盘每日签到。",
     "labels": "签到",
-    "version": "1.0.0",
+    "version": "1.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/115.png",
     "author": "jinxi",
     "level": 2,
