@@ -16,10 +16,10 @@
   },
   "CnlangSigninV2": {
     "name": "国语视界签到V2",
-    "description": "基于 imaliang 大佬插件二次开发，集签到、定时、通知、历史一站式体验。",
+    "description": "基于 imaliang 大佬插件二次开发，一键自动签到，通知推送，历史美观展示。",
     "labels": "签到,自动化",
     "version": "2.2",
-    "icon": "https://raw.githubusercontent.com/xijin285/cnlangsigninv2/main/cnlang.png",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png",
     "author": "jinxi",
     "level": 2,
     "history": {
