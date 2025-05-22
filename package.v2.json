@@ -3,25 +3,15 @@
     "name": "爱快路由备份助手",
     "description": "自动备份 Ikuai 路由配置及插件数据，支持定时任务和自动清理旧备份。",
     "labels": "备份",
-    "version": "1.1.1",
+    "version": "1.1.6",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
     "author": "jinxi",
     "level": 2,
     "history": {
+      "v1.1.6": "新增波浪边框和科技风格两种通知样式，优化配置界面设计",
+      "v1.1.3": "支持本地备份和WebDAV远程备份",
       "v1.1.1": "优化通知样式，添加通知样式选择",
       "v1.0": "初始版本，感谢madrays(三佬)指点有了此项目"
-    }
-  },
-  "Sign115": {
-    "name": "115云盘签到",
-    "description": "自动完成115云盘每日签到。",
-    "labels": "签到",
-    "version": "1.0",
-    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/115.png",
-    "author": "jinxi",
-    "level": 2,
-    "history": {
-      "v1.0.0": "初始版本：支持115云盘自动签到功能"
     }
   }
 } 
