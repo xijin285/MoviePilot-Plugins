@@ -26,11 +26,11 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件名称
     plugin_name = "爱快路由备份助手"
     # 插件描述
-    plugin_desc = "自动备份爱快路由配置，并管理备份文件。支持本地备份和WebDAV远程备份。"
+    plugin_desc = "为爱快路由提供全自动的配置备份方案，支持本地保存和WebDAV云端备份。"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "1.1.6"
+    plugin_version = "1.1.7"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
@@ -60,6 +60,7 @@ class IkuaiRouterBackup(_PluginBase):
     _ikuai_url: str = ""
     _ikuai_username: str = "admin"
     _ikuai_password: str = ""
+    _enable_local_backup: bool = True  # 新增：本地备份开关
     _backup_path: str = ""
     _keep_backup_num: int = 7
 
@@ -85,6 +86,7 @@ class IkuaiRouterBackup(_PluginBase):
             self._ikuai_url = str(config.get("ikuai_url", "")).rstrip('/')
             self._ikuai_username = str(config.get("ikuai_username", "admin"))
             self._ikuai_password = str(config.get("ikuai_password", ""))
+            self._enable_local_backup = bool(config.get("enable_local_backup", True))
             configured_backup_path = str(config.get("backup_path", "")).strip()
             if not configured_backup_path:
                 self._backup_path = str(self.get_data_path() / "actual_backups")
@@ -154,6 +156,7 @@ class IkuaiRouterBackup(_PluginBase):
             "ikuai_url": self._ikuai_url,
             "ikuai_username": self._ikuai_username,
             "ikuai_password": self._ikuai_password,
+            "enable_local_backup": self._enable_local_backup,  # 新增：本地备份开关
             "backup_path": self._backup_path,
             "keep_backup_num": self._keep_backup_num,
             "notification_style": self._notification_style,
@@ -214,9 +217,9 @@ class IkuaiRouterBackup(_PluginBase):
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件', 'color': 'primary'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件', 'color': 'primary', 'prepend-icon': 'mdi-power'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info', 'prepend-icon': 'mdi-bell'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success', 'prepend-icon': 'mdi-play'}}]},
                                         ],
                                     },
                                     {
@@ -252,16 +255,17 @@ class IkuaiRouterBackup(_PluginBase):
                                     {
                                         'component': 'VRow',
                                         'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enable_local_backup', 'label': '启用本地备份', 'color': 'primary', 'prepend-icon': 'mdi-folder-home'}}]},
                                             {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'backup_path', 'label': '备份文件存储路径', 'placeholder': f'默认为{default_backup_location_desc}', 'prepend-inner-icon': 'mdi-folder'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'keep_backup_num', 'label': '备份保留数量', 'type': 'number', 'placeholder': '例如: 7', 'prepend-inner-icon': 'mdi-counter'}}]},
                                         ],
                                     },
                                     {
                                         'component': 'VRow',
                                         'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'keep_backup_num', 'label': '备份保留数量', 'type': 'number', 'placeholder': '例如: 7', 'prepend-inner-icon': 'mdi-counter'}}]},
                                             {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_count', 'label': '最大重试次数', 'type': 'number', 'placeholder': '3', 'prepend-inner-icon': 'mdi-refresh'}}]},
                                             {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_interval', 'label': '重试间隔(秒)', 'type': 'number', 'placeholder': '60', 'prepend-inner-icon': 'mdi-timer'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSelect', 'props': {'model': 'notification_style', 'label': '通知样式', 'items': [{'title': '样式1 - 简约星线', 'value': 1}, {'title': '样式2 - 方块花边', 'value': 2}, {'title': '样式3 - 箭头主题', 'value': 3}, {'title': '样式4 - 波浪边框', 'value': 4}, {'title': '样式5 - 科技风格', 'value': 5}], 'prepend-inner-icon': 'mdi-palette'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSelect', 'props': {'model': 'notification_style', 'label': '通知样式', 'items': [{'title': '简约星线', 'value': 1}, {'title': '方块花边', 'value': 2}, {'title': '箭头主题', 'value': 3}, {'title': '波浪边框', 'value': 4}, {'title': '科技风格', 'value': 5}], 'prepend-inner-icon': 'mdi-palette'}}]},
                                         ],
                                     },
                                 ]
@@ -283,7 +287,7 @@ class IkuaiRouterBackup(_PluginBase):
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enable_webdav', 'label': '启用WebDAV远程备份', 'color': 'primary'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enable_webdav', 'label': '启用WebDAV远程备份', 'color': 'primary', 'prepend-icon': 'mdi-cloud-sync'}}]},
                                             {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_url', 'label': 'WebDAV服务器地址', 'placeholder': '例如: https://dav.example.com', 'prepend-inner-icon': 'mdi-cloud'}}]},
                                         ],
                                     },
@@ -297,7 +301,7 @@ class IkuaiRouterBackup(_PluginBase):
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_path', 'label': 'WebDAV备份路径', 'placeholder': '例如: /backups/ikuai', 'prepend-inner-icon': 'mdi-folder-cloud'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_path', 'label': 'WebDAV备份路径', 'placeholder': '例如: /backups/ikuai', 'prepend-inner-icon': 'mdi-folder-network'}}]},
                                             {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_keep_backup_num', 'label': 'WebDAV备份保留数量', 'type': 'number', 'placeholder': '例如: 7', 'prepend-inner-icon': 'mdi-counter'}}]},
                                         ],
                                     },
@@ -335,9 +339,9 @@ class IkuaiRouterBackup(_PluginBase):
         ], {
             "enabled": False, "notify": False, "cron": "0 3 * * *", "onlyonce": False,
             "retry_count": 3, "retry_interval": 60, "ikuai_url": "", "ikuai_username": "admin",
-            "ikuai_password": "", "backup_path": "", "keep_backup_num": 7, "notification_style": 1,
-            "enable_webdav": False, "webdav_url": "", "webdav_username": "", "webdav_password": "",
-            "webdav_path": "", "webdav_keep_backup_num": 7
+            "ikuai_password": "", "enable_local_backup": True, "backup_path": "", "keep_backup_num": 7,
+            "notification_style": 1, "enable_webdav": False, "webdav_url": "", "webdav_username": "",
+            "webdav_password": "", "webdav_path": "", "webdav_keep_backup_num": 7
         }
 
     def get_page(self) -> List[dict]:
@@ -594,28 +598,61 @@ class IkuaiRouterBackup(_PluginBase):
             logger.error(f"{self.plugin_name} {error_detail}")
             return False, error_detail, None
 
-        download_success, download_msg = self._download_backup_file(session, filename_for_download_url, str(local_filepath_to_save))
-        if not download_success:
-            error_detail = f"尝试下载 {filename_for_download_url} (API原始名: {actual_router_filename_from_api}) 失败: {download_msg}"
-            return False, error_detail, None
-        
-        logger.info(f"{self.plugin_name} 备份文件 {local_display_and_saved_filename} 已成功下载自 {filename_for_download_url} 并保存到 {local_filepath_to_save}")
-        
-        # 清理本地旧备份
-        self._cleanup_old_backups()
+        # 根据本地备份开关决定是否执行本地备份
+        if self._enable_local_backup:
+            if not self._backup_path:
+                return False, "本地备份已启用但备份路径未配置且无法设置默认路径", None
+
+            try:
+                Path(self._backup_path).mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                return False, f"创建本地备份目录失败: {e}", None
+
+            download_success, download_msg = self._download_backup_file(session, filename_for_download_url, str(local_filepath_to_save))
+            if not download_success:
+                error_detail = f"尝试下载 {filename_for_download_url} (API原始名: {actual_router_filename_from_api}) 失败: {download_msg}"
+                return False, error_detail, None
+            
+            logger.info(f"{self.plugin_name} 备份文件 {local_display_and_saved_filename} 已成功下载自 {filename_for_download_url} 并保存到 {local_filepath_to_save}")
+            
+            # 清理本地旧备份
+            self._cleanup_old_backups()
+        else:
+            logger.info(f"{self.plugin_name} 本地备份已禁用，跳过本地备份步骤")
 
         # 如果启用了WebDAV，上传到WebDAV服务器
         if self._enable_webdav:
-            webdav_success, webdav_msg = self._upload_to_webdav(str(local_filepath_to_save), local_display_and_saved_filename)
+            if self._enable_local_backup:
+                # 如果启用了本地备份，使用已下载的文件上传
+                webdav_success, webdav_msg = self._upload_to_webdav(str(local_filepath_to_save), local_display_and_saved_filename)
+            else:
+                # 如果禁用了本地备份，需要先下载到临时文件再上传
+                temp_dir = Path(self.get_data_path()) / "temp"
+                temp_dir.mkdir(parents=True, exist_ok=True)
+                temp_filepath = temp_dir / local_display_and_saved_filename
+                
+                download_success, download_msg = self._download_backup_file(session, filename_for_download_url, str(temp_filepath))
+                if not download_success:
+                    error_detail = f"尝试下载临时文件用于WebDAV上传失败: {download_msg}"
+                    return False, error_detail, None
+                
+                webdav_success, webdav_msg = self._upload_to_webdav(str(temp_filepath), local_display_and_saved_filename)
+                
+                # 删除临时文件
+                try:
+                    temp_filepath.unlink()
+                except Exception as e:
+                    logger.warning(f"{self.plugin_name} 删除临时文件失败: {e}")
+
             if webdav_success:
                 logger.info(f"{self.plugin_name} 成功上传备份到WebDAV服务器")
                 # 清理WebDAV上的旧备份
                 self._cleanup_webdav_backups()
             else:
                 logger.error(f"{self.plugin_name} 上传备份到WebDAV服务器失败: {webdav_msg}")
-                return False, f"本地备份成功但WebDAV上传失败: {webdav_msg}", None
+                return False, f"WebDAV上传失败: {webdav_msg}", None
 
-        return True, None, local_display_and_saved_filename # Return the .bak filename for history
+        return True, None, local_display_and_saved_filename
 
     def _login_ikuai(self, session: requests.Session) -> Optional[str]:
         login_url = urljoin(self._ikuai_url, "/Action/login")
@@ -1017,19 +1054,32 @@ class IkuaiRouterBackup(_PluginBase):
 
         try:
             import requests
-            from urllib.parse import urljoin
+            from urllib.parse import urljoin, quote, urlparse
             from xml.etree import ElementTree
 
-            # 构建WebDAV列表URL
-            webdav_url = urljoin(self._webdav_url.rstrip('/') + '/', self._webdav_path.lstrip('/'))
-
+            # 规范化 WebDAV URL
+            parsed_url = urlparse(self._webdav_url)
+            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+            webdav_path = self._webdav_path.strip('/')
+            
+            # 构建完整的WebDAV URL
+            full_webdav_url = f"{base_url}/dav/{webdav_path}"
+            
             # 发送PROPFIND请求获取文件列表
+            headers = {
+                'Depth': '1',
+                'Content-Type': 'application/xml',
+                'Accept': '*/*',
+                'User-Agent': 'MoviePilot/1.0'
+            }
+            
             response = requests.request(
                 'PROPFIND',
-                webdav_url,
+                full_webdav_url,
                 auth=(self._webdav_username, self._webdav_password),
-                headers={'Depth': '1'},
-                timeout=30
+                headers=headers,
+                timeout=30,
+                verify=False
             )
 
             if response.status_code != 207:
@@ -1037,20 +1087,21 @@ class IkuaiRouterBackup(_PluginBase):
                 return
 
             # 解析XML响应
-            root = ElementTree.fromstring(response.content)
+            try:
+                root = ElementTree.fromstring(response.content)
+            except ElementTree.ParseError as e:
+                logger.error(f"{self.plugin_name} 解析WebDAV响应XML失败: {str(e)}")
+                return
+
             files = []
 
             # 遍历所有文件
             for response in root.findall('.//{DAV:}response'):
                 href = response.find('.//{DAV:}href')
-                if href is None:
+                if href is None or not href.text:
                     continue
 
-                # 获取文件名
                 file_path = href.text
-                if not file_path:
-                    continue
-
                 # 只处理.bak文件
                 if not file_path.lower().endswith('.bak'):
                     continue
@@ -1078,6 +1129,11 @@ class IkuaiRouterBackup(_PluginBase):
                     })
                 except Exception as e:
                     logger.error(f"{self.plugin_name} 解析WebDAV文件时间失败: {e}")
+                    # 如果无法解析时间，使用当前时间
+                    files.append({
+                        'path': file_path,
+                        'time': time.time()
+                    })
 
             # 按时间排序
             files.sort(key=lambda x: x['time'], reverse=True)
@@ -1089,23 +1145,36 @@ class IkuaiRouterBackup(_PluginBase):
 
                 for file_info in files_to_delete:
                     try:
-                        delete_url = urljoin(self._webdav_url.rstrip('/') + '/', file_info['path'].lstrip('/'))
+                        # 从href中提取文件名
+                        file_path = file_info['path']
+                        if file_path.startswith('/'):
+                            file_path = file_path[1:]
+                        if file_path.startswith('dav/'):
+                            file_path = file_path[4:]
+                            
+                        # 构建源文件的完整URL
+                        source_url = f"{base_url}/dav/{file_path}"
+                        filename = os.path.basename(file_path)
+
+                        # 删除文件
                         delete_response = requests.delete(
-                            delete_url,
+                            source_url,
                             auth=(self._webdav_username, self._webdav_password),
-                            timeout=30
+                            headers=headers,
+                            timeout=30,
+                            verify=False
                         )
 
-                        if delete_response.status_code in [200, 201, 204]:
-                            logger.info(f"{self.plugin_name} 成功删除WebDAV旧备份文件: {file_info['path']}")
+                        if delete_response.status_code in [200, 201, 204, 404]:  # 404意味着文件已经不存在
+                            logger.info(f"{self.plugin_name} 成功删除WebDAV旧备份文件: {filename}")
                         else:
-                            logger.error(f"{self.plugin_name} 删除WebDAV旧备份文件失败: {file_info['path']}, 状态码: {delete_response.status_code}")
+                            logger.error(f"{self.plugin_name} 删除文件失败: {filename}, 状态码: {delete_response.status_code}")
 
                     except Exception as e:
-                        logger.error(f"{self.plugin_name} 删除WebDAV文件时发生错误: {e}")
+                        logger.error(f"{self.plugin_name} 处理WebDAV文件时发生错误: {str(e)}")
 
         except Exception as e:
-            logger.error(f"{self.plugin_name} 清理WebDAV旧备份文件时发生错误: {e}")
+            logger.error(f"{self.plugin_name} 清理WebDAV旧备份文件时发生错误: {str(e)}")
 
     def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None):
         if not self._notify: return
@@ -1115,7 +1184,7 @@ class IkuaiRouterBackup(_PluginBase):
         
         # 根据选择的通知样式设置分隔符和风格
         if self._notification_style == 1:
-            # 样式1 - 简约星线
+            # 简约星线
             divider = "★━━━━━━━━━━━━━━━━━━━━━━━★"
             status_prefix = "📌"
             router_prefix = "🌐"
@@ -1124,7 +1193,7 @@ class IkuaiRouterBackup(_PluginBase):
             congrats = "\n🎉 备份任务已顺利完成！"
             error_msg = "\n⚠️ 备份失败，请检查日志了解详情。"
         elif self._notification_style == 2:
-            # 样式2 - 方块花边
+            # 方块花边
             divider = "■□■□■□■□■□■□■□■□■□■□■□■□■"
             status_prefix = "🔰"
             router_prefix = "🔹"
@@ -1133,7 +1202,7 @@ class IkuaiRouterBackup(_PluginBase):
             congrats = "\n🎊 太棒了！备份成功保存！"
             error_msg = "\n🚨 警告：备份过程中出现错误！"
         elif self._notification_style == 3:
-            # 样式3 - 箭头主题
+            # 箭头主题
             divider = "➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤➤"
             status_prefix = "🔔"
             router_prefix = "📡"
@@ -1142,7 +1211,7 @@ class IkuaiRouterBackup(_PluginBase):
             congrats = "\n🏆 备份任务圆满完成！"
             error_msg = "\n🔥 错误：备份未能完成！"
         elif self._notification_style == 4:
-            # 样式4 - 波浪边框
+            # 波浪边框
             divider = "≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈≈"
             status_prefix = "🌊"
             router_prefix = "🌍"
@@ -1151,7 +1220,7 @@ class IkuaiRouterBackup(_PluginBase):
             congrats = "\n🌟 备份任务完美收官！"
             error_msg = "\n💥 备份任务遇到波折！"
         elif self._notification_style == 5:
-            # 样式5 - 科技风格
+            # 科技风格
             divider = "▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣▣"
             status_prefix = "⚡"
             router_prefix = "🔌"
