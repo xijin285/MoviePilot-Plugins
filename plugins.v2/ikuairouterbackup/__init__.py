@@ -30,7 +30,7 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "1.1.7"
+    plugin_version = "1.1.8"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
@@ -71,6 +71,7 @@ class IkuaiRouterBackup(_PluginBase):
     _webdav_password: str = ""
     _webdav_path: str = ""
     _webdav_keep_backup_num: int = 7
+    _clear_history: bool = False  # 新增：清理历史记录开关
 
     def init_plugin(self, config: Optional[dict] = None):
         self._lock = threading.Lock()
@@ -100,7 +101,14 @@ class IkuaiRouterBackup(_PluginBase):
             self._webdav_password = str(config.get("webdav_password", ""))
             self._webdav_path = str(config.get("webdav_path", ""))
             self._webdav_keep_backup_num = int(config.get("webdav_keep_backup_num", 7))
+            self._clear_history = bool(config.get("clear_history", False))  # 新增：清理历史记录开关
             self.__update_config()
+
+            # 处理清理历史记录请求
+            if self._clear_history:
+                self._clear_backup_history()
+                self._clear_history = False
+                self.__update_config()
 
         try:
             Path(self._backup_path).mkdir(parents=True, exist_ok=True)
@@ -166,6 +174,7 @@ class IkuaiRouterBackup(_PluginBase):
             "webdav_password": self._webdav_password,
             "webdav_path": self._webdav_path,
             "webdav_keep_backup_num": self._webdav_keep_backup_num,
+            "clear_history": self._clear_history,  # 新增：清理历史记录开关
         })
 
     def get_state(self) -> bool:
@@ -217,9 +226,10 @@ class IkuaiRouterBackup(_PluginBase):
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件', 'color': 'primary', 'prepend-icon': 'mdi-power'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info', 'prepend-icon': 'mdi-bell'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success', 'prepend-icon': 'mdi-play'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3, 'sm': 3, 'md': 3, 'lg': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件', 'color': 'primary', 'prepend-icon': 'mdi-power'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3, 'sm': 3, 'md': 3, 'lg': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info', 'prepend-icon': 'mdi-bell'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3, 'sm': 3, 'md': 3, 'lg': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success', 'prepend-icon': 'mdi-play'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3, 'sm': 3, 'md': 3, 'lg': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'clear_history', 'label': '清理历史记录', 'color': 'warning', 'prepend-icon': 'mdi-delete-sweep'}}]},
                                         ],
                                     },
                                     {
@@ -341,7 +351,7 @@ class IkuaiRouterBackup(_PluginBase):
             "retry_count": 3, "retry_interval": 60, "ikuai_url": "", "ikuai_username": "admin",
             "ikuai_password": "", "enable_local_backup": True, "backup_path": "", "keep_backup_num": 7,
             "notification_style": 1, "enable_webdav": False, "webdav_url": "", "webdav_username": "",
-            "webdav_password": "", "webdav_path": "", "webdav_keep_backup_num": 7
+            "webdav_password": "", "webdav_path": "", "webdav_keep_backup_num": 7, "clear_history": False
         }
 
     def get_page(self) -> List[dict]:
@@ -1176,10 +1186,34 @@ class IkuaiRouterBackup(_PluginBase):
         except Exception as e:
             logger.error(f"{self.plugin_name} 清理WebDAV旧备份文件时发生错误: {str(e)}")
 
-    def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None):
+    def _clear_backup_history(self):
+        """清理备份历史记录"""
+        try:
+            self.save_data('backup_history', [])
+            logger.info(f"{self.plugin_name} 已清理所有备份历史记录")
+            if self._notify:
+                self._send_notification(
+                    success=True,
+                    message="已成功清理所有备份历史记录",
+                    is_clear_history=True
+                )
+        except Exception as e:
+            error_msg = f"清理备份历史记录失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            if self._notify:
+                self._send_notification(
+                    success=False,
+                    message=error_msg,
+                    is_clear_history=True
+                )
+
+    def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None, is_clear_history: bool = False):
         if not self._notify: return
         title = f"🛠️ {self.plugin_name} "
-        title += "成功" if success else "失败"
+        if is_clear_history:
+            title += "清理历史记录"
+        else:
+            title += "成功" if success else "失败"
         status_emoji = "✅" if success else "❌"
         
         # 根据选择的通知样式设置分隔符和风格

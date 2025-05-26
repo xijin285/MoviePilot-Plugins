@@ -3,11 +3,12 @@
     "name": "爱快路由备份助手",
     "description": "为爱快路由提供全自动的配置备份方案，支持本地保存和WebDAV云端备份。",
     "labels": "备份",
-    "version": "1.1.7",
+    "version": "1.1.8",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
     "author": "jinxi",
     "level": 2,
     "history": {
+      "v1.1.8": "新增一键清理历史记录功能，支持在插件页面一键清空备份历史。",
       "v1.1.7": "修复远程备份删除失败问题，新增本地备份开关选项，支持仅使用WebDAV备份",
       "v1.1.6": "新增波浪边框和科技风格两种通知样式，优化配置界面设计",
       "v1.1.3": "支持本地备份和WebDAV远程备份",
