@@ -18,13 +18,15 @@
   },
   "CnlangSigninV2": {
     "name": "国语视界签到V2",
-    "description": "基于 imaliang 大佬插件二次开发，一键自动签到，通知推送，历史美观展示。",
+    "description": "美观实用的签到助手，支持账号监控、数据统计、自动签到。",
     "labels": "签到,自动化",
-    "version": "2.2",
+    "version": "2.5.5",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png",
     "author": "jinxi",
     "level": 2,
     "history": {
+      "v2.5.5": "全新改版账号信息展示，新增用户组、大洋余额等实时数据，优化签到状态和历史统计展示。",
+      "v2.5.1": "重构插件界面布局，采用卡片式设计，新增签到统计分析和实时状态展示。",
       "v2.2": "新增'使用说明'卡片，历史记录卡片式美观展示，优化配置表单与通知样式布局。",
       "v2.1": "增加多种通知样式，整体界面更美观。",
       "v2.0": "基于imaliang大佬插件二次开发，优化数据保存与界面，增加通知样式选择、历史记录保留等功能。"
