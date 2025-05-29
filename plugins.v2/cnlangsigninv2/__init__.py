@@ -25,7 +25,7 @@ class CnlangSigninV2(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png"
     # 插件版本
-    plugin_version = "2.5.5"
+    plugin_version = "2.5.6"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
@@ -120,49 +120,57 @@ class CnlangSigninV2(_PluginBase):
         if self._notify:
             sign_time = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
             
+            # 检查是否是Cookie失效相关的错误
+            is_cookie_expired = "cookie" in text.lower() or "未获取到用户名" in text
+            
             # 根据选择的样式发送通知
             if self._notify_style == "style1":
                 # 简约现代风格
                 title = "🎬 国语视界签到"
                 content = f"━━━━━━━━━━━━━━━━━━━━━━\n" \
-                         f"❌ 签到失败\n" \
+                         f"❌ {'Cookie已失效' if is_cookie_expired else '签到失败'}\n" \
                          f"━━━━━━━━━━━━━━━━━━━━━━\n" \
                          f"📝 失败原因：{text}\n" \
                          f"⏰ 执行时间：{sign_time}\n" \
+                         f"{'🔑 请更新Cookie后重试' if is_cookie_expired else ''}\n" \
                          f"━━━━━━━━━━━━━━━━━━━━━━"
             elif self._notify_style == "style2":
                 # 清新风格
                 title = "🌸 国语视界签到"
                 content = f"┏━━━━━━━━━━━━━━━━━━━━┓\n" \
-                         f"┃ ❌ 签到失败\n" \
+                         f"┃ ❌ {'Cookie已失效' if is_cookie_expired else '签到失败'}\n" \
                          f"┃ 📝 {text}\n" \
                          f"┃ ⏰ {sign_time}\n" \
+                         f"{'┃ 🔑 请更新Cookie后重试' if is_cookie_expired else ''}\n" \
                          f"┗━━━━━━━━━━━━━━━━━━━━┛"
             elif self._notify_style == "style3":
                 # 科技风格
                 title = "🚀 国语视界签到"
                 content = f"━━━━━━━━━━━━━━━━━━━━━━\n" \
-                         f"⚡ 任务执行失败\n" \
+                         f"⚡ {'Cookie验证失败' if is_cookie_expired else '任务执行失败'}\n" \
                          f"━━━━━━━━━━━━━━━━━━━━━━\n" \
                          f"🔍 错误信息：{text}\n" \
                          f"⏱️ 执行时间：{sign_time}\n" \
+                         f"{'🔑 请更新Cookie后重试' if is_cookie_expired else ''}\n" \
                          f"━━━━━━━━━━━━━━━━━━━━━━"
             elif self._notify_style == "style4":
                 # 商务风格
                 title = "📊 国语视界签到"
                 content = f"━━━━━━━━━━━━━━━━━━━━━━\n" \
-                         f"📌 签到状态：失败\n" \
+                         f"📌 签到状态：{'Cookie已失效' if is_cookie_expired else '失败'}\n" \
                          f"📋 错误详情：{text}\n" \
                          f"🕒 执行时间：{sign_time}\n" \
+                         f"{'🔑 操作建议：请更新Cookie后重试' if is_cookie_expired else ''}\n" \
                          f"━━━━━━━━━━━━━━━━━━━━━━"
             else:
                 # 优雅风格
                 title = "✨ 国语视界签到"
                 content = f"━━━━━━━━━━━━━━━━━━━━━━\n" \
-                         f"💫 签到任务执行失败\n" \
+                         f"💫 {'Cookie验证失败' if is_cookie_expired else '签到任务执行失败'}\n" \
                          f"━━━━━━━━━━━━━━━━━━━━━━\n" \
                          f"📌 失败原因：{text}\n" \
                          f"🕰️ 执行时间：{sign_time}\n" \
+                         f"{'🔑 请更新Cookie后重试' if is_cookie_expired else ''}\n" \
                          f"━━━━━━━━━━━━━━━━━━━━━━"
             
             self.post_message(
@@ -707,9 +715,25 @@ class CnlangSigninV2(_PluginBase):
                         'content': [
                             {
                                 'component': 'VCardTitle',
+                                'props': {
+                                    'class': 'text-h6'
+                                },
                                 'content': [
-                                    {'component': 'VIcon', 'props': {'color': 'info', 'class': 'me-2'}, 'text': 'mdi-help-circle'},
-                                    {'component': 'span', 'props': {'class': 'font-weight-bold'}, 'text': '使用说明'}
+                                    {
+                                        'component': 'VIcon',
+                                        'props': {
+                                            'color': 'info',
+                                            'class': 'me-2'
+                                        },
+                                        'text': 'mdi-help-circle'
+                                    },
+                                    {
+                                        'component': 'span',
+                                        'props': {
+                                            'class': 'font-weight-bold'
+                                        },
+                                        'text': '使用说明'
+                                    }
                                 ]
                             },
                             {
@@ -717,32 +741,268 @@ class CnlangSigninV2(_PluginBase):
                                 'content': [
                                     {
                                         'component': 'div',
+                                        'props': {
+                                            'class': 'mb-4'
+                                        },
                                         'content': [
-                                            {'component': 'span', 'text': '🙏 特别鸣谢 imaliang 大佬，插件源码来自于他的脚本。'}
+                                            {
+                                                'component': 'div',
+                                                'props': {
+                                                    'class': 'd-flex align-center mb-2'
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VIcon',
+                                                        'props': {
+                                                            'color': 'amber',
+                                                            'class': 'me-2'
+                                                        },
+                                                        'text': 'mdi-star'
+                                                    },
+                                                    {'component': 'span', 'text': '特别鸣谢 imaliang 大佬，插件源码来自于他的脚本。'}
+                                                ]
+                                            },
+                                            {
+                                                'component': 'div',
+                                                'props': {
+                                                    'class': 'd-flex align-center mb-2'
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VIcon',
+                                                        'props': {
+                                                            'color': 'success',
+                                                            'class': 'me-2'
+                                                        },
+                                                        'text': 'mdi-rocket'
+                                                    },
+                                                    {'component': 'span', 'text': '一键自动签到，省心省力。'}
+                                                ]
+                                            },
+                                            {
+                                                'component': 'div',
+                                                'props': {
+                                                    'class': 'd-flex align-center mb-2'
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VIcon',
+                                                        'props': {
+                                                            'color': 'info',
+                                                            'class': 'me-2'
+                                                        },
+                                                        'text': 'mdi-clock-outline'
+                                                    },
+                                                    {'component': 'span', 'text': '灵活定时，支持自定义周期与随机延迟。'}
+                                                ]
+                                            },
+                                            {
+                                                'component': 'div',
+                                                'props': {
+                                                    'class': 'd-flex align-center mb-2'
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VIcon',
+                                                        'props': {
+                                                            'color': 'warning',
+                                                            'class': 'me-2'
+                                                        },
+                                                        'text': 'mdi-bell'
+                                                    },
+                                                    {'component': 'span', 'text': '多样通知，签到结果实时推送。'}
+                                                ]
+                                            },
+                                            {
+                                                'component': 'div',
+                                                'props': {
+                                                    'class': 'd-flex align-center mb-2'
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VIcon',
+                                                        'props': {
+                                                            'color': 'primary',
+                                                            'class': 'me-2'
+                                                        },
+                                                        'text': 'mdi-calendar'
+                                                    },
+                                                    {'component': 'span', 'text': '历史记录清晰可查，数据本地安全保存。'}
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        'component': 'VDivider',
+                                        'props': {
+                                            'class': 'my-4'
+                                        }
+                                    },
+                                    {
+                                        'component': 'div',
+                                        'props': {
+                                            'class': 'text-subtitle-1 font-weight-bold mb-3'
+                                        },
+                                        'content': [
+                                            {
+                                                'component': 'VIcon',
+                                                'props': {
+                                                    'color': 'primary',
+                                                    'class': 'me-2'
+                                                },
+                                                'text': 'mdi-cookie'
+                                            },
+                                            {
+                                                'component': 'span',
+                                                'text': '获取Cookie步骤：'
+                                            }
                                         ]
                                     },
                                     {
                                         'component': 'div',
+                                        'props': {
+                                            'class': 'ml-6'
+                                        },
                                         'content': [
-                                            {'component': 'span', 'text': '🚀 一键自动签到，省心省力。'}
+                                            {
+                                                'component': 'ol',
+                                                'props': {
+                                                    'class': 'mb-4'
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'li',
+                                                        'props': {
+                                                            'class': 'mb-2'
+                                                        },
+                                                        'content': [
+                                                            {
+                                                                'component': 'span',
+                                                                'text': '使用浏览器（建议使用Chrome或Edge）访问 '
+                                                            },
+                                                            {
+                                                                'component': 'a',
+                                                                'props': {
+                                                                    'href': 'https://bbs.cnlang.org/',
+                                                                    'target': '_blank',
+                                                                    'class': 'text-decoration-underline text-primary',
+                                                                    'style': 'transition: all 0.3s ease; text-decoration-thickness: 1px; text-underline-offset: 2px;'
+                                                                },
+                                                                'text': 'bbs.cnlang.org'
+                                                            },
+                                                            {
+                                                                'component': 'span',
+                                                                'text': ' 并登录您的账号'
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        'component': 'li',
+                                                        'props': {
+                                                            'class': 'mb-2'
+                                                        },
+                                                        'text': '按F12打开开发者工具（或右键点击页面，选择"检查"）'
+                                                    },
+                                                    {
+                                                        'component': 'li',
+                                                        'props': {
+                                                            'class': 'mb-2'
+                                                        },
+                                                        'text': '在开发者工具中，切换到"网络/Network"标签'
+                                                    },
+                                                    {
+                                                        'component': 'li',
+                                                        'props': {
+                                                            'class': 'mb-2'
+                                                        },
+                                                        'text': '刷新页面，在网络请求列表中找到 bbs.cnlang.org'
+                                                    },
+                                                    {
+                                                        'component': 'li',
+                                                        'props': {
+                                                            'class': 'mb-2'
+                                                        },
+                                                        'text': '点击该请求，在右侧详情中找到"请求标头/Headers"部分'
+                                                    },
+                                                    {
+                                                        'component': 'li',
+                                                        'props': {
+                                                            'class': 'mb-2'
+                                                        },
+                                                        'text': '找到"Cookie:"开头的行，复制整行Cookie值（不包含"Cookie:"前缀）'
+                                                    },
+                                                    {
+                                                        'component': 'li',
+                                                        'text': '将复制的Cookie值粘贴到插件的Cookie设置框中'
+                                                    }
+                                                ]
+                                            }
                                         ]
                                     },
                                     {
                                         'component': 'div',
+                                        'props': {
+                                            'class': 'mt-3 pa-4',
+                                            'style': 'background-color: rgba(var(--v-theme-warning), 0.1); border-radius: 8px;'
+                                        },
                                         'content': [
-                                            {'component': 'span', 'text': '🕒 灵活定时，支持自定义周期与随机延迟。'}
-                                        ]
-                                    },
-                                    {
-                                        'component': 'div',
-                                        'content': [
-                                            {'component': 'span', 'text': '🔔 多样通知，签到结果实时推送。'}
-                                        ]
-                                    },
-                                    {
-                                        'component': 'div',
-                                        'content': [
-                                            {'component': 'span', 'text': '📅 历史记录清晰可查，数据本地安全保存。'}
+                                            {
+                                                'component': 'div',
+                                                'props': {
+                                                    'class': 'd-flex align-center mb-3'
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VIcon',
+                                                        'props': {
+                                                            'color': 'warning',
+                                                            'class': 'me-2'
+                                                        },
+                                                        'text': 'mdi-alert'
+                                                    },
+                                                    {
+                                                        'component': 'span',
+                                                        'props': {
+                                                            'class': 'text-subtitle-1 font-weight-bold'
+                                                        },
+                                                        'text': '注意事项：'
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                'component': 'div',
+                                                'props': {
+                                                    'class': 'ml-8'
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'ul',
+                                                        'props': {
+                                                            'class': 'mb-0'
+                                                        },
+                                                        'content': [
+                                                            {
+                                                                'component': 'li',
+                                                                'props': {
+                                                                    'class': 'mb-2'
+                                                                },
+                                                                'text': 'Cookie通常会在一段时间后失效，如遇签到失败请更新Cookie'
+                                                            },
+                                                            {
+                                                                'component': 'li',
+                                                                'props': {
+                                                                    'class': 'mb-2'
+                                                                },
+                                                                'text': '请勿泄露您的Cookie给他人，以免账号被盗用'
+                                                            },
+                                                            {
+                                                                'component': 'li',
+                                                                'text': '建议开启通知功能，及时了解签到状态'
+                                                            }
+                                                        ]
+                                                    }
+                                                ]
+                                            }
                                         ]
                                     }
                                 ]
