@@ -38,11 +38,13 @@
     "name": "OpenWrt路由备份助手",
     "description": "为OpenWrt路由提供全自动的配置备份方案，支持本地保存和WebDAV云端备份。",
     "labels": "备份",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.webp",
     "author": "jinxi",
     "level": 2,
+    "requirements": ["paramiko>=2.12.0", "requests>=2.31.0", "pytz>=2023.3"],
     "history": {
+      "v1.0.1": "添加依赖声明，修复依赖缺失问题",
       "v1.0.0": "初始版本：支持SSH连接备份、本地/WebDAV存储、定时任务、通知提醒等功能"
     }
   }
