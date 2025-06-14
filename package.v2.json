@@ -33,5 +33,17 @@
       "v2.1": "增加多种通知样式，整体界面更美观。",
       "v2.0": "基于imaliang大佬插件二次开发，优化数据保存与界面，增加通知样式选择、历史记录保留等功能。"
     }
+  },
+  "OpenWrtBackup": {
+    "name": "OpenWrt路由备份助手",
+    "description": "为OpenWrt路由提供全自动的配置备份方案，支持本地保存和WebDAV云端备份。",
+    "labels": "备份",
+    "version": "1.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.webp",
+    "author": "jinxi",
+    "level": 2,
+    "history": {
+      "v1.0.0": "初始版本：支持SSH连接备份、本地/WebDAV存储、定时任务、通知提醒等功能"
+    }
   }
 } 
