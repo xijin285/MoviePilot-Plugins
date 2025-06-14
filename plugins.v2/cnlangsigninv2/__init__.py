@@ -25,7 +25,7 @@ class CnlangSigninV2(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png"
     # 插件版本
-    plugin_version = "2.5.6"
+    plugin_version = "2.5.7"
     # 插件作者
     plugin_author = "jinxi"
     # 作者主页
@@ -393,35 +393,62 @@ class CnlangSigninV2(_PluginBase):
         增加任务
         """
         try:
-            if self._scheduler and self._scheduler.running:
-                self._scheduler.shutdown(wait=False)
+            # 确保清理现有的调度器
+            if self._scheduler:
+                try:
+                    self._scheduler.remove_all_jobs()
+                    if self._scheduler.running:
+                        self._scheduler.shutdown(wait=False)
+                except:
+                    pass
+                self._scheduler = None
             
-            random_seconds = 5
-            if self._random_delay:
-                # 拆分字符串获取范围
-                start, end = map(int, self._random_delay.split('-'))
-                # 生成随机秒数
-                random_seconds = random.randint(start, end)
-
+            # 只有在启用状态且有 cron 表达式时才添加任务
+            if not (self._enabled and self._cron):
+                logger.info("国语视界签到服务未启用或未设置定时表达式")
+                return
+                
+            # 创建新的调度器
             self._scheduler = BackgroundScheduler(timezone=settings.TZ)
             
-            # 如果启用了定时任务，添加定时任务
-            if self._enabled and self._cron:
-                logger.info(f"添加定时签到任务，cron：{self._cron}")
-                self._scheduler.add_job(func=self.signin,
-                                      trigger=CronTrigger.from_crontab(self._cron),
-                                      name="国语视界定时签到",
-                                      id="cnlang_signin_cron")
+            # 获取随机延迟秒数
+            random_seconds = 5
+            if self._random_delay:
+                try:
+                    # 拆分字符串获取范围
+                    start, end = map(int, self._random_delay.split('-'))
+                    # 生成随机秒数
+                    random_seconds = random.randint(start, end)
+                except:
+                    logger.warning("随机延迟设置格式错误，将使用默认值5秒")
+
+            # 添加定时任务，确保任务ID唯一
+            self._scheduler.add_job(
+                func=self.signin,
+                trigger=CronTrigger.from_crontab(self._cron),
+                name="国语视界定时签到",
+                id="cnlang_signin_cron",
+                misfire_grace_time=random_seconds,  # 错过执行时间的容错时间
+                coalesce=True,  # 堆积的任务只运行一次
+                max_instances=1  # 限制任务的最大实例数为1
+            )
             
             # 启动任务
             if self._scheduler.get_jobs():
                 self._scheduler.print_jobs()
                 self._scheduler.start()
-                logger.info("国语视界签到服务已启动")
+                logger.info(f"国语视界签到服务已启动，随机延迟{random_seconds}秒")
+            else:
+                logger.warning("没有添加任何定时任务")
+                
         except Exception as e:
             logger.error(f"启动签到服务失败：{str(e)}")
+            # 确保出错时清理调度器
             if self._scheduler:
-                self._scheduler.shutdown(wait=False)
+                try:
+                    self._scheduler.shutdown(wait=False)
+                except:
+                    pass
                 self._scheduler = None
 
     def get_state(self) -> bool:
@@ -450,14 +477,7 @@ class CnlangSigninV2(_PluginBase):
         """
         注册插件公共服务
         """
-        if self._enabled and self._cron:
-            return [{
-                "id": "CnlangSignin",
-                "name": "国语视界签到服务",
-                "trigger": CronTrigger.from_crontab(self._cron),
-                "func": self.signin,  # 直接调用签到函数，而不是__add_task
-                "kwargs": {}
-            }]
+        # 由于在 init_plugin 中已经添加了定时任务，这里不需要重复注册
         return []
 
     def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
