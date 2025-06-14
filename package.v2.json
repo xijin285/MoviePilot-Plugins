@@ -5,7 +5,7 @@
     "labels": "备份",
     "version": "1.1.8",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
-    "author": "jinxi",
+    "author": "M.Jinxi",
     "level": 2,
     "history": {
       "v1.1.8": "新增一键清理历史记录功能，支持在插件页面一键清空备份历史。",
@@ -22,7 +22,7 @@
     "labels": "签到,自动化",
     "version": "2.5.7",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png",
-    "author": "jinxi",
+    "author": "M.Jinxi",
     "level": 2,
     "history": {
       "v2.5.7": "修复定时任务重复执行问题，优化任务管理机制，增加任务执行策略控制和错误处理。",
@@ -40,11 +40,24 @@
     "labels": "备份",
     "version": "1.0.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.webp",
-    "author": "jinxi",
+    "author": "M.Jinxi",
     "level": 2,
     "requirements": ["paramiko>=2.12.0", "requests>=2.31.0", "pytz>=2023.3"],
     "history": {
       "v1.0.0": "首个正式版本：支持SSH密码和密钥认证、本地/WebDAV备份、定时任务、多样通知、历史管理等功能"
+    }
+  },
+  "ProxmoxVEBackup": {
+    "name": "ProxmoxVE备份助手",
+    "description": "测试版本",
+    "labels": "备份",
+    "version": "99999.99999.99999",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp",
+    "author": "M.Jinxi",
+    "level": 2,
+    "requirements": ["requests>=2.31.0", "pytz>=2023.3", "urllib3>=2.0.7", "APScheduler>=3.10.1"],
+    "history": {
+      "v99999.99999.99999": "测试版本：支持Proxmox VE自动备份、本地/WebDAV备份、定时任务、多样通知、历史管理等功能"
     }
   }
 } 

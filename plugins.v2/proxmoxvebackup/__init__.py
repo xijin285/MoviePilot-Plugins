@@ -22,21 +22,21 @@ from app.log import logger
 from app.plugins import _PluginBase
 from app.schemas import NotificationType
 
-class IkuaiRouterBackup(_PluginBase):
+class ProxmoxVEBackup(_PluginBase):
     # 插件名称
-    plugin_name = "爱快路由备份助手"
+    plugin_name = "ProxmoxVE备份助手"
     # 插件描述
-    plugin_desc = "为爱快路由提供全自动的配置备份方案，支持本地保存和WebDAV云端备份。"
+    plugin_desc = "测试版本"
     # 插件图标
-    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
+    plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "1.1.8"
+    plugin_version = "99999.99999.99999"
     # 插件作者
     plugin_author = "M.Jinxi"
     # 作者主页
     author_url = "https://github.com/xijin285"
     # 插件配置项ID前缀
-    plugin_config_prefix = "ikuai_backup_"
+    plugin_config_prefix = "proxmox_backup_"
     # 加载顺序
     plugin_order = 10
     # 可使用的用户级别
@@ -57,12 +57,15 @@ class IkuaiRouterBackup(_PluginBase):
     _retry_interval: int = 60
     _notification_style: int = 1
     
-    _ikuai_url: str = ""
-    _ikuai_username: str = "admin"
-    _ikuai_password: str = ""
-    _enable_local_backup: bool = True  # 新增：本地备份开关
+    _proxmox_url: str = ""
+    _proxmox_token_id: str = ""
+    _proxmox_token_secret: str = ""
+    _proxmox_node: str = "pve"
+    _enable_local_backup: bool = True  # 本地备份开关
     _backup_path: str = ""
     _keep_backup_num: int = 7
+    _backup_vmid: str = ""  # 要备份的容器ID，逗号分隔
+    _storage_name: str = "local"  # 新增：存储名称
 
     # WebDAV配置属性
     _enable_webdav: bool = False
@@ -71,7 +74,7 @@ class IkuaiRouterBackup(_PluginBase):
     _webdav_password: str = ""
     _webdav_path: str = ""
     _webdav_keep_backup_num: int = 7
-    _clear_history: bool = False  # 新增：清理历史记录开关
+    _clear_history: bool = False  # 清理历史记录开关
 
     def init_plugin(self, config: Optional[dict] = None):
         self._lock = threading.Lock()
@@ -84,9 +87,11 @@ class IkuaiRouterBackup(_PluginBase):
             self._retry_count = int(config.get("retry_count", 3))
             self._retry_interval = int(config.get("retry_interval", 60))
             self._notification_style = int(config.get("notification_style", 1))
-            self._ikuai_url = str(config.get("ikuai_url", "")).rstrip('/')
-            self._ikuai_username = str(config.get("ikuai_username", "admin"))
-            self._ikuai_password = str(config.get("ikuai_password", ""))
+            self._proxmox_url = str(config.get("proxmox_url", "")).rstrip('/')
+            self._proxmox_token_id = str(config.get("proxmox_token_id", ""))
+            self._proxmox_token_secret = str(config.get("proxmox_token_secret", ""))
+            self._proxmox_node = str(config.get("proxmox_node", "pve"))
+            self._storage_name = str(config.get("storage_name", "local"))  # 新增
             self._enable_local_backup = bool(config.get("enable_local_backup", True))
             configured_backup_path = str(config.get("backup_path", "")).strip()
             if not configured_backup_path:
@@ -95,6 +100,7 @@ class IkuaiRouterBackup(_PluginBase):
             else:
                 self._backup_path = configured_backup_path
             self._keep_backup_num = int(config.get("keep_backup_num", 7))
+            self._backup_vmid = str(config.get("backup_vmid", ""))
             self._enable_webdav = bool(config.get("enable_webdav", False))
             self._webdav_url = str(config.get("webdav_url", ""))
             self._webdav_username = str(config.get("webdav_username", ""))
@@ -161,9 +167,12 @@ class IkuaiRouterBackup(_PluginBase):
             "onlyonce": self._onlyonce,
             "retry_count": self._retry_count,
             "retry_interval": self._retry_interval,
-            "ikuai_url": self._ikuai_url,
-            "ikuai_username": self._ikuai_username,
-            "ikuai_password": self._ikuai_password,
+            "proxmox_url": self._proxmox_url,
+            "proxmox_token_id": self._proxmox_token_id,
+            "proxmox_token_secret": self._proxmox_token_secret,
+            "proxmox_node": self._proxmox_node,
+            "storage_name": self._storage_name,  # 新增
+            "backup_vmid": self._backup_vmid,
             "enable_local_backup": self._enable_local_backup,  # 新增：本地备份开关
             "backup_path": self._backup_path,
             "keep_backup_num": self._keep_backup_num,
@@ -191,7 +200,7 @@ class IkuaiRouterBackup(_PluginBase):
             try:
                 if str(self._cron).strip().count(" ") == 4:
                     return [{
-                        "id": "IkuaiRouterBackupService",
+                        "id": "ProxmoxVEBackupService",
                         "name": f"{self.plugin_name}定时服务",
                         "trigger": CronTrigger.from_crontab(self._cron, timezone=settings.TZ),
                         "func": self.run_backup_job,
@@ -223,33 +232,139 @@ class IkuaiRouterBackup(_PluginBase):
                             {
                                 'component': 'VCardText',
                                 'content': [
+                                    # 开关行保持不变
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 3, 'sm': 3, 'md': 3, 'lg': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件', 'color': 'primary', 'prepend-icon': 'mdi-power'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 3, 'sm': 3, 'md': 3, 'lg': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info', 'prepend-icon': 'mdi-bell'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 3, 'sm': 3, 'md': 3, 'lg': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success', 'prepend-icon': 'mdi-play'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 3, 'sm': 3, 'md': 3, 'lg': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'clear_history', 'label': '清理历史记录', 'color': 'warning', 'prepend-icon': 'mdi-delete-sweep'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件', 'color': 'primary', 'prepend-icon': 'mdi-power'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info', 'prepend-inner-icon': 'mdi-bell'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success', 'prepend-inner-icon': 'mdi-play'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'clear_history', 'label': '清理历史记录', 'color': 'warning', 'prepend-inner-icon': 'mdi-delete-sweep'}}]},
                                         ],
                                     },
+                                    # 第一行：ProxmoxVE地址 | 执行周期
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_url', 'label': '爱快路由地址', 'placeholder': '例如: http://10.0.0.1', 'prepend-inner-icon': 'mdi-router-network'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VCronField', 'props': {'model': 'cron', 'label': '执行周期', 'prepend-inner-icon': 'mdi-clock-outline'}}]}
-                                        ],
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                                {'component': 'VTextField', 'props': {
+                                                    'model': 'proxmox_url',
+                                                    'label': 'ProxmoxVE地址',
+                                                    'placeholder': '例如: https://10.0.0.1:8006',
+                                                    'prepend-inner-icon': 'mdi-server'
+                                                }}
+                                            ]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                                {'component': 'VCronField', 'props': {
+                                                    'model': 'cron',
+                                                    'label': '执行周期',
+                                                    'prepend-inner-icon': 'mdi-clock-outline'
+                                                }}
+                                            ]}
+                                        ]
                                     },
+                                    # 第二行：存储名称 | 节点名称
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_username', 'label': '用户名', 'placeholder': '默认为 admin', 'prepend-inner-icon': 'mdi-account'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'ikuai_password', 'label': '密码', 'type': 'password', 'placeholder': '请输入密码', 'prepend-inner-icon': 'mdi-lock'}}]},
-                                        ],
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                                {'component': 'VTextField', 'props': {
+                                                    'model': 'storage_name',
+                                                    'label': '存储名称',
+                                                    'placeholder': '如 local、PVE，默认为 local',
+                                                    'prepend-inner-icon': 'mdi-database'
+                                                }}
+                                            ]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                                {'component': 'VTextField', 'props': {
+                                                    'model': 'proxmox_node',
+                                                    'label': '节点名称',
+                                                    'placeholder': '默认为 pve',
+                                                    'prepend-inner-icon': 'mdi-server-network'
+                                                }}
+                                            ]}
+                                        ]
+                                    },
+                                    # 第三行：API Token ID | API Token Secret
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                                {'component': 'VTextField', 'props': {
+                                                    'model': 'proxmox_token_id',
+                                                    'label': 'API Token ID',
+                                                    'placeholder': '例如: root@pam!backup',
+                                                    'prepend-inner-icon': 'mdi-key-variant'
+                                                }}
+                                            ]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                                {'component': 'VTextField', 'props': {
+                                                    'model': 'proxmox_token_secret',
+                                                    'label': 'API Token Secret',
+                                                    'type': 'password',
+                                                    'placeholder': '请输入Token密钥',
+                                                    'prepend-inner-icon': 'mdi-key'
+                                                }}
+                                            ]},
+                                            # 指引用户查看API Token获取方法
+                                            {'component': 'VCol', 'props': {'cols': 12}, 'content': [
+                                                {'component': 'VAlert', 'props': {
+                                                    'type': 'info',
+                                                    'variant': 'tonal',
+                                                    'class': 'mb-2'
+                                                },
+                                                'content': [
+                                                    {'component': 'VRow', 'props': {'no-gutters': True, 'align': 'center'}, 'content': [
+                                                        {'component': 'VCol', 'props': {'cols': 'auto'}, 'content': [
+                                                            {'component': 'VListItemSubtitle', 'text': '🔑 如何获取 API Token？请点击本插件目录下的 '}
+                                                        ]},
+                                                        {'component': 'VCol', 'props': {'cols': 'auto'}, 'content': [
+                                                            {'component': 'VBtn', 'props': {
+                                                                'variant': 'text',
+                                                                'size': 'small',
+                                                                'color': 'primary',
+                                                                'href': 'https://github.com/xijin285/MoviePilot-Plugins/blob/main/plugins.v2/proxmoxvebackup/README.md',
+                                                                'target': '_blank'
+                                                            }, 'text': 'README.md查看'}
+                                                        ]}
+                                                    ]}
+                                                ]}
+                                            ]}
+                                        ]
+                                    },
+                                    # 第四行：要备份的容器ID | 通知样式
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                                {'component': 'VTextField', 'props': {
+                                                    'model': 'backup_vmid',
+                                                    'label': '要备份的容器ID',
+                                                    'placeholder': '多个ID用英文逗号分隔，如102,103，留空则备份全部',
+                                                    'prepend-inner-icon': 'mdi-numeric'
+                                                }}
+                                            ]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                                {'component': 'VSelect', 'props': {
+                                                    'model': 'notification_style',
+                                                    'label': '通知样式',
+                                                    'items': [
+                                                        {'title': '简洁', 'value': 1},
+                                                        {'title': '详细', 'value': 2},
+                                                        {'title': '箭头风格', 'value': 3},
+                                                        {'title': '波浪风格', 'value': 4},
+                                                        {'title': '科技风格', 'value': 5},
+                                                    ],
+                                                    'prepend-inner-icon': 'mdi-message-text'
+                                                }}
+                                            ]}
+                                        ]
                                     },
                                 ]
                             }
                         ]
                     },
+                    # 本地备份设置卡片
                     {
                         'component': 'VCard',
                         'props': {'variant': 'outlined', 'class': 'mb-4'},
@@ -257,7 +372,7 @@ class IkuaiRouterBackup(_PluginBase):
                             {
                                 'component': 'VCardTitle',
                                 'props': {'class': 'text-h6'},
-                                'text': '📦 备份设置'
+                                'text': '💾 本地备份设置'
                             },
                             {
                                 'component': 'VCardText',
@@ -265,23 +380,21 @@ class IkuaiRouterBackup(_PluginBase):
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enable_local_backup', 'label': '启用本地备份', 'color': 'primary', 'prepend-icon': 'mdi-folder-home'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'backup_path', 'label': '备份文件存储路径', 'placeholder': f'默认为{default_backup_location_desc}', 'prepend-inner-icon': 'mdi-folder'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enable_local_backup', 'label': '启用本地备份', 'color': 'primary', 'prepend-icon': 'mdi-folder'}}]},
                                         ],
                                     },
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VTextField', 'props': {'model': 'keep_backup_num', 'label': '备份保留数量', 'type': 'number', 'placeholder': '例如: 7', 'prepend-inner-icon': 'mdi-counter'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_count', 'label': '最大重试次数', 'type': 'number', 'placeholder': '3', 'prepend-inner-icon': 'mdi-refresh'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VTextField', 'props': {'model': 'retry_interval', 'label': '重试间隔(秒)', 'type': 'number', 'placeholder': '60', 'prepend-inner-icon': 'mdi-timer'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3}, 'content': [{'component': 'VSelect', 'props': {'model': 'notification_style', 'label': '通知样式', 'items': [{'title': '简约星线', 'value': 1}, {'title': '方块花边', 'value': 2}, {'title': '箭头主题', 'value': 3}, {'title': '波浪边框', 'value': 4}, {'title': '科技风格', 'value': 5}], 'prepend-inner-icon': 'mdi-palette'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'backup_path', 'label': '备份文件存储路径', 'placeholder': '留空则使用默认路径', 'prepend-inner-icon': 'mdi-folder-open'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'keep_backup_num', 'label': '本地备份保留数量', 'type': 'number', 'placeholder': '例如: 7', 'prepend-inner-icon': 'mdi-counter'}}]},
                                         ],
                                     },
                                 ]
                             }
                         ]
                     },
+                    # WebDAV远程备份设置卡片
                     {
                         'component': 'VCard',
                         'props': {'variant': 'outlined', 'class': 'mb-4'},
@@ -297,21 +410,26 @@ class IkuaiRouterBackup(_PluginBase):
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enable_webdav', 'label': '启用WebDAV远程备份', 'color': 'primary', 'prepend-icon': 'mdi-cloud-sync'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_url', 'label': 'WebDAV服务器地址', 'placeholder': '例如: https://dav.example.com', 'prepend-inner-icon': 'mdi-cloud'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enable_webdav', 'label': '启用WebDAV备份', 'color': 'primary', 'prepend-icon': 'mdi-cloud-upload'}}]},
                                         ],
                                     },
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_username', 'label': 'WebDAV用户名', 'placeholder': '请输入WebDAV用户名', 'prepend-inner-icon': 'mdi-account-key'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_password', 'label': 'WebDAV密码', 'type': 'password', 'placeholder': '请输入WebDAV密码', 'prepend-inner-icon': 'mdi-lock-check'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 12}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_url', 'label': 'WebDAV服务器地址', 'placeholder': '例如: https://dav.jianguoyun.com/dav/', 'prepend-inner-icon': 'mdi-cloud'}}]},
                                         ],
                                     },
                                     {
                                         'component': 'VRow',
                                         'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_path', 'label': 'WebDAV备份路径', 'placeholder': '例如: /backups/ikuai', 'prepend-inner-icon': 'mdi-folder-network'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_username', 'label': 'WebDAV用户名', 'placeholder': '请输入用户名', 'prepend-inner-icon': 'mdi-account'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_password', 'label': 'WebDAV密码', 'type': 'password', 'placeholder': '请输入密码', 'prepend-inner-icon': 'mdi-lock'}}]},
+                                        ],
+                                    },
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 8}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_path', 'label': 'WebDAV备份路径', 'placeholder': '例如: /backups/proxmox', 'prepend-inner-icon': 'mdi-folder-network'}}]},
                                             {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [{'component': 'VTextField', 'props': {'model': 'webdav_keep_backup_num', 'label': 'WebDAV备份保留数量', 'type': 'number', 'placeholder': '例如: 7', 'prepend-inner-icon': 'mdi-counter'}}]},
                                         ],
                                     },
@@ -326,18 +444,45 @@ class IkuaiRouterBackup(_PluginBase):
                             {
                                 'component': 'VCardTitle',
                                 'props': {'class': 'text-h6'},
-                                'text': '📖 使用说明'
+                                'text': '📖 插件使用说明'
                             },
                             {
                                 'component': 'VCardText',
                                 'content': [
+                                    # 基础使用说明
                                     {
                                         'component': 'VAlert',
                                         'props': {
                                             'type': 'info',
                                             'variant': 'tonal',
-                                            'text': f'【使用说明】\n1. 填写爱快路由的访问地址、用户名和密码。\n2. 备份文件存储路径：可留空，默认为{default_backup_location_desc}。或指定一个绝对路径。确保MoviePilot有权访问和写入此路径。\n3. 设置执行周期，例如每天凌晨3点执行 (0 3 * * *)。\n4. 设置备份文件保留数量，旧的备份会被自动删除。\n5. 可选开启通知，在备份完成后收到结果通知，并可选择不同通知样式。\n6. WebDAV远程备份：\n   - 启用后，备份文件会同时上传到WebDAV服务器\n   - 填写WebDAV服务器地址、用户名和密码\n   - 设置WebDAV备份路径和保留数量\n   - 支持常见的WebDAV服务，如坚果云、NextCloud等\n7. 启用插件并保存即可。\n8. 备份文件将以.bak后缀保存。',
                                             'class': 'mb-2'
+                                        },
+                                        'content': [
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemTitle', 'text': '🌟 【基础使用说明】'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ① 填写 ProxmoxVE 地址（含端口号，默认8006）'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ② 节点名称默认为 pve（如有多个节点请填写实际名称）'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ③ 存储名称默认为 local（如有自定义请填写实际名称）'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ④ 备份文件存储路径可留空（默认为 actual_backups 子目录）'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ⑤ 设置执行周期（例如：每天凌晨3点执行 0 3 * * *）'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ⑥ 设置本地/云端备份保留数量（旧备份将自动删除）'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ⑦ 可选开启通知，支持多种通知样式'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ⑧ WebDAV远程备份支持坚果云、NextCloud等'}]},
+                                            {'component': 'VListItem', 'content': [{'component': 'VListItemSubtitle', 'text': ' ⑨ 启用插件并保存，备份文件以 .tar.gz / .tar.zst 等格式保存'}]},
+                                        ]
+                                    },
+                                    # 关键注意事项高亮
+                                    {
+                                        'component': 'VAlert',
+                                        'props': {
+                                            'type': 'warning',
+                                            'variant': 'tonal',
+                                            'class': 'mb-2',
+                                            'text': (
+                                                '⚠️ 注意事项：\n\n'
+                                                '- Token 权限不足会导致认证失败或部分功能不可用。\n\n'
+                                                '- 建议为备份助手单独创建 Token，避免泄露主账户密码。\n\n'
+                                                '- 如遇"权限不足"或"认证失败"，请检查 Token 权限和 ID/Secret 填写是否正确。'
+                                            )
                                         }
                                     }
                                 ]
@@ -347,11 +492,29 @@ class IkuaiRouterBackup(_PluginBase):
                 ]
             }
         ], {
-            "enabled": False, "notify": False, "cron": "0 3 * * *", "onlyonce": False,
-            "retry_count": 3, "retry_interval": 60, "ikuai_url": "", "ikuai_username": "admin",
-            "ikuai_password": "", "enable_local_backup": True, "backup_path": "", "keep_backup_num": 7,
-            "notification_style": 1, "enable_webdav": False, "webdav_url": "", "webdav_username": "",
-            "webdav_password": "", "webdav_path": "", "webdav_keep_backup_num": 7, "clear_history": False
+            "enabled": False,
+            "notify": False,
+            "cron": "0 3 * * *",
+            "onlyonce": False,
+            "retry_count": 3,
+            "retry_interval": 60,
+            "proxmox_url": "",
+            "proxmox_token_id": "",
+            "proxmox_token_secret": "",
+            "proxmox_node": "pve",
+            "storage_name": "local",  # 新增
+            "backup_vmid": "",
+            "enable_local_backup": True,
+            "backup_path": "",
+            "keep_backup_num": 7,
+            "notification_style": 1,
+            "enable_webdav": False,
+            "webdav_url": "",
+            "webdav_username": "",
+            "webdav_password": "",
+            "webdav_path": "",
+            "webdav_keep_backup_num": 7,
+            "clear_history": False
         }
 
     def get_page(self) -> List[dict]:
@@ -399,7 +562,7 @@ class IkuaiRouterBackup(_PluginBase):
                     {
                         "component": "VCardTitle",
                         "props": {"class": "text-h6"},
-                        "text": "📊 爱快路由备份历史"
+                        "text": "📊 ProxmoxVE备份历史"
                     },
                     {
                         "component": "VCardText",
@@ -477,8 +640,8 @@ class IkuaiRouterBackup(_PluginBase):
             self._running = True
             logger.info(f"开始执行 {self.plugin_name} 任务...")
 
-            if not self._ikuai_url or not self._ikuai_username or not self._ikuai_password:
-                error_msg = "配置不完整：URL、用户名或密码未设置。"
+            if not self._proxmox_url or not self._proxmox_token_id or not self._proxmox_token_secret:
+                error_msg = "配置不完整：URL、Token ID或Token Secret未设置。"
                 logger.error(f"{self.plugin_name} {error_msg}")
                 self._send_notification(success=False, message=error_msg)
                 history_entry["message"] = error_msg
@@ -545,272 +708,195 @@ class IkuaiRouterBackup(_PluginBase):
             logger.info(f"{self.plugin_name} 任务执行完成。")
 
     def _perform_backup_once(self) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        执行一次备份操作
+        :return: (是否成功, 错误消息, 备份文件名)
+        """
+        # 准备会话
         session = requests.Session()
-        retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
-        session.mount('http://', HTTPAdapter(max_retries=retries))
-        session.mount('https://', HTTPAdapter(max_retries=retries))
-
-        # Consistent User-Agent for all requests in this session
-        browser_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0"
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=0.3,
+            status_forcelist=[500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        
+        browser_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         session.headers.update({"User-Agent": browser_user_agent})
         
-        sess_key_part = self._login_ikuai(session)
-        if not sess_key_part:
-            return False, "登录爱快路由失败，无法获取SESS_KEY", None
+        # 获取认证令牌
+        auth_token = self._login_proxmox(session)
+        if not auth_token:
+            return False, "登录ProxmoxVE失败，无法获取认证令牌", None
         
-        # Cookie is set on the session for subsequent requests
-        cookie_string = f"username={quote(self._ikuai_username)}; {sess_key_part}; login=1"
-        session.headers.update({"Cookie": cookie_string})
+        # 设置认证头
+        session.headers.update({"Authorization": f"PVEAPIToken={self._proxmox_token_id}={self._proxmox_token_secret}"})
         
-        create_success, create_msg = self._create_backup_on_router(session)
-        if not create_success:
-            return False, f"创建备份失败: {create_msg}", None
-        logger.info(f"{self.plugin_name} 成功触发创建备份。等待2秒让备份生成和准备就绪...")
-        time.sleep(2)
-
-        backup_list = self._get_backup_list(session)
-        if backup_list is None:
-             return False, "获取备份文件列表时出错 (在下载前调用)", None
-        if not backup_list:
-            return False, "路由器上没有找到任何备份文件 (在下载前获取列表为空)", None
+        # 生成本地备份文件名
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        local_display_and_saved_filename = f"proxmox_backup_{timestamp}.tar.gz"
         
-        latest_backup = backup_list[0]
-        actual_router_filename_from_api = latest_backup.get("name")
-        if not actual_router_filename_from_api:
-            return False, "无法从备份列表中获取最新备份的文件名", None
-            
-        # Filename to be used in the download URL is exactly what the API provided.
-        filename_for_download_url = actual_router_filename_from_api
-        
-        # Determine the local filename, ensuring it has a .bak extension.
-        base_name_for_local_file = os.path.splitext(actual_router_filename_from_api)[0]
-        local_display_and_saved_filename = base_name_for_local_file + ".bak"
-        
-        local_filepath_to_save = Path(self._backup_path) / local_display_and_saved_filename
-
-        logger.info(f"{self.plugin_name} API列表最新备份名: {actual_router_filename_from_api}. 将尝试以此名下载.")
-        logger.info(f"{self.plugin_name} 最终本地保存文件名将为: {local_display_and_saved_filename}")
-
-        # Send EXPORT request before downloading
-        export_payload = {
-            "func_name": "backup",
-            "action": "EXPORT",
-            "param": { "srcfile": local_display_and_saved_filename }
-        }
-        export_url = urljoin(self._ikuai_url, "/Action/call")
+        # 确保备份目录存在
         try:
-            logger.info(f"{self.plugin_name} 尝试向 {export_url} 发送 EXPORT 请求...")
-            response = session.post(export_url, data=json.dumps(export_payload), headers={'Content-Type': 'application/json'}, timeout=10)
-            response.raise_for_status()
-            logger.info(f"{self.plugin_name} EXPORT 请求发送成功。响应: {response.text[:200]}")
-        except requests.exceptions.RequestException as e:
-            error_detail = f"尝试向 {export_url} 发送 EXPORT 请求失败: {e}"
-            logger.error(f"{self.plugin_name} {error_detail}")
-            return False, error_detail, None
-
-        # 根据本地备份开关决定是否执行本地备份
-        if self._enable_local_backup:
-            if not self._backup_path:
-                return False, "本地备份已启用但备份路径未配置且无法设置默认路径", None
-
-            try:
-                Path(self._backup_path).mkdir(parents=True, exist_ok=True)
-            except Exception as e:
-                return False, f"创建本地备份目录失败: {e}", None
-
-            download_success, download_msg = self._download_backup_file(session, filename_for_download_url, str(local_filepath_to_save))
-            if not download_success:
-                error_detail = f"尝试下载 {filename_for_download_url} (API原始名: {actual_router_filename_from_api}) 失败: {download_msg}"
-                return False, error_detail, None
-            
-            logger.info(f"{self.plugin_name} 备份文件 {local_display_and_saved_filename} 已成功下载自 {filename_for_download_url} 并保存到 {local_filepath_to_save}")
-            
-            # 清理本地旧备份
-            self._cleanup_old_backups()
-        else:
-            logger.info(f"{self.plugin_name} 本地备份已禁用，跳过本地备份步骤")
-
-        # 如果启用了WebDAV，上传到WebDAV服务器
-        if self._enable_webdav:
-            if self._enable_local_backup:
-                # 如果启用了本地备份，使用已下载的文件上传
-                webdav_success, webdav_msg = self._upload_to_webdav(str(local_filepath_to_save), local_display_and_saved_filename)
-            else:
-                # 如果禁用了本地备份，需要先下载到临时文件再上传
-                temp_dir = Path(self.get_data_path()) / "temp"
-                temp_dir.mkdir(parents=True, exist_ok=True)
-                temp_filepath = temp_dir / local_display_and_saved_filename
-                
-                download_success, download_msg = self._download_backup_file(session, filename_for_download_url, str(temp_filepath))
-                if not download_success:
-                    error_detail = f"尝试下载临时文件用于WebDAV上传失败: {download_msg}"
-                    return False, error_detail, None
-                
-                webdav_success, webdav_msg = self._upload_to_webdav(str(temp_filepath), local_display_and_saved_filename)
-                
-                # 删除临时文件
-                try:
-                    temp_filepath.unlink()
-                except Exception as e:
-                    logger.warning(f"{self.plugin_name} 删除临时文件失败: {e}")
-
-            if webdav_success:
-                logger.info(f"{self.plugin_name} 成功上传备份到WebDAV服务器")
-                # 清理WebDAV上的旧备份
-                self._cleanup_webdav_backups()
-            else:
-                logger.error(f"{self.plugin_name} 上传备份到WebDAV服务器失败: {webdav_msg}")
-                return False, f"WebDAV上传失败: {webdav_msg}", None
-
-        return True, None, local_display_and_saved_filename
-
-    def _login_ikuai(self, session: requests.Session) -> Optional[str]:
-        login_url = urljoin(self._ikuai_url, "/Action/login")
-        password_md5 = hashlib.md5(self._ikuai_password.encode('utf-8')).hexdigest()
-        login_data = {"username": self._ikuai_username, "passwd": password_md5}
-        try:
-            logger.info(f"{self.plugin_name} 尝试登录到 {self._ikuai_url}...")
-            response = session.post(login_url, data=json.dumps(login_data), headers={'Content-Type': 'application/json'}, timeout=10)
-            response.raise_for_status()
-            cookies = response.cookies
-            sess_key_value = cookies.get("sess_key")
-            if sess_key_value:
-                logger.info(f"{self.plugin_name} 登录成功，获取到 sess_key。")
-                return f"sess_key={sess_key_value}"
-            set_cookie_header = response.headers.get('Set-Cookie')
-            if set_cookie_header:
-                match = re.search(r'sess_key=([^;]+)', set_cookie_header)
-                if match:
-                    logger.info(f"{self.plugin_name} 登录成功，从Set-Cookie头获取到 sess_key。")
-                    return f"sess_key={match.group(1)}"
-            logger.error(f"{self.plugin_name} 登录成功但未能从Cookie或头部提取 sess_key。响应: {response.text[:200]}")
-            return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"{self.plugin_name} 登录请求失败: {e}")
-            return None
+            Path(self._backup_path).mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            logger.error(f"{self.plugin_name} 登录过程中发生未知错误: {e}")
-            return None
-
-    def _create_backup_on_router(self, session: requests.Session) -> Tuple[bool, Optional[str]]:
-        create_url = urljoin(self._ikuai_url, "/Action/call")
-        backup_data = {"func_name": "backup", "action": "create", "param": {}}
-        try:
-            logger.info(f"{self.plugin_name} 尝试在 {self._ikuai_url} 创建新备份...")
-            request_headers = {
-                'Content-Type': 'application/json',
-                'Accept': '*/*',
-                'Origin': self._ikuai_url.rstrip('/'),
-                'Referer': self._ikuai_url.rstrip('/') + '/'
-            }
-            # User-Agent and Cookie are on session.headers
-            response = session.post(create_url, data=json.dumps(backup_data), headers=request_headers, timeout=30)
-            response.raise_for_status()
-            response_text = response.text.strip().lower()
-            if "success" in response_text or response_text == '"success"':
-                 logger.info(f"{self.plugin_name} 备份创建请求发送成功。响应: {response_text}")
-                 return True, None
-            try:
-                res_json = response.json()
-                if res_json.get("result") == 30000 and res_json.get("errmsg", "").lower() == "success":
-                    logger.info(f"{self.plugin_name} 备份创建请求成功 (JSON)。响应: {res_json}")
-                    return True, None
+            error_msg = f"创建备份目录失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg, None
+            
+        local_filepath = os.path.join(self._backup_path, local_display_and_saved_filename)
+        
+        # 创建备份
+        success, error_msg = self._create_backup_on_proxmox(session)
+        if not success:
+            return False, error_msg, None
+            
+        # 下载备份文件
+        success, error_msg, downloaded_file = self._download_backup_file(session)
+        if not success:
+            return False, error_msg, None
+            
+        # 清理旧的备份文件
+        self._cleanup_old_backups()
+        
+        # 如果启用了WebDAV，上传到WebDAV
+        if self._enable_webdav and self._webdav_url:
+            webdav_success, webdav_error = self._upload_to_webdav(local_filepath, local_display_and_saved_filename)
+            if not webdav_success:
+                logger.error(f"{self.plugin_name} WebDAV上传失败: {webdav_error}")
+                # 继续执行，不影响主流程
                 
-                err_msg = res_json.get("errmsg")
-                if not err_msg:
-                    err_msg = res_json.get("ErrMsg", "创建备份API未返回成功或指定错误信息")
+            # 清理WebDAV上的旧备份
+            self._cleanup_webdav_backups()
+            
+        return True, None, downloaded_file
 
-                logger.error(f"{self.plugin_name} 备份创建失败 (JSON)。响应: {res_json}, 错误: {err_msg}")
-                return False, f"路由器返回错误: {err_msg}"
-            except json.JSONDecodeError:
-                logger.error(f"{self.plugin_name} 备份创建失败，非JSON响应且不含 'success'。响应: {response_text}")
-                return False, f"路由器返回非预期响应: {response_text[:100]}"
-        except requests.exceptions.Timeout:
-            logger.warning(f"{self.plugin_name} 创建备份请求超时。备份可能仍在后台进行。")
-            return True, "请求超时，但备份可能已开始创建"
-        except requests.exceptions.RequestException as e:
-            logger.error(f"{self.plugin_name} 创建备份请求失败: {e}")
-            return False, str(e)
-        except Exception as e:
-            logger.error(f"{self.plugin_name} 创建备份过程中发生未知错误: {e}")
-            return False, str(e)
-
-    def _get_backup_list(self, session: requests.Session) -> Optional[List[Dict]]:
-        list_url = urljoin(self._ikuai_url, "/Action/call")
-        list_data = {"func_name": "backup", "action": "show", "param": {"ORDER": "desc", "ORDER_BY": "time", "LIMIT": "0,50"}}
+    def _login_proxmox(self, session: requests.Session) -> Optional[str]:
+        """
+        登录到ProxmoxVE并获取认证令牌（API Token方式）
+        :param session: requests会话对象
+        :return: 认证令牌或None(如果失败)
+        """
+        if not self._proxmox_token_id or not self._proxmox_token_secret:
+            logger.error(f"{self.plugin_name} API Token未配置")
+            return None
+        session.headers.update({
+            'Authorization': f'PVEAPIToken={self._proxmox_token_id}={self._proxmox_token_secret}'
+        })
         try:
-            logger.info(f"{self.plugin_name} 尝试从 {self._ikuai_url} 获取备份列表...")
-            request_headers = {
-                'Content-Type': 'application/json',
-                'Accept': '*/*',
-                'Origin': self._ikuai_url.rstrip('/'),
-                'Referer': self._ikuai_url.rstrip('/') + '/'
-            }
-            # User-Agent and Cookie are on session.headers
-            response = session.post(list_url, data=json.dumps(list_data), headers=request_headers, timeout=15)
-            response.raise_for_status()
-            res_json = response.json()
-            if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
-                data = res_json.get("Data", {})
-                backup_items = data.get("data", [])
-                if isinstance(backup_items, list) and backup_items:
-                    logger.info(f"{self.plugin_name} 成功获取到 {len(backup_items)} 条备份记录。")
-                    return backup_items
-                else:
-                    logger.warning(f"{self.plugin_name} 获取备份列表成功，但列表为空或格式不正确。Data content: {data}")
-                    return []
+            test_url = urljoin(self._proxmox_url, "/api2/json/access/ticket")
+            response = session.get(test_url, verify=False, timeout=10)
+            if response.status_code == 200:
+                logger.info(f"{self.plugin_name} API Token认证成功")
+                return "TOKEN_AUTH"
             else:
-                err_msg = res_json.get("ErrMsg") or res_json.get("errmsg", "获取列表API未返回成功或指定错误信息")
-                logger.error(f"{self.plugin_name} 获取备份列表失败。响应: {res_json}, 错误: {err_msg}")
+                logger.error(f"{self.plugin_name} API Token认证失败: {response.status_code}")
                 return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"{self.plugin_name} 获取备份列表请求失败: {e}")
-            return None
-        except json.JSONDecodeError:
-            logger.error(f"{self.plugin_name} 获取备份列表响应非JSON格式: {response.text[:200]}")
-            return None
         except Exception as e:
-            logger.error(f"{self.plugin_name} 获取备份列表过程中发生未知错误: {e}")
+            logger.error(f"{self.plugin_name} API Token验证失败: {str(e)}")
             return None
 
-    def _download_backup_file(self, session: requests.Session, router_filename: str, local_filepath_to_save: str) -> Tuple[bool, Optional[str]]:
-        safe_router_filename = quote(router_filename)
-        
-        # Only use /Action/download URL as per user instruction
-        download_url = urljoin(self._ikuai_url, f"/Action/download?filename={safe_router_filename}")
-        last_error = None
-
-        # Mimic browser headers for GET download request
-        request_headers = {
-            "Referer": self._ikuai_url.rstrip('/') + "/",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            # User-Agent and Cookie are handled by the session object automatically
+    def _create_backup_on_proxmox(self, session: requests.Session) -> Tuple[bool, Optional[str]]:
+        """
+        在ProxmoxVE上创建备份
+        :param session: requests会话对象
+        :return: (是否成功, 错误消息)
+        """
+        backup_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/vzdump")
+        backup_params = {
+            "compress": "gzip",  # 使用gzip压缩
+            "mode": "snapshot",  # 使用快照模式
+            "remove": "0",  # 不删除旧备份
         }
-
-        logger.info(f"{self.plugin_name} 尝试下载备份文件 {router_filename} 从 {download_url}, 保存到 {local_filepath_to_save}...")
+        # 新增：如果指定了容器ID，则只备份这些，否则备份全部
+        if self._backup_vmid.strip():
+            backup_params["vmid"] = self._backup_vmid.strip()
+        else:
+            backup_params["all"] = "1"
         try:
-            # session.get will use session.headers (Cookie, UA) and merge/override with request_headers (Referer, Accept)
-            with session.get(download_url, stream=True, timeout=300, headers=request_headers) as r:
-                r.raise_for_status()
-                # No need to check content_type for HTML error page here, as we are only trying one URL that should directly serve the file or give a proper HTTP error.
-                
-                with open(local_filepath_to_save, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                logger.info(f"{self.plugin_name} 文件 {router_filename} 下载完成，保存至 {local_filepath_to_save}")
+            logger.info(f"{self.plugin_name} 尝试在 {self._proxmox_url} 创建新备份... (参数: {backup_params})")
+            response = session.post(backup_url, params=backup_params, verify=False)
+            response.raise_for_status()
+            result = response.json()
+            if result.get("data"):
                 return True, None
-        except requests.exceptions.HTTPError as e:
-            last_error = f"HTTP错误 ({e.response.status_code}) 从 {download_url}: {e}"
-            logger.warning(f"{self.plugin_name} 下载 {router_filename} 从 {download_url} 失败: {last_error}")
+            else:
+                error_msg = "创建备份失败: 服务器返回空数据"
+                logger.error(f"{self.plugin_name} {error_msg}")
+                return False, error_msg
         except requests.exceptions.RequestException as e:
-            last_error = f"请求错误从 {download_url}: {e}"
-            logger.warning(f"{self.plugin_name} 下载 {router_filename} 从 {download_url} 失败: {last_error}")
-        except Exception as e:
-            last_error = f"未知错误从 {download_url}: {e}"
-            logger.error(f"{self.plugin_name} 下载 {router_filename} 从 {download_url} 过程中发生未知错误: {last_error}")
-        
-        logger.error(f"{self.plugin_name} 尝试下载 {router_filename} 失败。最后错误: {last_error}")
-        return False, last_error
+            error_msg = f"创建备份请求失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg
+        except json.JSONDecodeError as e:
+            error_msg = f"解析创建备份响应失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg
+            
+    def _download_backup_file(self, session: requests.Session, local_filepath: str = None) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        从ProxmoxVE下载最新的备份文件
+        :param session: requests会话对象
+        :param local_filepath: 本地保存路径（已废弃，自动用真实文件名）
+        :return: (是否成功, 错误消息, 真实文件名)
+        """
+        # 获取本地存储内容
+        list_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/storage/{self._storage_name}/content")
+        try:
+            logger.info(f"{self.plugin_name} 尝试获取本地存储备份文件列表...")
+            response = session.get(list_url, verify=False)
+            response.raise_for_status()
+            result = response.json()
+            if not result.get("data"):
+                error_msg = "获取本地存储内容失败: 服务器返回空数据"
+                logger.error(f"{self.plugin_name} {error_msg}")
+                return False, error_msg, None
+            # 过滤出vzdump备份文件（支持tar.gz、tar.lzo、tar.zst等）
+            backup_files = [
+                f for f in result["data"]
+                if f.get("content") == "backup" and f.get("volid") and (
+                    f.get("volid").endswith(".tar.gz") or f.get("volid").endswith(".tar.lzo") or f.get("volid").endswith(".tar.zst")
+                )
+            ]
+            if not backup_files:
+                error_msg = "未找到可下载的vzdump备份文件"
+                logger.error(f"{self.plugin_name} {error_msg}")
+                return False, error_msg, None
+            # 按ctime排序，取最新
+            latest_backup = sorted(backup_files, key=lambda x: x.get("ctime", 0), reverse=True)[0]
+            backup_volid = latest_backup.get("volid")
+            backup_name = latest_backup.get("name") or backup_volid.split(':')[-1]
+            if not backup_volid or not backup_name:
+                error_msg = "无法获取最新备份文件的volid或文件名"
+                logger.error(f"{self.plugin_name} {error_msg}")
+                return False, error_msg, None
+            # 下载备份文件
+            download_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/storage/{self._storage_name}/content/{backup_volid}")
+            logger.info(f"{self.plugin_name} 开始下载备份文件: {backup_name}")
+            local_filepath_real = os.path.join(self._backup_path, backup_name)
+            # 新增：自动创建所有父目录
+            os.makedirs(os.path.dirname(local_filepath_real), exist_ok=True)
+            with session.get(download_url, verify=False, stream=True) as response:
+                response.raise_for_status()
+                with open(local_filepath_real, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+            return True, None, backup_name
+        except requests.exceptions.RequestException as e:
+            error_msg = f"下载备份文件失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg, None
+        except (json.JSONDecodeError, KeyError) as e:
+            error_msg = f"解析本地存储内容失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg, None
+        except IOError as e:
+            error_msg = f"保存备份文件失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg, None
 
     def _cleanup_old_backups(self):
         if not self._backup_path or self._keep_backup_num <= 0: return
@@ -1280,7 +1366,7 @@ class IkuaiRouterBackup(_PluginBase):
             text_content = f"{divider}\n"
             
         text_content += f"{status_prefix} 状态：{status_emoji} {'备份成功' if success else '备份失败'}\n\n"
-        text_content += f"{router_prefix} 路由：{self._ikuai_url}\n"
+        text_content += f"{router_prefix} 路由：{self._proxmox_url}\n"
         if filename:
             text_content += f"{file_prefix} 文件：{filename}\n"
         if message:
