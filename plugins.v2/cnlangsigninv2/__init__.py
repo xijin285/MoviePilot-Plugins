@@ -25,7 +25,7 @@ class CnlangSigninV2(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png"
     # 插件版本
-    plugin_version = "2.5.7"
+    plugin_version = "2.5.8"
     # 插件作者
     plugin_author = "M.Jinxi"
     # 作者主页
@@ -48,6 +48,7 @@ class CnlangSigninV2(_PluginBase):
     _random_delay = None
     _clear = False
     _notify_style = None
+    _use_proxy = False
     # 定时器
     _scheduler: Optional[BackgroundScheduler] = None
     # 基础域名
@@ -68,6 +69,7 @@ class CnlangSigninV2(_PluginBase):
             self._random_delay = config.get("random_delay")
             self._clear = config.get("clear")
             self._notify_style = config.get("notify_style")
+            self._use_proxy = config.get("use_proxy", False)
 
         # 清除历史
         if self._clear:
@@ -112,7 +114,8 @@ class CnlangSigninV2(_PluginBase):
             "history_days": self._history_days,
             "random_delay": self._random_delay,
             "clear": self._clear,
-            "notify_style": self._notify_style
+            "notify_style": self._notify_style,
+            "use_proxy": self._use_proxy
         })
 
     def __send_fail_msg(self, text):
@@ -264,7 +267,9 @@ class CnlangSigninV2(_PluginBase):
                    'Cookie': self._cookie,
                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36 Edg/97.0.1072.62'}
 
-        res = RequestUtils(headers=headers).get_res(
+        logger.info("开始签到...")
+        logger.info("步骤1: 获取签到页面信息 (使用代理)..." if self._use_proxy else "步骤1: 获取签到页面信息...")
+        res = RequestUtils(headers=headers, proxies=self.__get_proxies()).get_res(
             url='https://' + _url + '/dsu_paulsign-sign.html?mobile=no')
         if not res or res.status_code != 200:
             self.__send_fail_msg("获取基本信息失败-status_code=" + str(res.status_code if res else "无响应"))
@@ -333,8 +338,8 @@ class CnlangSigninV2(_PluginBase):
             "fastreply": "0",
         }
 
-        # 开始签到
-        res = RequestUtils(headers=headers).post_res(
+        logger.info("步骤2: 提交签到请求 (使用代理)..." if self._use_proxy else "步骤2: 提交签到请求...")
+        res = RequestUtils(headers=headers, proxies=self.__get_proxies()).post_res(
             url=f"https://{_url}/{qd_url}", data=qd_data)
         if not res or res.status_code != 200:
             self.__send_fail_msg("请求签到接口失败-status_code=" + str(res.status_code if res else "无响应"))
@@ -352,8 +357,8 @@ class CnlangSigninV2(_PluginBase):
             self.__send_fail_msg("获取签到后的响应内容失败")
             return
 
-        # 获取积分
-        user_info = RequestUtils(headers=headers).get_res(
+        logger.info("步骤3: 获取积分信息 (使用代理)..." if self._use_proxy else "步骤3: 获取积分信息...")
+        user_info = RequestUtils(headers=headers, proxies=self.__get_proxies()).get_res(
             url=f'https://{_url}/home.php?mod=spacecp&ac=credit&showcredit=1&inajax=1&ajaxtarget=extcreditmenu_menu').text
 
         money = re.search(
@@ -571,6 +576,24 @@ class CnlangSigninV2(_PluginBase):
                                                             'label': '清除历史记录',
                                                             'color': 'warning',
                                                             'prepend-icon': 'mdi-delete'
+                                                        }
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                'component': 'VCol',
+                                                'props': {
+                                                    'cols': 12,
+                                                    'md': 3
+                                                },
+                                                'content': [
+                                                    {
+                                                        'component': 'VSwitch',
+                                                        'props': {
+                                                            'model': 'use_proxy',
+                                                            'label': '使用代理',
+                                                            'color': 'primary',
+                                                            'prepend-icon': 'mdi-proxy'
                                                         }
                                                     }
                                                 ]
@@ -1040,7 +1063,8 @@ class CnlangSigninV2(_PluginBase):
             "random_delay": "",
             "history_days": 30,
             "cron": "0 7 * * *",
-            "notify_style": "style1"
+            "notify_style": "style1",
+            "use_proxy": False
         }
 
     def get_page(self) -> List[dict]:
@@ -2235,7 +2259,7 @@ class CnlangSigninV2(_PluginBase):
                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36 Edg/97.0.1072.62'}
 
             # 获取签到页面信息
-            res = RequestUtils(headers=headers).get_res(
+            res = RequestUtils(headers=headers, proxies=self.__get_proxies()).get_res(
                 url='https://' + _url + '/dsu_paulsign-sign.html?mobile=no')
             
             if res and res.status_code == 200:
@@ -2263,8 +2287,8 @@ class CnlangSigninV2(_PluginBase):
                     status_data["last_sign_status"] = "成功"
 
             # 获取用户信息和大洋余额
-            user_info_res = RequestUtils(headers=headers).get_res(
-                url=f'https://{_url}/home.php?mod=spacecp&ac=credit&showcredit=1&inajax=1&ajaxtarget=extcreditmenu_menu')
+            user_info_res = RequestUtils(headers=headers, proxies=self.__get_proxies()).get_res(
+                url=f'https://{_url}/home.php?mod=spacecp&ac=credit&showcredit=1&inajax=1&ajaxtarget=extcreditmenu_menu').text
             
             if user_info_res and user_info_res.status_code == 200:
                 user_info = user_info_res.text
@@ -2275,8 +2299,8 @@ class CnlangSigninV2(_PluginBase):
                     status_data["account"]["money"] = money_match.group(1)
 
             # 获取用户组信息
-            usergroup_res = RequestUtils(headers=headers).get_res(
-                url=f'https://{_url}/home.php?mod=spacecp&ac=usergroup')
+            usergroup_res = RequestUtils(headers=headers, proxies=self.__get_proxies()).get_res(
+                url=f'https://{_url}/home.php?mod=spacecp&ac=usergroup').text
             
             if usergroup_res and usergroup_res.status_code == 200:
                 usergroup_info = usergroup_res.text
@@ -2301,3 +2325,17 @@ class CnlangSigninV2(_PluginBase):
             logger.error(f"获取状态信息失败：{str(e)}")
 
         return status_data
+
+    def __get_proxies(self):
+        """
+        根据配置返回proxies参数
+        """
+        if not self._use_proxy:
+            return None
+        # 获取系统代理配置
+        proxy = settings.PROXY
+        if not proxy:
+            logger.warning("未配置系统代理")
+            return None
+        logger.info(f"使用系统代理: {proxy}")
+        return proxy
