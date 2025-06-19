@@ -26,11 +26,11 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件名称
     plugin_name = "ProxmoxVE备份助手"
     # 插件描述
-    plugin_desc = "测试版本"
+    plugin_desc = "测试版本,目前没思路都是慢慢完善,谨慎使用"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "99999.99999.99999"
+    plugin_version = "999.999.998"
     # 插件作者
     plugin_author = "M.Jinxi"
     # 作者主页
@@ -77,8 +77,10 @@ class ProxmoxVEBackup(_PluginBase):
     _clear_history: bool = False  # 清理历史记录开关
 
     def init_plugin(self, config: Optional[dict] = None):
-        self._lock = threading.Lock()
+        # 确保先停止已有的服务
         self.stop_service()
+        
+        self._lock = threading.Lock()
         if config:
             self._enabled = bool(config.get("enabled", False))
             self._cron = str(config.get("cron", "0 3 * * *"))
@@ -124,23 +126,27 @@ class ProxmoxVEBackup(_PluginBase):
         if self._enabled or self._onlyonce:
             if self._onlyonce:
                 try:
-                    if not self._scheduler or not self._scheduler.running:
-                         self._scheduler = BackgroundScheduler(timezone=settings.TZ)
+                    # 创建新的调度器
+                    self._scheduler = BackgroundScheduler(timezone=settings.TZ)
                     job_name = f"{self.plugin_name}服务_onlyonce"
+                    
+                    # 移除同名任务(如果存在)
                     if self._scheduler.get_job(job_name):
                         self._scheduler.remove_job(job_name)
+                        
                     logger.info(f"{self.plugin_name} 服务启动，立即运行一次")
                     self._scheduler.add_job(func=self.run_backup_job, trigger='date',
                                          run_date=datetime.now(tz=pytz.timezone(settings.TZ)) + timedelta(seconds=3),
                                          name=job_name, id=job_name)
                     self._onlyonce = False
                     self.__update_config()
-                    if self._scheduler and not self._scheduler.running:
-                        self._scheduler.print_jobs()
+                    
+                    # 启动调度器
+                    if not self._scheduler.running:
                         self._scheduler.start()
                 except Exception as e:
                     logger.error(f"启动一次性 {self.plugin_name} 任务失败: {str(e)}")
-    
+
     def _load_backup_history(self) -> List[Dict[str, Any]]:
         history = self.get_data('backup_history')
         if history is None:
@@ -601,30 +607,42 @@ class ProxmoxVEBackup(_PluginBase):
         ]
 
     def stop_service(self):
+        """完全停止服务并清理资源"""
         try:
+            # 1. 等待当前任务完成
+            if self._lock and hasattr(self._lock, 'locked') and self._lock.locked():
+                logger.info(f"等待 {self.plugin_name} 当前任务执行完成...")
+                acquired = self._lock.acquire(timeout=300)
+                if acquired:
+                    self._lock.release()
+                else:
+                    logger.warning(f"{self.plugin_name} 等待任务超时。")
+            
+            # 2. 停止调度器
             if self._scheduler:
-                job_name = f"{self.plugin_name}服务_onlyonce"
-                if self._scheduler.get_job(job_name):
-                    self._scheduler.remove_job(job_name)
-                if self._lock and hasattr(self._lock, 'locked') and self._lock.locked():
-                    logger.info(f"等待 {self.plugin_name} 当前任务执行完成...")
-                    acquired = self._lock.acquire(timeout=300)
-                    if acquired: self._lock.release()
-                    else: logger.warning(f"{self.plugin_name} 等待任务超时。")
-                if hasattr(self._scheduler, 'remove_all_jobs') and not self._scheduler.get_jobs(jobstore='default'):
-                     pass
-                elif hasattr(self._scheduler, 'remove_all_jobs'):
+                try:
+                    # 移除所有任务
                     self._scheduler.remove_all_jobs()
-                if hasattr(self._scheduler, 'running') and self._scheduler.running:
-                    if not self._scheduler.get_jobs():
-                         self._scheduler.shutdown(wait=False)
-                         self._scheduler = None
-                logger.info(f"{self.plugin_name} 服务已停止或已无任务。")
+                    # 关闭调度器
+                    if self._scheduler.running:
+                        self._scheduler.shutdown(wait=True)
+                    self._scheduler = None
+                except Exception as e:
+                    logger.error(f"停止调度器时出错: {str(e)}")
+            
+            # 3. 重置状态
+            self._running = False
+            logger.info(f"{self.plugin_name} 服务已完全停止。")
+            
         except Exception as e:
             logger.error(f"{self.plugin_name} 退出插件失败：{str(e)}")
-
+            
     def run_backup_job(self):
-        if not self._lock: self._lock = threading.Lock()
+        """执行备份任务"""
+        # 如果已有任务在运行,直接返回
+        if not self._lock:
+            self._lock = threading.Lock()
+            
         if not self._lock.acquire(blocking=False):
             logger.debug(f"{self.plugin_name} 已有任务正在执行，本次调度跳过！")
             return
@@ -702,9 +720,12 @@ class ProxmoxVEBackup(_PluginBase):
         finally:
             self._running = False
             self._save_backup_history_entry(history_entry)
+            # 确保锁一定会被释放
             if self._lock and hasattr(self._lock, 'locked') and self._lock.locked():
-                try: self._lock.release()
-                except RuntimeError: pass
+                try:
+                    self._lock.release()
+                except RuntimeError:
+                    pass
             logger.info(f"{self.plugin_name} 任务执行完成。")
 
     def _perform_backup_once(self) -> Tuple[bool, Optional[str], Optional[str]]:

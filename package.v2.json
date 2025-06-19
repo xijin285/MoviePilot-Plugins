@@ -50,15 +50,16 @@
   },
   "ProxmoxVEBackup": {
     "name": "ProxmoxVE备份助手",
-    "description": "测试版本",
+    "description": "测试版本,目前没思路都是慢慢完善,谨慎使用",
     "labels": "备份",
-    "version": "99999.99999.99999",
+    "version": "999.999.998",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp",
     "author": "M.Jinxi",
     "level": 2,
     "requirements": ["requests>=2.31.0", "pytz>=2023.3", "urllib3>=2.0.7", "APScheduler>=3.10.1"],
     "history": {
-      "v99999.99999.99999": "测试版本：支持Proxmox VE自动备份、本地/WebDAV备份、定时任务、多样通知、历史管理等功能"
+      "v999.999.998": "修复运行时任务重复执行问题。",
+      "v999.999.999": "测试版本：支持Proxmox VE自动备份、本地/WebDAV备份、定时任务、多样通知、历史管理等功能"
     }
   }
 } 
