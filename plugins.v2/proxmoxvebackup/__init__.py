@@ -30,7 +30,7 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "1.0.1"
+    plugin_version = "1.0.2"
     # 插件作者
     plugin_author = "M.Jinxi"
     # 作者主页
@@ -588,7 +588,7 @@ class ProxmoxVEBackup(_PluginBase):
                                                 'content': [
                                                     {'component': 'th', 'text': '时间'},
                                                     {'component': 'th', 'text': '状态'},
-                                                    {'component': 'th', 'text': '备份文件名 (.bak)'},
+                                                    {'component': 'th', 'text': '备份文件名（.tar.gz/.tar.zst/…）'},
                                                     {'component': 'th', 'text': '消息'}
                                                 ]
                                             }
@@ -922,7 +922,7 @@ class ProxmoxVEBackup(_PluginBase):
     def _cleanup_old_backups(self):
         if not self._backup_path or self._keep_backup_num <= 0: return
         try:
-            logger.info(f"{self.plugin_name} 开始清理本地备份目录: {self._backup_path}, 保留数量: {self._keep_backup_num} (仅处理 .bak 文件)")
+            logger.info(f"{self.plugin_name} 开始清理本地备份目录: {self._backup_path}, 保留数量: {self._keep_backup_num} (仅处理 Proxmox 备份文件 .tar.gz/.tar.lzo/.tar.zst)")
             backup_dir = Path(self._backup_path)
             if not backup_dir.is_dir():
                 logger.warning(f"{self.plugin_name} 本地备份目录 {self._backup_path} 不存在，无需清理。")
@@ -930,7 +930,11 @@ class ProxmoxVEBackup(_PluginBase):
 
             files = []
             for f_path_obj in backup_dir.iterdir():
-                if f_path_obj.is_file() and f_path_obj.suffix.lower() == ".bak":
+                if f_path_obj.is_file() and (
+                    f_path_obj.name.endswith('.tar.gz') or 
+                    f_path_obj.name.endswith('.tar.lzo') or 
+                    f_path_obj.name.endswith('.tar.zst')
+                ):
                     try:
                         match = re.search(r'(\d{4}\d{2}\d{2}[_]?\d{2}\d{2}\d{2})', f_path_obj.stem)
                         file_time = None
@@ -954,7 +958,7 @@ class ProxmoxVEBackup(_PluginBase):
             
             if len(files) > self._keep_backup_num:
                 files_to_delete = files[self._keep_backup_num:]
-                logger.info(f"{self.plugin_name} 找到 {len(files_to_delete)} 个旧 .bak 备份文件需要删除。")
+                logger.info(f"{self.plugin_name} 找到 {len(files_to_delete)} 个旧 Proxmox 备份文件需要删除。")
                 for f_info in files_to_delete:
                     try:
                         f_info['path'].unlink()
@@ -962,7 +966,7 @@ class ProxmoxVEBackup(_PluginBase):
                     except OSError as e:
                         logger.error(f"{self.plugin_name} 删除旧备份文件 {f_info['name']} 失败: {e}")
             else:
-                logger.info(f"{self.plugin_name} 当前 .bak 备份数量 ({len(files)}) 未超过保留限制 ({self._keep_backup_num})，无需清理。")
+                logger.info(f"{self.plugin_name} 当前 Proxmox 备份文件数量 ({len(files)}) 未超过保留限制 ({self._keep_backup_num})，无需清理。")
         except Exception as e:
             logger.error(f"{self.plugin_name} 清理旧备份文件时发生错误: {e}")
 
