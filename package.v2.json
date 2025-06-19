@@ -52,7 +52,7 @@
     "name": "ProxmoxVE备份助手",
     "description": "测试版本,目前没思路都是慢慢完善,谨慎使用",
     "labels": "备份",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp",
     "author": "M.Jinxi",
     "level": 2,
