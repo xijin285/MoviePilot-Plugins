@@ -30,7 +30,7 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "1.0.2"
+    plugin_version = "1.0.3"
     # 插件作者
     plugin_author = "M.Jinxi"
     # 作者主页
@@ -75,6 +75,11 @@ class ProxmoxVEBackup(_PluginBase):
     _webdav_path: str = ""
     _webdav_keep_backup_num: int = 7
     _clear_history: bool = False  # 清理历史记录开关
+    _auto_delete_after_download: bool = False  # 新增：下载后自动删除PVE备份
+
+    # 新增：备份模式和压缩模式
+    _backup_mode: str = "snapshot"  # 新增：备份模式，默认snapshot
+    _compress_mode: str = "zstd"    # 新增：压缩模式，默认zstd
 
     def init_plugin(self, config: Optional[dict] = None):
         # 确保先停止已有的服务
@@ -95,6 +100,8 @@ class ProxmoxVEBackup(_PluginBase):
             self._proxmox_node = str(config.get("proxmox_node", "pve"))
             self._storage_name = str(config.get("storage_name", "local"))  # 新增
             self._enable_local_backup = bool(config.get("enable_local_backup", True))
+            self._backup_mode = str(config.get("backup_mode", "snapshot"))  # 新增
+            self._compress_mode = str(config.get("compress_mode", "zstd"))  # 新增
             configured_backup_path = str(config.get("backup_path", "")).strip()
             if not configured_backup_path:
                 self._backup_path = str(self.get_data_path() / "actual_backups")
@@ -110,6 +117,7 @@ class ProxmoxVEBackup(_PluginBase):
             self._webdav_path = str(config.get("webdav_path", ""))
             self._webdav_keep_backup_num = int(config.get("webdav_keep_backup_num", 7))
             self._clear_history = bool(config.get("clear_history", False))  # 新增：清理历史记录开关
+            self._auto_delete_after_download = bool(config.get("auto_delete_after_download", False))  # 新增：下载后自动删除PVE备份
             self.__update_config()
 
             # 处理清理历史记录请求
@@ -190,6 +198,9 @@ class ProxmoxVEBackup(_PluginBase):
             "webdav_path": self._webdav_path,
             "webdav_keep_backup_num": self._webdav_keep_backup_num,
             "clear_history": self._clear_history,  # 新增：清理历史记录开关
+            "auto_delete_after_download": self._auto_delete_after_download,  # 新增：下载后自动删除PVE备份
+            "backup_mode": self._backup_mode,  # 新增
+            "compress_mode": self._compress_mode,  # 新增
         })
 
     def get_state(self) -> bool:
@@ -226,6 +237,7 @@ class ProxmoxVEBackup(_PluginBase):
             {
                 'component': 'VForm',
                 'content': [
+                    # 先基础设置卡片
                     {
                         'component': 'VCard',
                         'props': {'variant': 'outlined', 'class': 'mb-4'},
@@ -238,14 +250,22 @@ class ProxmoxVEBackup(_PluginBase):
                             {
                                 'component': 'VCardText',
                                 'content': [
-                                    # 开关行保持不变
+                                    # 开关行分两排
                                     {
                                         'component': 'VRow',
                                         'content': [
                                             {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'enabled', 'label': '启用插件', 'color': 'primary', 'prepend-icon': 'mdi-power'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info', 'prepend-inner-icon': 'mdi-bell'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success', 'prepend-inner-icon': 'mdi-play'}}]},
-                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'clear_history', 'label': '清理历史记录', 'color': 'warning', 'prepend-inner-icon': 'mdi-delete-sweep'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'notify', 'label': '发送通知', 'color': 'info', 'prepend-icon': 'mdi-bell'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'onlyonce', 'label': '立即运行一次', 'color': 'success', 'prepend-icon': 'mdi-play'}}]},
+                                            {'component': 'VCol', 'props': {'cols': 3}, 'content': [{'component': 'VSwitch', 'props': {'model': 'clear_history', 'label': '清理历史记录', 'color': 'warning', 'prepend-icon': 'mdi-delete-sweep'}}]},
+                                        ],
+                                    },
+                                    {
+                                        'component': 'VRow',
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12}, 'content': [
+                                                {'component': 'VSwitch', 'props': {'model': 'auto_delete_after_download', 'label': '下载后自动删除PVE备份', 'color': 'error', 'prepend-icon': 'mdi-delete-forever'}},
+                                            ]},
                                         ],
                                     },
                                     # 第一行：ProxmoxVE地址 | 执行周期
@@ -265,28 +285,6 @@ class ProxmoxVEBackup(_PluginBase):
                                                     'model': 'cron',
                                                     'label': '执行周期',
                                                     'prepend-inner-icon': 'mdi-clock-outline'
-                                                }}
-                                            ]}
-                                        ]
-                                    },
-                                    # 第二行：存储名称 | 节点名称
-                                    {
-                                        'component': 'VRow',
-                                        'content': [
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
-                                                {'component': 'VTextField', 'props': {
-                                                    'model': 'storage_name',
-                                                    'label': '存储名称',
-                                                    'placeholder': '如 local、PVE，默认为 local',
-                                                    'prepend-inner-icon': 'mdi-database'
-                                                }}
-                                            ]},
-                                            {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
-                                                {'component': 'VTextField', 'props': {
-                                                    'model': 'proxmox_node',
-                                                    'label': '节点名称',
-                                                    'placeholder': '默认为 pve',
-                                                    'prepend-inner-icon': 'mdi-server-network'
                                                 }}
                                             ]}
                                         ]
@@ -338,7 +336,38 @@ class ProxmoxVEBackup(_PluginBase):
                                             ]}
                                         ]
                                     },
-                                    # 第四行：要备份的容器ID | 通知样式
+                                ]
+                            }
+                        ]
+                    },
+                    # 再备份任务配置卡片
+                    {
+                        'component': 'VCard',
+                        'props': {'variant': 'outlined', 'class': 'mb-4'},
+                        'content': [
+                            {'component': 'VCardTitle', 'props': {'class': 'text-h6'}, 'text': '📋 备份任务配置'},
+                            {'component': 'VCardText', 'content': [
+                                {
+                                    'component': 'VRow',
+                                    'content': [
+                                        {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                            {'component': 'VTextField', 'props': {
+                                                'model': 'storage_name',
+                                                'label': '存储名称',
+                                                'placeholder': '如 local、PVE，默认为 local',
+                                                'prepend-inner-icon': 'mdi-database'
+                                            }}
+                                        ]},
+                                        {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                            {'component': 'VTextField', 'props': {
+                                                'model': 'proxmox_node',
+                                                'label': '节点名称',
+                                                'placeholder': '默认为 pve',
+                                                'prepend-inner-icon': 'mdi-server-network'
+                                            }}
+                                        ]},
+                                    ]
+                                },
                                     {
                                         'component': 'VRow',
                                         'content': [
@@ -355,19 +384,51 @@ class ProxmoxVEBackup(_PluginBase):
                                                     'model': 'notification_style',
                                                     'label': '通知样式',
                                                     'items': [
-                                                        {'title': '简洁', 'value': 1},
-                                                        {'title': '详细', 'value': 2},
-                                                        {'title': '箭头风格', 'value': 3},
-                                                        {'title': '波浪风格', 'value': 4},
+                                                    {'title': '简约星线', 'value': 1},
+                                                    {'title': '方块花边', 'value': 2},
+                                                    {'title': '箭头主题', 'value': 3},
+                                                    {'title': '波浪边框', 'value': 4},
                                                         {'title': '科技风格', 'value': 5},
                                                     ],
                                                     'prepend-inner-icon': 'mdi-message-text'
                                                 }}
-                                            ]}
+                                        ]},
                                         ]
                                     },
-                                ]
-                            }
+                                {
+                                    'component': 'VRow',
+                                    'content': [
+                                        {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                            {'component': 'VSelect', 'props': {
+                                                'model': 'backup_mode',
+                                                'label': '备份模式',
+                                                'items': [
+                                                    {'title': '快照（推荐，支持快照卷）', 'value': 'snapshot'},
+                                                    {'title': '挂起（suspend挂起）', 'value': 'suspend'},
+                                                    {'title': '关机（stop关机）', 'value': 'stop'},
+                                                ],
+                                                'prepend-inner-icon': 'mdi-camera-timer',
+                                                'persistent-hint': True,
+                                                'hint': '选择备份模式：snapshot=快照，suspend=挂起，stop=关机'
+                                            }}
+                                        ]},
+                                        {'component': 'VCol', 'props': {'cols': 12, 'md': 6}, 'content': [
+                                            {'component': 'VSelect', 'props': {
+                                                'model': 'compress_mode',
+                                                'label': '压缩模式',
+                                                'items': [
+                                                    {'title': 'ZSTD（又快又好）', 'value': 'zstd'},
+                                                    {'title': 'GZIP（兼容性好）', 'value': 'gzip'},
+                                                    {'title': 'LZO（速度快）', 'value': 'lzo'},
+                                                ],
+                                                'prepend-inner-icon': 'mdi-zip-box',
+                                                'persistent-hint': True,
+                                                'hint': '选择备份压缩方式，ZSTD推荐'
+                                            }}
+                                        ]},
+                                    ]
+                                }
+                            ]}
                         ]
                     },
                     # 本地备份设置卡片
@@ -520,7 +581,10 @@ class ProxmoxVEBackup(_PluginBase):
             "webdav_password": "",
             "webdav_path": "",
             "webdav_keep_backup_num": 7,
-            "clear_history": False
+            "clear_history": False,
+            "auto_delete_after_download": False,
+            "backup_mode": "snapshot",  # 新增
+            "compress_mode": "zstd",    # 新增
         }
 
     def get_page(self) -> List[dict]:
@@ -769,15 +833,30 @@ class ProxmoxVEBackup(_PluginBase):
             
         local_filepath = os.path.join(self._backup_path, local_display_and_saved_filename)
         
-        # 创建备份
-        success, error_msg = self._create_backup_on_proxmox(session)
+        # 创建备份（返回UPID）
+        success, error_msg, upid = self._create_backup_on_proxmox(session)
         if not success:
             return False, error_msg, None
-            
+        
+        # 等待任务完成
+        wait_success, wait_msg = self._wait_for_task_completion(session, upid)
+        if not wait_success:
+            return False, wait_msg, None
+        
         # 下载备份文件
-        success, error_msg, downloaded_file = self._download_backup_file(session)
+        success, error_msg, backup_volid, downloaded_file = self._download_backup_file(session)
         if not success:
             return False, error_msg, None
+        
+        # 新增：下载成功后自动删除PVE备份
+        if self._auto_delete_after_download and downloaded_file:
+            try:
+                if backup_volid:
+                    self._delete_backup_on_proxmox(session, backup_volid)
+                else:
+                    logger.error(f"{self.plugin_name} 自动删除PVE备份文件失败: 未获取到volid")
+            except Exception as e:
+                logger.error(f"{self.plugin_name} 自动删除PVE备份文件失败: {e}")
             
         # 清理旧的备份文件
         self._cleanup_old_backups()
@@ -793,6 +872,81 @@ class ProxmoxVEBackup(_PluginBase):
             self._cleanup_webdav_backups()
             
         return True, None, downloaded_file
+
+    def _create_backup_on_proxmox(self, session: requests.Session) -> Tuple[bool, Optional[str], Optional[str]]:
+        """
+        在ProxmoxVE上创建备份
+        :param session: requests会话对象
+        :return: (是否成功, 错误消息, upid)
+        """
+        backup_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/vzdump")
+        backup_params = {
+            "compress": self._compress_mode,  # 使用配置的压缩方式
+            "mode": self._backup_mode,        # 使用配置的备份模式
+            "remove": "0",  # 不删除旧备份
+        }
+        # 新增：如果指定了容器ID，则只备份这些，否则备份全部
+        if self._backup_vmid.strip():
+            backup_params["vmid"] = self._backup_vmid.strip()
+        else:
+            backup_params["all"] = "1"
+        try:
+            logger.info(f"{self.plugin_name} 尝试在 {self._proxmox_url} 创建新备份... (参数: {backup_params})")
+            response = session.post(backup_url, params=backup_params, verify=False)
+            response.raise_for_status()
+            result = response.json()
+            if result.get("data"):
+                upid = result["data"]
+                logger.info(f"{self.plugin_name} 备份任务已提交，UPID: {upid}")
+                return True, None, upid
+            else:
+                error_msg = "创建备份失败: 服务器返回空数据"
+                logger.error(f"{self.plugin_name} {error_msg}")
+                return False, error_msg, None
+        except requests.exceptions.RequestException as e:
+            error_msg = f"创建备份请求失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg, None
+        except json.JSONDecodeError as e:
+            error_msg = f"解析创建备份响应失败: {str(e)}"
+            logger.error(f"{self.plugin_name} {error_msg}")
+            return False, error_msg, None
+
+    def _wait_for_task_completion(self, session: requests.Session, upid: str, timeout: int = 600, poll_interval: int = 3) -> Tuple[bool, str]:
+        """
+        轮询等待PVE任务完成
+        :param session: requests会话对象
+        :param upid: 任务ID
+        :param timeout: 最大等待秒数
+        :param poll_interval: 轮询间隔秒数
+        :return: (是否成功, 消息)
+        """
+        import time
+        from urllib.parse import quote
+        start_time = time.time()
+        upid_quoted = quote(upid, safe='')
+        status_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/tasks/{upid_quoted}/status")
+        logger.info(f"{self.plugin_name} 等待备份任务完成，UPID: {upid}")
+        while True:
+            try:
+                resp = session.get(status_url, verify=False)
+                resp.raise_for_status()
+                data = resp.json().get("data", {})
+                if data.get("status") == "stopped":
+                    exitstatus = data.get("exitstatus")
+                    if exitstatus == "OK":
+                        logger.info(f"{self.plugin_name} 备份任务已完成，exitstatus=OK")
+                        return True, "任务完成"
+                    else:
+                        logger.error(f"{self.plugin_name} 备份任务失败，exitstatus={exitstatus}")
+                        return False, f"任务失败，exitstatus={exitstatus}"
+                # 还在running
+            except Exception as e:
+                logger.warning(f"{self.plugin_name} 轮询任务状态异常: {e}")
+            if time.time() - start_time > timeout:
+                logger.error(f"{self.plugin_name} 等待任务超时({timeout}s)")
+                return False, f"等待任务超时({timeout}s)"
+            time.sleep(poll_interval)
 
     def _login_proxmox(self, session: requests.Session) -> Optional[str]:
         """
@@ -819,49 +973,12 @@ class ProxmoxVEBackup(_PluginBase):
             logger.error(f"{self.plugin_name} API Token验证失败: {str(e)}")
             return None
 
-    def _create_backup_on_proxmox(self, session: requests.Session) -> Tuple[bool, Optional[str]]:
-        """
-        在ProxmoxVE上创建备份
-        :param session: requests会话对象
-        :return: (是否成功, 错误消息)
-        """
-        backup_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/vzdump")
-        backup_params = {
-            "compress": "gzip",  # 使用gzip压缩
-            "mode": "snapshot",  # 使用快照模式
-            "remove": "0",  # 不删除旧备份
-        }
-        # 新增：如果指定了容器ID，则只备份这些，否则备份全部
-        if self._backup_vmid.strip():
-            backup_params["vmid"] = self._backup_vmid.strip()
-        else:
-            backup_params["all"] = "1"
-        try:
-            logger.info(f"{self.plugin_name} 尝试在 {self._proxmox_url} 创建新备份... (参数: {backup_params})")
-            response = session.post(backup_url, params=backup_params, verify=False)
-            response.raise_for_status()
-            result = response.json()
-            if result.get("data"):
-                return True, None
-            else:
-                error_msg = "创建备份失败: 服务器返回空数据"
-                logger.error(f"{self.plugin_name} {error_msg}")
-                return False, error_msg
-        except requests.exceptions.RequestException as e:
-            error_msg = f"创建备份请求失败: {str(e)}"
-            logger.error(f"{self.plugin_name} {error_msg}")
-            return False, error_msg
-        except json.JSONDecodeError as e:
-            error_msg = f"解析创建备份响应失败: {str(e)}"
-            logger.error(f"{self.plugin_name} {error_msg}")
-            return False, error_msg
-            
-    def _download_backup_file(self, session: requests.Session, local_filepath: str = None) -> Tuple[bool, Optional[str], Optional[str]]:
+    def _download_backup_file(self, session: requests.Session, local_filepath: str = None) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
         """
         从ProxmoxVE下载最新的备份文件
         :param session: requests会话对象
         :param local_filepath: 本地保存路径（已废弃，自动用真实文件名）
-        :return: (是否成功, 错误消息, 真实文件名)
+        :return: (是否成功, 错误消息, volid, 真实文件名)
         """
         # 获取本地存储内容
         list_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/storage/{self._storage_name}/content")
@@ -873,7 +990,7 @@ class ProxmoxVEBackup(_PluginBase):
             if not result.get("data"):
                 error_msg = "获取本地存储内容失败: 服务器返回空数据"
                 logger.error(f"{self.plugin_name} {error_msg}")
-                return False, error_msg, None
+                return False, error_msg, None, None
             # 过滤出vzdump备份文件（支持tar.gz、tar.lzo、tar.zst等）
             backup_files = [
                 f for f in result["data"]
@@ -884,7 +1001,7 @@ class ProxmoxVEBackup(_PluginBase):
             if not backup_files:
                 error_msg = "未找到可下载的vzdump备份文件"
                 logger.error(f"{self.plugin_name} {error_msg}")
-                return False, error_msg, None
+                return False, error_msg, None, None
             # 按ctime排序，取最新
             latest_backup = sorted(backup_files, key=lambda x: x.get("ctime", 0), reverse=True)[0]
             backup_volid = latest_backup.get("volid")
@@ -892,12 +1009,29 @@ class ProxmoxVEBackup(_PluginBase):
             if not backup_volid or not backup_name:
                 error_msg = "无法获取最新备份文件的volid或文件名"
                 logger.error(f"{self.plugin_name} {error_msg}")
-                return False, error_msg, None
-            # 下载备份文件
-            download_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/storage/{self._storage_name}/content/{backup_volid}")
-            logger.info(f"{self.plugin_name} 开始下载备份文件: {backup_name}")
+                return False, error_msg, None, None
+            # 下载备份文件（新版：先获取download字段，再下载）
+            from urllib.parse import quote
+            backup_volid_quoted = quote(backup_volid, safe='')
+            # 第一步：获取download字段
+            meta_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/storage/{self._storage_name}/content/{backup_volid_quoted}")
+            logger.info(f"{self.plugin_name} 获取备份文件元信息: {meta_url}")
+            meta_resp = session.get(meta_url, verify=False)
+            meta_resp.raise_for_status()
+            meta_json = meta_resp.json()
+            download_path = meta_json.get('data', {}).get('download')
+            if not download_path:
+                # 没有download字段，直接用content接口下载
+                logger.warning(f"{self.plugin_name} 未获取到download字段，尝试直接用content接口下载: {backup_name}")
+                download_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/storage/{self._storage_name}/content/{backup_volid_quoted}")
+            else:
+                # 有download字段，优先用
+                if download_path.startswith('/'):
+                    download_url = self._proxmox_url.rstrip('/') + download_path
+                else:
+                    download_url = self._proxmox_url.rstrip('/') + '/' + download_path
+            logger.info(f"{self.plugin_name} 开始下载备份文件: {backup_name}，URL: {download_url}")
             local_filepath_real = os.path.join(self._backup_path, backup_name)
-            # 新增：自动创建所有父目录
             os.makedirs(os.path.dirname(local_filepath_real), exist_ok=True)
             with session.get(download_url, verify=False, stream=True) as response:
                 response.raise_for_status()
@@ -905,19 +1039,19 @@ class ProxmoxVEBackup(_PluginBase):
                     for chunk in response.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
-            return True, None, backup_name
+            return True, None, backup_volid, backup_name
         except requests.exceptions.RequestException as e:
             error_msg = f"下载备份文件失败: {str(e)}"
             logger.error(f"{self.plugin_name} {error_msg}")
-            return False, error_msg, None
+            return False, error_msg, None, None
         except (json.JSONDecodeError, KeyError) as e:
             error_msg = f"解析本地存储内容失败: {str(e)}"
             logger.error(f"{self.plugin_name} {error_msg}")
-            return False, error_msg, None
+            return False, error_msg, None, None
         except IOError as e:
             error_msg = f"保存备份文件失败: {str(e)}"
             logger.error(f"{self.plugin_name} {error_msg}")
-            return False, error_msg, None
+            return False, error_msg, None, None
 
     def _cleanup_old_backups(self):
         if not self._backup_path or self._keep_backup_num <= 0: return
@@ -1416,3 +1550,18 @@ class ProxmoxVEBackup(_PluginBase):
             logger.info(f"{self.plugin_name} 发送通知: {title}")
         except Exception as e:
             logger.error(f"{self.plugin_name} 发送通知失败: {e}")
+
+    def _delete_backup_on_proxmox(self, session: requests.Session, volid: str) -> bool:
+        """调用PVE API删除指定volid的备份文件"""
+        try:
+            delete_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/storage/{self._storage_name}/content/{volid}")
+            response = session.delete(delete_url, verify=False)
+            if response.status_code in [200, 202, 204]:
+                logger.info(f"{self.plugin_name} 已自动删除PVE备份文件: {volid}")
+                return True
+            else:
+                logger.error(f"{self.plugin_name} 删除PVE备份文件失败: {volid}, 状态码: {response.status_code}, 响应: {response.text}")
+                return False
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 删除PVE备份文件时发生异常: {e}")
+            return False
