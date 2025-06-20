@@ -24,7 +24,7 @@ from app.schemas import NotificationType
 
 class ProxmoxVEBackup(_PluginBase):
     # 插件名称
-    plugin_name = "ProxmoxVE备份助手"
+    plugin_name = "PVE备份助手"
     # 插件描述
     plugin_desc = "测试版本,目前没思路都是慢慢完善,谨慎使用"
     # 插件图标

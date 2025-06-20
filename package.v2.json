@@ -49,7 +49,7 @@
     }
   },
   "ProxmoxVEBackup": {
-    "name": "ProxmoxVE备份助手",
+    "name": "PVE备份助手",
     "description": "测试版本,目前没思路都是慢慢完善,谨慎使用",
     "labels": "备份",
     "version": "1.0.3",
