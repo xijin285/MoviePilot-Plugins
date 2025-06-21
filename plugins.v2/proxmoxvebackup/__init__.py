@@ -30,7 +30,7 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "1.0.3"
+    plugin_version = "1.0.4"
     # 插件作者
     plugin_author = "M.Jinxi"
     # 作者主页
@@ -819,10 +819,6 @@ class ProxmoxVEBackup(_PluginBase):
         # 设置认证头
         session.headers.update({"Authorization": f"PVEAPIToken={self._proxmox_token_id}={self._proxmox_token_secret}"})
         
-        # 生成本地备份文件名
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        local_display_and_saved_filename = f"proxmox_backup_{timestamp}.tar.gz"
-        
         # 确保备份目录存在
         try:
             Path(self._backup_path).mkdir(parents=True, exist_ok=True)
@@ -830,8 +826,6 @@ class ProxmoxVEBackup(_PluginBase):
             error_msg = f"创建备份目录失败: {str(e)}"
             logger.error(f"{self.plugin_name} {error_msg}")
             return False, error_msg, None
-            
-        local_filepath = os.path.join(self._backup_path, local_display_and_saved_filename)
         
         # 创建备份（返回UPID）
         success, error_msg, upid = self._create_backup_on_proxmox(session)
@@ -846,7 +840,10 @@ class ProxmoxVEBackup(_PluginBase):
         # 下载备份文件
         success, error_msg, backup_volid, downloaded_file = self._download_backup_file(session)
         if not success:
-            return False, error_msg, None
+            return False, error_msg, None, None
+        
+        # 构建实际下载文件的完整路径
+        actual_file_path = os.path.join(self._backup_path, downloaded_file)
         
         # 新增：下载成功后自动删除PVE备份
         if self._auto_delete_after_download and downloaded_file:
@@ -863,7 +860,7 @@ class ProxmoxVEBackup(_PluginBase):
         
         # 如果启用了WebDAV，上传到WebDAV
         if self._enable_webdav and self._webdav_url:
-            webdav_success, webdav_error = self._upload_to_webdav(local_filepath, local_display_and_saved_filename)
+            webdav_success, webdav_error = self._upload_to_webdav(actual_file_path, downloaded_file)
             if not webdav_success:
                 logger.error(f"{self.plugin_name} WebDAV上传失败: {webdav_error}")
                 # 继续执行，不影响主流程
@@ -973,11 +970,10 @@ class ProxmoxVEBackup(_PluginBase):
             logger.error(f"{self.plugin_name} API Token验证失败: {str(e)}")
             return None
 
-    def _download_backup_file(self, session: requests.Session, local_filepath: str = None) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
+    def _download_backup_file(self, session: requests.Session) -> Tuple[bool, Optional[str], Optional[str], Optional[str]]:
         """
         从ProxmoxVE下载最新的备份文件
         :param session: requests会话对象
-        :param local_filepath: 本地保存路径（已废弃，自动用真实文件名）
         :return: (是否成功, 错误消息, volid, 真实文件名)
         """
         # 获取本地存储内容
@@ -1010,6 +1006,11 @@ class ProxmoxVEBackup(_PluginBase):
                 error_msg = "无法获取最新备份文件的volid或文件名"
                 logger.error(f"{self.plugin_name} {error_msg}")
                 return False, error_msg, None, None
+            
+            # 提取纯文件名，避免路径重复
+            pure_filename = os.path.basename(backup_name)
+            logger.info(f"{self.plugin_name} 原始文件名: {backup_name}, 纯文件名: {pure_filename}")
+            
             # 下载备份文件（新版：先获取download字段，再下载）
             from urllib.parse import quote
             backup_volid_quoted = quote(backup_volid, safe='')
@@ -1022,7 +1023,7 @@ class ProxmoxVEBackup(_PluginBase):
             download_path = meta_json.get('data', {}).get('download')
             if not download_path:
                 # 没有download字段，直接用content接口下载
-                logger.warning(f"{self.plugin_name} 未获取到download字段，尝试直接用content接口下载: {backup_name}")
+                logger.warning(f"{self.plugin_name} 未获取到download字段，尝试直接用content接口下载: {pure_filename}")
                 download_url = urljoin(self._proxmox_url, f"/api2/json/nodes/{self._proxmox_node}/storage/{self._storage_name}/content/{backup_volid_quoted}")
             else:
                 # 有download字段，优先用
@@ -1030,8 +1031,8 @@ class ProxmoxVEBackup(_PluginBase):
                     download_url = self._proxmox_url.rstrip('/') + download_path
                 else:
                     download_url = self._proxmox_url.rstrip('/') + '/' + download_path
-            logger.info(f"{self.plugin_name} 开始下载备份文件: {backup_name}，URL: {download_url}")
-            local_filepath_real = os.path.join(self._backup_path, backup_name)
+            logger.info(f"{self.plugin_name} 开始下载备份文件: {pure_filename}，URL: {download_url}")
+            local_filepath_real = os.path.join(self._backup_path, pure_filename)
             os.makedirs(os.path.dirname(local_filepath_real), exist_ok=True)
             with session.get(download_url, verify=False, stream=True) as response:
                 response.raise_for_status()
@@ -1039,7 +1040,7 @@ class ProxmoxVEBackup(_PluginBase):
                     for chunk in response.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
-            return True, None, backup_volid, backup_name
+            return True, None, backup_volid, pure_filename
         except requests.exceptions.RequestException as e:
             error_msg = f"下载备份文件失败: {str(e)}"
             logger.error(f"{self.plugin_name} {error_msg}")
@@ -1277,6 +1278,98 @@ class ProxmoxVEBackup(_PluginBase):
                 if response.status_code in [200, 201, 204]:
                     logger.info(f"{self.plugin_name} 成功上传文件到WebDAV: {upload_url}")
                     return True, None
+                elif response.status_code == 409:
+                    # 文件冲突，这是WebDAV标准中的常见问题
+                    logger.warning(f"{self.plugin_name} WebDAV文件冲突(409)，尝试多种解决方案: {upload_url}")
+                    
+                    # 方案1：尝试删除旧文件后重新上传
+                    try:
+                        logger.info(f"{self.plugin_name} 方案1：尝试删除旧文件后重新上传")
+                        delete_response = requests.delete(
+                            upload_url,
+                            auth=successful_auth,
+                            headers={'User-Agent': 'MoviePilot/1.0'},
+                            timeout=10,
+                            verify=False
+                        )
+                        
+                        if delete_response.status_code in [200, 201, 204, 404]:  # 404表示文件不存在
+                            logger.info(f"{self.plugin_name} 已删除旧文件，等待3秒后重新上传")
+                            time.sleep(3)
+                            
+                            retry_response = requests.put(
+                                upload_url,
+                                data=file_content,
+                                auth=successful_auth,
+                                headers=headers,
+                                timeout=30,
+                                verify=False
+                            )
+                            
+                            if retry_response.status_code in [200, 201, 204]:
+                                logger.info(f"{self.plugin_name} 方案1成功：成功重新上传文件到WebDAV")
+                                return True, None
+                            else:
+                                logger.warning(f"{self.plugin_name} 方案1失败：重新上传返回状态码 {retry_response.status_code}")
+                        else:
+                            logger.warning(f"{self.plugin_name} 方案1失败：删除旧文件返回状态码 {delete_response.status_code}")
+                    except Exception as e:
+                        logger.warning(f"{self.plugin_name} 方案1异常：{str(e)}")
+                    
+                    # 方案2：使用带时间戳的新文件名
+                    try:
+                        logger.info(f"{self.plugin_name} 方案2：使用带时间戳的新文件名")
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        name_without_ext = os.path.splitext(filename)[0]
+                        ext = os.path.splitext(filename)[1]
+                        new_filename = f"{name_without_ext}_{timestamp}{ext}"
+                        new_upload_url = urljoin(base_url + '/', f"{webdav_path}/{new_filename}")
+                        
+                        logger.info(f"{self.plugin_name} 尝试使用新文件名上传: {new_filename}")
+                        final_response = requests.put(
+                            new_upload_url,
+                            data=file_content,
+                            auth=successful_auth,
+                            headers=headers,
+                            timeout=30,
+                            verify=False
+                        )
+                        
+                        if final_response.status_code in [200, 201, 204]:
+                            logger.info(f"{self.plugin_name} 方案2成功：使用新文件名上传成功")
+                            return True, None
+                        else:
+                            logger.warning(f"{self.plugin_name} 方案2失败：新文件名上传返回状态码 {final_response.status_code}")
+                    except Exception as e:
+                        logger.warning(f"{self.plugin_name} 方案2异常：{str(e)}")
+                    
+                    # 方案3：尝试使用不同的Content-Type
+                    try:
+                        logger.info(f"{self.plugin_name} 方案3：尝试使用不同的Content-Type")
+                        alt_headers = headers.copy()
+                        alt_headers['Content-Type'] = 'application/x-tar'
+                        
+                        final_response = requests.put(
+                            upload_url,
+                            data=file_content,
+                            auth=successful_auth,
+                            headers=alt_headers,
+                            timeout=30,
+                            verify=False
+                        )
+                        
+                        if final_response.status_code in [200, 201, 204]:
+                            logger.info(f"{self.plugin_name} 方案3成功：使用不同Content-Type上传成功")
+                            return True, None
+                        else:
+                            logger.warning(f"{self.plugin_name} 方案3失败：不同Content-Type上传返回状态码 {final_response.status_code}")
+                    except Exception as e:
+                        logger.warning(f"{self.plugin_name} 方案3异常：{str(e)}")
+                    
+                    # 所有方案都失败了
+                    error_msg = f"WebDAV上传失败：所有冲突解决方案均失败。原始状态码: 409"
+                    logger.error(f"{self.plugin_name} {error_msg}")
+                    return False, error_msg
                 else:
                     error_msg = f"WebDAV上传失败，状态码: {response.status_code}, 响应: {response.text}"
                     if response.status_code == 401:
@@ -1312,13 +1405,51 @@ class ProxmoxVEBackup(_PluginBase):
             from urllib.parse import urljoin, quote, urlparse
             from xml.etree import ElementTree
 
-            # 规范化 WebDAV URL
-            parsed_url = urlparse(self._webdav_url)
-            base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-            webdav_path = self._webdav_path.strip('/')
+            # 构建WebDAV基础URL
+            base_url = self._webdav_url.rstrip('/')
+            webdav_path = self._webdav_path.lstrip('/')
             
-            # 构建完整的WebDAV URL
-            full_webdav_url = f"{base_url}/dav/{webdav_path}"
+            # 构建完整的WebDAV URL（尝试不同的路径结构）
+            possible_urls = []
+            if webdav_path:
+                possible_urls.append(f"{base_url}/{webdav_path}")
+                possible_urls.append(f"{base_url}/dav/{webdav_path}")
+                # 对于某些WebDAV服务，可能需要不同的路径结构
+                possible_urls.append(f"{base_url}/remote.php/webdav/{webdav_path}")  # NextCloud
+                possible_urls.append(f"{base_url}/dav/files/{self._webdav_username}/{webdav_path}")  # 某些服务
+            else:
+                possible_urls.append(base_url)
+                possible_urls.append(f"{base_url}/dav")
+                possible_urls.append(f"{base_url}/remote.php/webdav")
+            
+            # 尝试不同的URL结构
+            working_url = None
+            for test_url in possible_urls:
+                try:
+                    response = requests.request(
+                        'PROPFIND',
+                        test_url,
+                        auth=(self._webdav_username, self._webdav_password),
+                        headers={
+                            'Depth': '1',
+                            'Content-Type': 'application/xml',
+                            'Accept': '*/*',
+                            'User-Agent': 'MoviePilot/1.0'
+                        },
+                        timeout=10,
+                        verify=False
+                    )
+                    if response.status_code == 207:
+                        working_url = test_url
+                        logger.info(f"{self.plugin_name} 找到可用的WebDAV清理URL: {working_url}")
+                        break
+                except Exception as e:
+                    logger.debug(f"{self.plugin_name} 测试WebDAV清理URL失败: {test_url}, 错误: {e}")
+                    continue
+            
+            if not working_url:
+                logger.warning(f"{self.plugin_name} 无法找到可用的WebDAV清理URL，跳过清理")
+                return
             
             # 发送PROPFIND请求获取文件列表
             headers = {
@@ -1330,7 +1461,7 @@ class ProxmoxVEBackup(_PluginBase):
             
             response = requests.request(
                 'PROPFIND',
-                full_webdav_url,
+                working_url,
                 auth=(self._webdav_username, self._webdav_password),
                 headers=headers,
                 timeout=30,
@@ -1357,8 +1488,10 @@ class ProxmoxVEBackup(_PluginBase):
                     continue
 
                 file_path = href.text
-                # 只处理.bak文件
-                if not file_path.lower().endswith('.bak'):
+                # 只处理Proxmox备份文件
+                if not (file_path.lower().endswith('.tar.gz') or 
+                       file_path.lower().endswith('.tar.lzo') or 
+                       file_path.lower().endswith('.tar.zst')):
                     continue
 
                 # 获取文件修改时间
@@ -1404,18 +1537,16 @@ class ProxmoxVEBackup(_PluginBase):
                         file_path = file_info['path']
                         if file_path.startswith('/'):
                             file_path = file_path[1:]
-                        if file_path.startswith('dav/'):
-                            file_path = file_path[4:]
-                            
-                        # 构建源文件的完整URL
-                        source_url = f"{base_url}/dav/{file_path}"
+                        
+                        # 构建删除URL
+                        delete_url = urljoin(working_url + '/', file_path)
                         filename = os.path.basename(file_path)
 
                         # 删除文件
                         delete_response = requests.delete(
-                            source_url,
+                            delete_url,
                             auth=(self._webdav_username, self._webdav_password),
-                            headers=headers,
+                            headers={'User-Agent': 'MoviePilot/1.0'},
                             timeout=30,
                             verify=False
                         )
