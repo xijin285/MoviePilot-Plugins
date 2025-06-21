@@ -30,7 +30,7 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "1.0.4"
+    plugin_version = "1.0.5"
     # 插件作者
     plugin_author = "M.Jinxi"
     # 作者主页
@@ -725,7 +725,7 @@ class ProxmoxVEBackup(_PluginBase):
             if not self._proxmox_url or not self._proxmox_token_id or not self._proxmox_token_secret:
                 error_msg = "配置不完整：URL、Token ID或Token Secret未设置。"
                 logger.error(f"{self.plugin_name} {error_msg}")
-                self._send_notification(success=False, message=error_msg)
+                self._send_notification(success=False, message=error_msg, backup_details={})
                 history_entry["message"] = error_msg
                 self._save_backup_history_entry(history_entry)
                 return
@@ -733,7 +733,7 @@ class ProxmoxVEBackup(_PluginBase):
             if not self._backup_path:
                 error_msg = "备份路径未配置且无法设置默认路径。"
                 logger.error(f"{self.plugin_name} {error_msg}")
-                self._send_notification(success=False, message=error_msg)
+                self._send_notification(success=False, message=error_msg, backup_details={})
                 history_entry["message"] = error_msg
                 self._save_backup_history_entry(history_entry)
                 return
@@ -743,7 +743,7 @@ class ProxmoxVEBackup(_PluginBase):
             except Exception as e:
                 error_msg = f"创建本地备份目录 {self._backup_path} 失败: {e}"
                 logger.error(f"{self.plugin_name} {error_msg}")
-                self._send_notification(success=False, message=error_msg)
+                self._send_notification(success=False, message=error_msg, backup_details={})
                 history_entry["message"] = error_msg
                 self._save_backup_history_entry(history_entry)
                 return
@@ -751,14 +751,16 @@ class ProxmoxVEBackup(_PluginBase):
             success_final = False
             error_msg_final = "未知错误"
             downloaded_file_final = None
+            backup_details_final = {}
             
             for i in range(self._retry_count + 1):
                 logger.info(f"{self.plugin_name} 开始第 {i+1}/{self._retry_count +1} 次备份尝试...")
-                current_try_success, current_try_error_msg, current_try_downloaded_file = self._perform_backup_once()
+                current_try_success, current_try_error_msg, current_try_downloaded_file, current_try_backup_details = self._perform_backup_once()
                 
                 if current_try_success:
                     success_final = True
                     downloaded_file_final = current_try_downloaded_file
+                    backup_details_final = current_try_backup_details
                     error_msg_final = None
                     logger.info(f"{self.plugin_name} 第{i+1}次尝试成功。备份文件: {downloaded_file_final}")
                     break 
@@ -775,12 +777,12 @@ class ProxmoxVEBackup(_PluginBase):
             history_entry["filename"] = downloaded_file_final
             history_entry["message"] = "备份成功" if success_final else f"备份失败: {error_msg_final}"
             
-            self._send_notification(success=success_final, message=history_entry["message"], filename=downloaded_file_final)
+            self._send_notification(success=success_final, message=history_entry["message"], filename=downloaded_file_final, backup_details=backup_details_final)
                 
         except Exception as e:
             logger.error(f"{self.plugin_name} 任务执行主流程出错：{str(e)}")
             history_entry["message"] = f"任务执行主流程出错: {str(e)}"
-            self._send_notification(success=False, message=history_entry["message"])
+            self._send_notification(success=False, message=history_entry["message"], backup_details={})
         finally:
             self._running = False
             self._save_backup_history_entry(history_entry)
@@ -792,10 +794,10 @@ class ProxmoxVEBackup(_PluginBase):
                     pass
             logger.info(f"{self.plugin_name} 任务执行完成。")
 
-    def _perform_backup_once(self) -> Tuple[bool, Optional[str], Optional[str]]:
+    def _perform_backup_once(self) -> Tuple[bool, Optional[str], Optional[str], Dict[str, Any]]:
         """
         执行一次备份操作
-        :return: (是否成功, 错误消息, 备份文件名)
+        :return: (是否成功, 错误消息, 备份文件名, 备份详情)
         """
         # 准备会话
         session = requests.Session()
@@ -814,7 +816,7 @@ class ProxmoxVEBackup(_PluginBase):
         # 获取认证令牌
         auth_token = self._login_proxmox(session)
         if not auth_token:
-            return False, "登录ProxmoxVE失败，无法获取认证令牌", None
+            return False, "登录ProxmoxVE失败，无法获取认证令牌", None, {}
         
         # 设置认证头
         session.headers.update({"Authorization": f"PVEAPIToken={self._proxmox_token_id}={self._proxmox_token_secret}"})
@@ -825,25 +827,43 @@ class ProxmoxVEBackup(_PluginBase):
         except Exception as e:
             error_msg = f"创建备份目录失败: {str(e)}"
             logger.error(f"{self.plugin_name} {error_msg}")
-            return False, error_msg, None
+            return False, error_msg, None, {}
         
         # 创建备份（返回UPID）
         success, error_msg, upid = self._create_backup_on_proxmox(session)
         if not success:
-            return False, error_msg, None
+            return False, error_msg, None, {}
         
         # 等待任务完成
         wait_success, wait_msg = self._wait_for_task_completion(session, upid)
         if not wait_success:
-            return False, wait_msg, None
+            return False, wait_msg, None, {}
         
         # 下载备份文件
         success, error_msg, backup_volid, downloaded_file = self._download_backup_file(session)
         if not success:
-            return False, error_msg, None, None
+            return False, error_msg, None, {}
         
         # 构建实际下载文件的完整路径
         actual_file_path = os.path.join(self._backup_path, downloaded_file)
+        
+        # 初始化备份详情
+        backup_details = {
+            "local_backup": {
+                "enabled": self._enable_local_backup,
+                "success": True,
+                "path": self._backup_path,
+                "filename": downloaded_file
+            },
+            "webdav_backup": {
+                "enabled": self._enable_webdav and bool(self._webdav_url),
+                "success": False,
+                "url": self._webdav_url,
+                "path": self._webdav_path,
+                "filename": downloaded_file,
+                "error": None
+            }
+        }
         
         # 新增：下载成功后自动删除PVE备份
         if self._auto_delete_after_download and downloaded_file:
@@ -861,14 +881,18 @@ class ProxmoxVEBackup(_PluginBase):
         # 如果启用了WebDAV，上传到WebDAV
         if self._enable_webdav and self._webdav_url:
             webdav_success, webdav_error = self._upload_to_webdav(actual_file_path, downloaded_file)
+            backup_details["webdav_backup"]["success"] = webdav_success
             if not webdav_success:
+                backup_details["webdav_backup"]["error"] = webdav_error
                 logger.error(f"{self.plugin_name} WebDAV上传失败: {webdav_error}")
                 # 继续执行，不影响主流程
+            else:
+                logger.info(f"{self.plugin_name} WebDAV上传成功")
                 
             # 清理WebDAV上的旧备份
             self._cleanup_webdav_backups()
             
-        return True, None, downloaded_file
+        return True, None, downloaded_file, backup_details
 
     def _create_backup_on_proxmox(self, session: requests.Session) -> Tuple[bool, Optional[str], Optional[str]]:
         """
@@ -1571,7 +1595,8 @@ class ProxmoxVEBackup(_PluginBase):
                 self._send_notification(
                     success=True,
                     message="已成功清理所有备份历史记录",
-                    is_clear_history=True
+                    is_clear_history=True,
+                    backup_details={}
                 )
         except Exception as e:
             error_msg = f"清理备份历史记录失败: {str(e)}"
@@ -1580,16 +1605,31 @@ class ProxmoxVEBackup(_PluginBase):
                 self._send_notification(
                     success=False,
                     message=error_msg,
-                    is_clear_history=True
+                    is_clear_history=True,
+                    backup_details={}
                 )
 
-    def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None, is_clear_history: bool = False):
+    def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None, is_clear_history: bool = False, backup_details: Optional[Dict[str, Any]] = None):
         if not self._notify: return
+        
+        # 确定备份类型和标题
+        backup_type = "备份"
+        if backup_details:
+            local_enabled = backup_details.get("local_backup", {}).get("enabled", False)
+            webdav_enabled = backup_details.get("webdav_backup", {}).get("enabled", False)
+            
+            if local_enabled and webdav_enabled:
+                backup_type = "本地+WebDAV备份"
+            elif local_enabled:
+                backup_type = "本地备份"
+            elif webdav_enabled:
+                backup_type = "WebDAV备份"
+        
         title = f"🛠️ {self.plugin_name} "
         if is_clear_history:
             title += "清理历史记录"
         else:
-            title += "成功" if success else "失败"
+            title += f"{backup_type}{'成功' if success else '失败'}"
         status_emoji = "✅" if success else "❌"
         
         # 根据选择的通知样式设置分隔符和风格
@@ -1600,6 +1640,8 @@ class ProxmoxVEBackup(_PluginBase):
             router_prefix = "🌐"
             file_prefix = "📁"
             info_prefix = "ℹ️"
+            local_prefix = "💾"
+            webdav_prefix = "☁️"
             congrats = "\n🎉 备份任务已顺利完成！"
             error_msg = "\n⚠️ 备份失败，请检查日志了解详情。"
         elif self._notification_style == 2:
@@ -1609,6 +1651,8 @@ class ProxmoxVEBackup(_PluginBase):
             router_prefix = "🔹"
             file_prefix = "📂"
             info_prefix = "📝"
+            local_prefix = "💿"
+            webdav_prefix = "🌐"
             congrats = "\n🎊 太棒了！备份成功保存！"
             error_msg = "\n🚨 警告：备份过程中出现错误！"
         elif self._notification_style == 3:
@@ -1618,6 +1662,8 @@ class ProxmoxVEBackup(_PluginBase):
             router_prefix = "📡"
             file_prefix = "💾"
             info_prefix = "📢"
+            local_prefix = "💽"
+            webdav_prefix = "☁️"
             congrats = "\n🏆 备份任务圆满完成！"
             error_msg = "\n🔥 错误：备份未能完成！"
         elif self._notification_style == 4:
@@ -1627,6 +1673,8 @@ class ProxmoxVEBackup(_PluginBase):
             router_prefix = "🌍"
             file_prefix = "📦"
             info_prefix = "💫"
+            local_prefix = "💾"
+            webdav_prefix = "☁️"
             congrats = "\n🌟 备份任务完美收官！"
             error_msg = "\n💥 备份任务遇到波折！"
         elif self._notification_style == 5:
@@ -1636,6 +1684,8 @@ class ProxmoxVEBackup(_PluginBase):
             router_prefix = "🔌"
             file_prefix = "💿"
             info_prefix = "📊"
+            local_prefix = "💾"
+            webdav_prefix = "☁️"
             congrats = "\n🚀 系统备份成功完成！"
             error_msg = "\n⚠️ 系统备份出现异常！"
         else:
@@ -1645,6 +1695,8 @@ class ProxmoxVEBackup(_PluginBase):
             router_prefix = "🔗"
             file_prefix = "📄"
             info_prefix = "📋"
+            local_prefix = "💾"
+            webdav_prefix = "☁️"
             congrats = "\n✨ 备份已成功完成！"
             error_msg = "\n❗ 备份失败，请检查配置和连接！"
         
@@ -1655,10 +1707,42 @@ class ProxmoxVEBackup(_PluginBase):
         else:
             text_content = f"{divider}\n"
             
-        text_content += f"{status_prefix} 状态：{status_emoji} {'备份成功' if success else '备份失败'}\n\n"
+        text_content += f"{status_prefix} 状态：{status_emoji} {backup_type}{'成功' if success else '失败'}\n\n"
         text_content += f"{router_prefix} 路由：{self._proxmox_url}\n"
-        if filename:
-            text_content += f"{file_prefix} 文件：{filename}\n"
+        
+        # 根据备份详情显示不同的信息
+        if backup_details:
+            local_backup = backup_details.get("local_backup", {})
+            webdav_backup = backup_details.get("webdav_backup", {})
+            
+            # 显示本地备份信息
+            if local_backup.get("enabled", False):
+                local_success = local_backup.get("success", False)
+                local_emoji = "✅" if local_success else "❌"
+                text_content += f"{local_prefix} 本地备份：{local_emoji} {local_backup.get('path', 'N/A')}\n"
+                if filename:
+                    text_content += f"{file_prefix} 文件名：{filename}\n"
+            
+            # 显示WebDAV备份信息
+            if webdav_backup.get("enabled", False):
+                webdav_success = webdav_backup.get("success", False)
+                webdav_emoji = "✅" if webdav_success else "❌"
+                webdav_url = webdav_backup.get("url", "N/A")
+                webdav_path = webdav_backup.get("path", "")
+                if webdav_path:
+                    webdav_full_path = f"{webdav_url}/{webdav_path}"
+                else:
+                    webdav_full_path = webdav_url
+                text_content += f"{webdav_prefix} WebDAV备份：{webdav_emoji} {webdav_full_path}\n"
+                
+                # 如果WebDAV备份失败，显示错误信息
+                if not webdav_success and webdav_backup.get("error"):
+                    text_content += f"{info_prefix} WebDAV错误：{webdav_backup['error']}\n"
+        else:
+            # 兼容旧版本，没有备份详情时显示基本信息
+            if filename:
+                text_content += f"{file_prefix} 文件：{filename}\n"
+        
         if message:
             text_content += f"{info_prefix} 详情：{message.strip()}\n"
         
