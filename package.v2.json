@@ -5,7 +5,7 @@
     "labels": "备份,路由器",
     "version": "1.3.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
-    "author": "M.Jinxi",
+    "author": "xijin285",
     "level": 2,
     "history": {
       "v1.3.1": "兼容主程序v2.6.9版本API路由注册问题",
@@ -26,7 +26,7 @@
     "labels": "签到",
     "version": "2.5.8",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png",
-    "author": "M.Jinxi",
+    "author": "xijin285",
     "level": 2,
     "history": {
       "v2.5.8": "增加系统代理支持",
@@ -45,7 +45,7 @@
     "labels": "备份,路由器",
     "version": "1.0.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.png",
-    "author": "M.Jinxi",
+    "author": "xijin285",
     "level": 2,
     "requirements": ["paramiko>=2.12.0", "requests>=2.31.0", "pytz>=2023.3"],
     "history": {
@@ -59,7 +59,7 @@
     "labels": "备份,虚拟机",
     "version": "2.1.2",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp",
-    "author": "M.Jinxi",
+    "author": "xijin285",
     "level": 2,
     "requirements": ["paramiko>=2.7.0", "pytz>=2021.1", "apscheduler>=3.9.0", "requests>=2.25.0", "psutil>=5.8.0"],
     "history": {
@@ -83,7 +83,7 @@
     "labels": "存储,网盘",
     "version": "1.0.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/quark.ico",
-    "author": "M.Jinxi",
+    "author": "xijin285",
     "level": 2,
     "history": {
       "v1.0.0": "首个正式版本：支持夸克网盘基础操作"
@@ -95,7 +95,7 @@
     "labels": "图床,API",
     "version": "2.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png",
-    "author": "M.Jinxi",
+    "author": "xijin285",
     "level": 2,
     "requirements": ["pytz>=2023.3", "apscheduler>=3.10.1", "requests>=2.31.0"],
     "history": {
@@ -113,7 +113,7 @@
     "labels": "站点,优选",
     "version": "1.1.2",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cfipselector.png",
-    "author": "M.Jinxi",
+    "author": "xijin285",
     "level": 2,
     "requirements": ["requests>=2.25.0", "apscheduler>=3.6.0", "python-hosts>=1.0.4"],
     "history": {
@@ -128,11 +128,12 @@
     "name": "豆瓣档案(自用版)",
     "description": "追剧观影自动同步进度到豆瓣，打造专属观影档案",
     "labels": "豆瓣",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/douban.png",
-    "author": "M.Jinxi",
+    "author": "xijin285",
     "level": 2,
     "history": {
+      "v1.0.2": "版本回退",
       "v1.0.1": "优化通知逻辑",
       "v1.0": "首个自用版本"
     }

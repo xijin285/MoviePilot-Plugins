@@ -244,7 +244,7 @@ class RandomPic(_PluginBase):
     # 插件版本
     plugin_version = "2.1"
     # 插件作者
-    plugin_author = "M.Jinxi"
+    plugin_author = "xijin285"
     # 作者主页
     author_url = "https://github.com/xijin285"
     # 插件配置项ID前缀

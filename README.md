@@ -18,7 +18,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 #### <img src="https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png" width="32" style="vertical-align:middle;"> 爱快路由备份助手 (IkuaiRouterBackup)
 - **版本**: `v1.3.1`
-- **作者**: [@M.Jinxi](https://github.com/xijin285)
+- **作者**: [@xijin285](https://github.com/xijin285)
 
 **简介**：
 > 轻松配置您的爱快路由，让路由管理更简单。
@@ -69,7 +69,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 #### <img src="https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cnlang.png" width="32" style="vertical-align:middle;"> 国语视界签到V2 (CnlangSigninV2)
 -   **版本**: `v2.5.8`
--   **作者**: [@M.Jinxi](https://github.com/xijin285)
+-   **作者**: [@xijin285](https://github.com/xijin285)
 
 **简介**：
 > 美观实用的签到助手。
@@ -105,7 +105,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 #### <img src="https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.png" width="32" style="vertical-align:middle;"> OpenWrt路由备份助手 (OpenWrtBackup)
 -   **版本**: `v1.0.1`
--   **作者**: [@M.Jinxi](https://github.com/xijin285)
+-   **作者**: [@xijin285](https://github.com/xijin285)
 
 **简介**：
 > 为OpenWrt路由器提供全自动的配置备份方案。
@@ -141,7 +141,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 #### <img src="https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png" width="32" style="vertical-align:middle;"> 随机图库 (RandomPic)
 -   **版本**: `v2.0.0`
--   **作者**: [@M.Jinxi](https://github.com/xijin285)
+-   **作者**: [@xijin285](https://github.com/xijin285)
 
 **简介**：
 > 随机图片API服务，支持横屏/竖屏图片分类。
@@ -187,7 +187,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 #### <img src="https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp" width="32" style="vertical-align:middle;"> PVE虚拟机守护神 (ProxmoxVEBackup)
 -   **版本**: `v2.1.2`
--   **作者**: [@M.Jinxi](https://github.com/xijin285)
+-   **作者**: [@xijin285](https://github.com/xijin285)
 
 **简介**：
 > 全新架构的PVE虚拟机守护神，集成可视化界面与智能自动化。
@@ -234,7 +234,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 #### <img src="https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/quark.ico" width="32" style="vertical-align:middle;"> 夸克网盘 (QuarkDisk)
 -   **版本**: `v1.0.0`
--   **作者**: [@M.Jinxi](https://github.com/xijin285)
+-   **作者**: [@xijin285](https://github.com/xijin285)
 
 **简介**：
 > 为存储系统集成夸克网盘支持。
@@ -254,7 +254,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 
 #### <img src="https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cfipselector.png" width="32" style="vertical-align:middle;"> PT云盾优选 (CFIPSelector)
 - **版本**: `v1.1.2`
-- **作者**: [@M.Jinxi](https://github.com/xijin285)
+- **作者**: [@xijin285](https://github.com/xijin285)
 
 **简介**：
 > Cloudflare智能IP优选，自动写入hosts，助力PT站点极速访问。  

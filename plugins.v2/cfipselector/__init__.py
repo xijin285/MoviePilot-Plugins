@@ -34,7 +34,7 @@ class CFIPSelector(_PluginBase):
     plugin_desc = "PT站点专属优选IP，自动写入hosts，访问快人一步"
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cfipselector.png"
     plugin_version = "1.1.2"
-    plugin_author = "M.Jinxi"
+    plugin_author = "xijin285"
     author_url = "https://github.com/xijin285"
     plugin_config_prefix = "cfipselector_"
     plugin_order = 2
