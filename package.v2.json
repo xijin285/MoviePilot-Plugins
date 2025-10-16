@@ -128,11 +128,12 @@
     "name": "豆瓣档案(自用版)",
     "description": "追剧观影自动同步进度到豆瓣，打造专属观影档案",
     "labels": "豆瓣",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/douban.png",
     "author": "xijin285",
     "level": 2,
     "history": {
+      "v1.0.3": "优化同步逻辑",
       "v1.0.2": "版本回退",
       "v1.0.1": "优化通知逻辑",
       "v1.0": "首个自用版本"

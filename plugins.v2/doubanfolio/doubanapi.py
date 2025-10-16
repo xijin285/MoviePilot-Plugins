@@ -78,8 +78,9 @@ class DoubanApi:
             if title == "肖申克的救赎":
                 return None, None
             error_msg = f"搜索 {title} 失败 状态码：{response.status_code}"
-            if "The resource you requested could not be found." in error_msg:
-                logger.error("请求的资源未找到（可能是条目不存在或ID错误）")
+            # 替换英文提示为中文
+            if 'The resource you requested could not be found.' in error_msg:
+                logger.error("您请求的资源未找到。")
             else:
                 logger.error(error_msg)
             return None, None

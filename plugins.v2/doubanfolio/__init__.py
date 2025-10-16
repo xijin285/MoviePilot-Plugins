@@ -24,7 +24,7 @@ class DoubanFolio(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/douban.png"
     # 插件版本
-    plugin_version = "1.0.2"
+    plugin_version = "1.0.3"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -87,7 +87,6 @@ class DoubanFolio(_PluginBase):
             if not hasattr(self, '_last_skip_log_time'):
                 self._last_skip_log_time = 0
             if now - self._last_skip_log_time > 600:  # 10分钟
-                logger.info("同步流程已在进行中，跳过本次事件处理，防止重复通知。")
                 self._last_skip_log_time = now
             return
         try:
@@ -98,8 +97,8 @@ class DoubanFolio(_PluginBase):
             now = time.time()
             # 每小时只检测一次cookie有效性，避免频繁检测
             if now - self._last_cookie_check_time > 3600:  # 1小时
-                if not hasattr(self, '_last_cookie_invalid_time'):
-                    self._last_cookie_invalid_time = 0
+                if not hasattr(self, '_last_cookie_check_time'):
+                    self._last_cookie_check_time = 0
                 # 用真实存在的电影名检测cookie有效性，避免误判
                 try:
                     douban_helper = DoubanApi(user_cookie=self._cookie)
@@ -112,7 +111,6 @@ class DoubanFolio(_PluginBase):
                     if not hasattr(self, '_last_cookie_valid_time'):
                         self._last_cookie_valid_time = 0
                     if now - self._last_cookie_valid_time > 600:
-                        logger.info("cookie有效性检测通过")
                         self._last_cookie_valid_time = now
                 else:
                     # 10分钟内只推送一次失效通知
@@ -186,20 +184,14 @@ class DoubanFolio(_PluginBase):
         episodes = mediainfo.seasons.get(season_id, [])
 
         title = self.format_title(title, season_id)
+        # 如果该剧集已同步，跳过同步操作,并发送通知
+        if processed_items.get(title):
+            logger.info(f"{title} 已同步，跳过同步操作")
+            self._send_notification(True, f"{title} 已同步,跳过同步操作")
+            return
         status = "collect" if len(episodes) == episode_id else "do"
 
-        if processed_items.get(title) and len(episodes) != episode_id:
-            logger.info(f"{title} 已同步到豆瓣在看，不处理")
-            return
-
         sync_ret = self._sync_to_douban(title, status, event_info.item_type, processed_items, mediainfo.poster_path)
-        # 尝试同步之前同步失败的
-        if sync_ret:
-            logger.info(f"尝试同步之前同步失败的条目")
-            self._wait_process: Dict = self.get_data('wait') or {}
-            for key, value in self._wait_process.items():
-                logger.info(f"尝试同步: {key}")
-                self._sync_to_douban(key, value["status"], value["type"], processed_items, value["poster_path"])
 
     def _process_movie(self, event_info: WebhookEventInfo, processed_items: Dict, played: bool = False):
         title = event_info.item_name
@@ -219,10 +211,6 @@ class DoubanFolio(_PluginBase):
                 logger.error(f'仍然未识别到媒体信息，请检查TMDB网络连接...')
                 return
 
-        if processed_items.get(title):
-            logger.info(f"{title} 已同步到豆瓣在看，不处理")
-            return
-
         self._sync_to_douban(title, "collect", event_info.item_type, processed_items, mediainfo.poster_path)
 
     def _recognize_media(self, meta: MetaInfo, tmdb_id: Optional[int]) -> Optional[MediaInfo]:
@@ -231,8 +219,11 @@ class DoubanFolio(_PluginBase):
     def _send_notification(self, success: bool, message: str):
         if not self._notify:
             return
-        title = f"豆瓣观影档案 {'成功' if success else '失败'}"
+        # 固定标题为 '豆瓣观影档案'
+        title = "豆瓣观影档案"
+        # 消息内容直接使用传入消息，不再添加多余标识
         text_content = message.strip()
+        # 添加当前时间
         text_content += f"\n时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         try:
             self.post_message(mtype=NotificationType.MediaServer, title=title, text=text_content)
