@@ -20,6 +20,7 @@ import urllib.request
 import zipfile, tarfile
 import json
 from collections import defaultdict
+from .ikuai_dns_manager import IkuaiDNSManager
 
 # 尝试导入psutil，如果不可用则使用备选方案
 try:
@@ -33,7 +34,7 @@ class CFIPSelector(_PluginBase):
     plugin_name = "PT云盾优选"
     plugin_desc = "PT站点专属优选IP，自动写入hosts，访问快人一步"
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cfipselector.png"
-    plugin_version = "1.1.2"
+    plugin_version = "1.2.0"
     plugin_author = "xijin285"
     author_url = "https://github.com/xijin285"
     plugin_config_prefix = "cfipselector_"
@@ -67,6 +68,13 @@ class CFIPSelector(_PluginBase):
     _tracker_include_list: List[str] = []  # UI tracker域名列表
     _github_tracker_url: str = None  # GitHub tracker列表URL
     _auto_sync_scheduler: Optional[BackgroundScheduler] = None
+
+    # 爱快路由器 DNS 同步相关配置
+    _enable_ikuai_dns: bool = False  # 是否启用爱快 DNS 同步
+    _ikuai_url: str = ""  # 爱快路由器地址
+    _ikuai_username: str = "admin"  # 爱快路由器用户名
+    _ikuai_password: str = ""  # 爱快路由器密码
+    _ikuai_dns_manager: Optional[IkuaiDNSManager] = None  # DNS 管理器实例
 
     def init_plugin(self, config: dict = None):
         #logger.info("PT云盾优选 插件已加载")
@@ -116,6 +124,24 @@ class CFIPSelector(_PluginBase):
             except Exception:
                 pass
             self._sign_sites = [i for i in self._sign_sites if i in all_ids]
+
+            # 初始化爱快路由器 DNS 同步配置
+            self._enable_ikuai_dns = bool(config.get("enable_ikuai_dns", False))
+            self._ikuai_url = str(config.get("ikuai_url", ""))
+            self._ikuai_username = str(config.get("ikuai_username", "admin"))
+            self._ikuai_password = str(config.get("ikuai_password", ""))
+            
+            # 初始化爱快 DNS 管理器
+            if self._enable_ikuai_dns and self._ikuai_url and self._ikuai_password:
+                self._ikuai_dns_manager = IkuaiDNSManager()
+                self._ikuai_dns_manager.init_config(
+                    url=self._ikuai_url,
+                    username=self._ikuai_username,
+                    password=self._ikuai_password
+                )
+            else:
+                self._ikuai_dns_manager = None
+
             # 新增：tracker优选域名UI配置
             tracker_include_list = config.get("tracker_include_list")
             if tracker_include_list is not None:
@@ -137,6 +163,29 @@ class CFIPSelector(_PluginBase):
             self._enable_site_select = bool(config.get("enable_site_select", True))
             self._enable_tracker_select = bool(config.get("enable_tracker_select", True))
             self._github_tracker_url = config.get("github_tracker_url")  # 新增：GitHub tracker列表URL
+
+            # 初始化爱快路由器配置
+            self._enable_ikuai_dns = bool(config.get("enable_ikuai_dns", False))
+            self._ikuai_url = str(config.get("ikuai_url", "")).strip()
+            self._ikuai_username = str(config.get("ikuai_username", "admin")).strip()
+            self._ikuai_password = str(config.get("ikuai_password", "")).strip()
+
+            # 如果爱快DNS同步功能启用且配置有效，则初始化DNS管理器
+            if self._enable_ikuai_dns and self._ikuai_url and self._ikuai_password:
+                try:
+                    self._ikuai_dns_manager = IkuaiDNSManager()
+                    self._ikuai_dns_manager.init_config(
+                        url=self._ikuai_url,
+                        username=self._ikuai_username,
+                        password=self._ikuai_password
+                    )
+                    logger.info("爱快DNS管理器初始化成功")
+                except Exception as e:
+                    logger.error(f"爱快DNS管理器初始化失败: {str(e)}")
+                    self._ikuai_dns_manager = None
+            else:
+                self._ikuai_dns_manager = None
+
             self.__update_config()
         if self._enabled:
             if self._onlyonce:
@@ -179,6 +228,11 @@ class CFIPSelector(_PluginBase):
             "tls": self._tls,
             "ipnum": self._ipnum,
             "concurrency": self._concurrency,
+            # 添加爱快路由器配置
+            "enable_ikuai_dns": self._enable_ikuai_dns,
+            "ikuai_url": self._ikuai_url,
+            "ikuai_username": self._ikuai_username,
+            "ikuai_password": self._ikuai_password,
             "cidr_sample_num": self._cidr_sample_num,
             "candidate_num": self._candidate_num,
             "sign_sites": self._sign_sites or [],
@@ -651,11 +705,29 @@ class CFIPSelector(_PluginBase):
 
     def _write_hosts_for_sites_multi(self, ip_map: Dict[str, str]) -> bool:
         """
-        将多个域名和IP写入hosts，指向优选IP
+        将多个域名和IP写入hosts，指向优选IP，并同步到爱快路由器的 DNS 服务器
         """
         if not ip_map:
             logger.warning("没有优选IP，跳过hosts写入")
             return False
+            
+        # 同步到爱快路由器 DNS
+        if self._enable_ikuai_dns and self._ikuai_dns_manager:
+            try:
+                # 转换为爱快 DNS 记录格式
+                hosts_list = [
+                    {"domain": domain, "ip": ip}
+                    for domain, ip in ip_map.items()
+                ]
+                
+                # 同步到爱快 DNS
+                dns_sync_success = self._ikuai_dns_manager.sync_hosts_to_dns(hosts_list)
+                if dns_sync_success:
+                    logger.info("成功同步域名解析记录到爱快路由器 DNS")
+                else:
+                    logger.error("同步域名解析记录到爱快路由器 DNS 失败")
+            except Exception as e:
+                logger.error(f"同步到爱快路由器 DNS 时发生错误: {str(e)}")
         
         try:
             from python_hosts import Hosts, HostsEntry
@@ -922,6 +994,15 @@ class CFIPSelector(_PluginBase):
             merged_ip_map = {**domain_best_ip, **tracker_best_ip}
             if merged_ip_map:
                 hosts_status = self._write_hosts_for_sites_multi(merged_ip_map)
+
+                # 获取爱快 DNS 同步状态
+                ikuai_dns_status = None
+                if self._enable_ikuai_dns:
+                    if self._ikuai_dns_manager and hasattr(self._ikuai_dns_manager, '_last_sync_success'):
+                        ikuai_dns_status = "成功" if self._ikuai_dns_manager._last_sync_success else "失败"
+                    else:
+                        ikuai_dns_status = "配置异常"
+
                 if hosts_status:
                     from datetime import datetime
                     self._last_select_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -931,15 +1012,19 @@ class CFIPSelector(_PluginBase):
                     logger.warning(f"优选成功但写入hosts失败: {merged_ip_map}")
                 if self._notify:
                     text = "\n".join([f"🌐 {d}: {ip}" for d, ip in merged_ip_map.items()])
-                    self._send_notification(True, f"多站点+tracker优选完成，已找到可用IP:", [{"ip": text, "test_method": "HTTPS" if self._tls else "HTTP"}], hosts_status=hosts_status)
+                    self._send_notification(True, f"多站点+tracker优选完成，已找到可用IP:", 
+                                         [{"ip": text, "test_method": "HTTPS" if self._tls else "HTTP"}], 
+                                         hosts_status=hosts_status,
+                                         ikuai_dns_status=ikuai_dns_status)
                 return
             logger.warning("没有找到任何可用的优选IP！")
             if self._notify:
-                self._send_notification(False, "优选失败，没有找到可用IP。", None, hosts_status=None)
+                self._send_notification(False, "优选失败，没有找到可用IP。", None, hosts_status=None, ikuai_dns_status=None)
         except Exception as e:
             logger.error(f"select_ips主流程异常: {e}")
 
-    def _send_notification(self, success: bool, message: str = "", result: Optional[List[Dict[str, Any]]] = None, hosts_status: Optional[bool] = None):
+    def _send_notification(self, success: bool, message: str = "", result: Optional[List[Dict[str, Any]]] = None, 
+                       hosts_status: Optional[bool] = None, ikuai_dns_status: Optional[str] = None):
         if not self._notify:
             return
         
@@ -958,6 +1043,9 @@ class CFIPSelector(_PluginBase):
             # hosts写入状态放在📝后面
             if hosts_status is not None:
                 text += f"🖥️ hosts写入: {'成功' if hosts_status else '失败'}\n"
+            # 添加爱快DNS同步状态
+            if self._enable_ikuai_dns and ikuai_dns_status:
+                text += f"🌐 爱快DNS同步: {ikuai_dns_status}\n"
             text += f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         else:
             title = "🛡️ PT云盾优选 - 优选失败"
@@ -977,14 +1065,42 @@ class CFIPSelector(_PluginBase):
         return self._enabled
 
     def get_command(self) -> List[Dict[str, Any]]:
-        return [
-            {
-                "name": "sync_locations",
-                "label": "立即同步数据",
-                "desc": "同步数据中心映射表",
-                "icon": "mdi-sync"
-            }
-        ]
+        """返回插件配置项"""
+        return [{
+            "name": "enabled",
+            "type": "boolean",
+            "label": "启用插件",
+            "help_text": "是否启用 PT云盾优选功能"
+        }, {
+            "name": "enable_ikuai_dns",
+            "type": "boolean",
+            "label": "启用爱快DNS同步",
+            "help_text": "是否将优选的 IP 同步到爱快路由器的 DNS 服务器"
+        }, {
+            "name": "ikuai_url",
+            "type": "string",
+            "label": "爱快路由器地址",
+            "help_text": "爱快路由器的访问地址，如：http://192.168.1.1",
+            "required": False
+        }, {
+            "name": "ikuai_username",
+            "type": "string",
+            "label": "爱快路由器用户名",
+            "help_text": "爱快路由器的登录用户名",
+            "required": False,
+            "default": "admin"
+        }, {
+            "name": "ikuai_password",
+            "type": "password",
+            "label": "爱快路由器密码",
+            "help_text": "爱快路由器的登录密码",
+            "required": False
+        }, {
+            "name": "sync_locations",
+            "label": "立即同步数据",
+            "desc": "同步数据中心映射表",
+            "icon": "mdi-sync"
+        }]
 
     @eventmanager.register(EventType.PluginAction)
     def on_plugin_action(self, event: Event):
@@ -1180,6 +1296,68 @@ class CFIPSelector(_PluginBase):
                                     'persistent-hint': True
                                 }}
                             ]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 3, 'class': 'd-flex align-center'}, 'content': [
+                                {'component': 'VSwitch', 'props': {
+                                    'model': 'enable_ikuai_dns',
+                                    'label': '启用爱快DNS同步',
+                                    'color': 'success',
+                                    'prepend-icon': 'mdi-dns',
+                                    'hint': '是否将优选的IP同步到爱快路由器的DNS服务器',
+                                    'persistent-hint': True
+                                }}
+                            ]},
+                        ]
+                    },
+                    # 添加爱快路由器 DNS 配置区域
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 12}, 'content': [
+                                {'component': 'VDivider', 'props': {'class': 'my-2'}}
+                            ]}
+                        ]
+                    },
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [
+                                {'component': 'VTextField', 'props': {
+                                    'model': 'ikuai_url',
+                                    'label': '爱快路由器地址',
+                                    'placeholder': 'http://192.168.1.1',
+                                    'prepend-inner-icon': 'mdi-router-wireless',
+                                    'hint': '爱快路由器的访问地址',
+                                    'persistent-hint': True
+                                }}
+                            ]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [
+                                {'component': 'VTextField', 'props': {
+                                    'model': 'ikuai_username',
+                                    'label': '爱快路由器用户名',
+                                    'placeholder': 'admin',
+                                    'prepend-inner-icon': 'mdi-account',
+                                    'hint': '爱快路由器的登录用户名',
+                                    'persistent-hint': True
+                                }}
+                            ]},
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 4}, 'content': [
+                                {'component': 'VTextField', 'props': {
+                                    'model': 'ikuai_password',
+                                    'label': '爱快路由器密码',
+                                    'type': 'password',
+                                    'prepend-inner-icon': 'mdi-form-textbox-password',
+                                    'hint': '爱快路由器的登录密码',
+                                    'persistent-hint': True
+                                }}
+                            ]}
+                        ]
+                    },
+                    {
+                        'component': 'VRow',
+                        'content': [
+                            {'component': 'VCol', 'props': {'cols': 12, 'md': 12}, 'content': [
+                                {'component': 'VDivider', 'props': {'class': 'my-2'}}
+                            ]}
                         ]
                     },
                     {
@@ -1253,6 +1431,7 @@ class CFIPSelector(_PluginBase):
                             ]}
                         ]
                     },
+
                     # 新增tracker优选域名输入框
                     {
                         'component': 'VRow',
@@ -1309,6 +1488,11 @@ class CFIPSelector(_PluginBase):
             "enable_tracker_select": self._enable_tracker_select,
             "tracker_include_list": tracker_include_default,
             "github_tracker_url": self._github_tracker_url or "",
+            # 添加爱快路由器配置项
+            "enable_ikuai_dns": self._enable_ikuai_dns,
+            "ikuai_url": self._ikuai_url,
+            "ikuai_username": self._ikuai_username,
+            "ikuai_password": self._ikuai_password,
         }
         return form, model
 
