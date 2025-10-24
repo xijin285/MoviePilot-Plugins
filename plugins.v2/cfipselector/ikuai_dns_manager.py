@@ -49,12 +49,17 @@ class IkuaiDNSManager:
 
         try:
             url = f"{self._ikuai_url}/Action/login"
-            headers = {'Content-Type': 'application/json'}
+            headers = {
+                'Content-Type': 'application/json;charset=UTF-8',
+                'Accept': 'application/json, text/plain, */*',
+                'Origin': self._ikuai_url,
+                'Referer': f"{self._ikuai_url}/"
+            }
             params = self._get_login_params()
             logger.debug(f"尝试登录爱快路由器，URL: {url}")
             
             response = self._session.post(url, 
-                                       data=json.dumps(params), 
+                                       json=params,  # 直接使用json参数
                                        headers=headers, 
                                        timeout=10)
             response.raise_for_status()
@@ -63,6 +68,8 @@ class IkuaiDNSManager:
                 data = response.json()
                 if data.get("Result", 0) == 10000:
                     self._logged_in = True
+                    # 保存登录cookies
+                    self._session.cookies.update(response.cookies)
                     logger.info("爱快路由器登录成功")
                     return True
                 else:
@@ -87,11 +94,22 @@ class IkuaiDNSManager:
             return False
 
         try:
+            # 先删除已存在的相同域名记录
+            for host in hosts:
+                self._delete_existing_dns_record(host['domain'])
+            
             success_count = 0
             for host in hosts:
                 try:
                     domain = host['domain']
                     ip = host['ip']
+                    
+                    # 转换域名为通配符格式
+                    wildcard_domain = domain
+                    if '.' in domain:
+                        # 获取顶级域名部分，如 m-team.cc 从 kp.m-team.cc
+                        main_domain = '.'.join(domain.split('.')[-2:])
+                        wildcard_domain = f"*.{main_domain}"
                     
                     data = {
                         "func_name": "dns",
@@ -99,7 +117,7 @@ class IkuaiDNSManager:
                         "param": {
                             "comment": "PT云盾优选",
                             "dns_addr": ip,
-                            "domain": domain,
+                            "domain": wildcard_domain,
                             "enabled": "yes",
                             "parse_type": "ipv4",
                             "dns_addr_ipv4": ip,
@@ -208,38 +226,112 @@ class IkuaiDNSManager:
 
     def _get_dns_records(self) -> List[Dict]:
         """获取现有的 DNS 记录"""
+        if not self.login():
+            return []
+            
         try:
             url = f"{self._ikuai_url}/Action/call"
-            headers = {'Content-Type': 'application/json'}
+            headers = {
+                'Content-Type': 'application/json;charset=UTF-8',
+                'Accept': 'application/json, text/plain, */*',
+                'Origin': self._ikuai_url,
+                'Referer': f"{self._ikuai_url}/"
+            }
             payload = {
-                "func_name": "dns",  # 修改为正确的功能名
+                "func_name": "dns",
                 "action": "show",
                 "param": {
-                    "TYPE": "dns_server",  # 指定要获取的是DNS服务器记录
-                    "limit": "0,100",
+                    "TYPE": "dns_proxy_total,dns_proxy",
+                    "FINDS": "domain,dns_addr,src_addr,comment",
+                    "KEYWORDS": "",
+                    "limit": "0,200",
                     "ORDER_BY": "",
                     "ORDER": ""
                 }
             }
             
             response = self._session.post(url, 
-                                       data=json.dumps(payload), 
+                                       json=payload, 
                                        headers=headers, 
                                        timeout=10)
-            response.raise_for_status()
-            data = response.json()
             
-            if data.get("Result", 0) == 30000:
-                records = data.get("Data", {}).get("data", [])
-                logger.debug(f"成功获取到 {len(records)} 条 DNS 记录")
-                return records
-            
-            logger.error(f"获取 DNS 记录失败: {data.get('ErrMsg', '未知错误')}")
-            return []
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("Result") == 30000 and "Data" in result:
+                    records = result.get("Data", {}).get("data", [])
+                    if records:
+                        logger.debug(f"成功获取到 {len(records)} 条 DNS 记录")
+                        return records
+                    else:
+                        logger.info("当前没有任何DNS记录")
+                        return []
+                else:
+                    logger.error(f"获取 DNS 记录失败: {result}")
+                    return []
+            else:
+                logger.error(f"获取 DNS 记录请求失败，状态码: {response.status_code}")
+                return []
 
         except Exception as e:
             logger.error(f"获取 DNS 记录失败: {str(e)}")
             return []
+
+    def _delete_existing_dns_record(self, domain: str) -> None:
+        """
+        删除指定域名的已存在DNS记录
+        :param domain: 要删除的域名
+        """
+        try:
+            logger.info(f"开始检查并删除已存在的DNS记录: {domain}")
+            records = self._get_dns_records()
+            
+            if not records:
+                logger.info("未获取到任何DNS记录")
+                return
+            
+            # 检查通配符域名匹配
+            for record in records:
+                record_domain = record.get("domain", "")
+                # 检查精确匹配或通配符匹配
+                if record_domain == domain or (
+                    record_domain.startswith("*.") and 
+                    domain.endswith(record_domain[2:])
+                ):
+                    record_id = record.get("id")
+                    if not record_id:
+                        continue
+                    
+                    logger.info(f"找到匹配的记录: ID={record_id}, Pattern={record_domain}, IP={record.get('dns_addr')}, Comment={record.get('comment')}")
+                    
+                    # 删除记录
+                    url = f"{self._ikuai_url}/Action/call"
+                    headers = {
+                        'Content-Type': 'application/json;charset=UTF-8',
+                        'Accept': 'application/json, text/plain, */*',
+                        'Origin': self._ikuai_url,
+                        'Referer': f"{self._ikuai_url}/"
+                    }
+                    delete_data = {
+                        "func_name": "dns",
+                        "action": "del",
+                        "param": {
+                            "id": record_id
+                        }
+                    }
+                    
+                    response = self._session.post(url, json=delete_data, headers=headers, timeout=10)
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("Result") == 30000:
+                            logger.info(f"成功删除DNS记录: {domain} (ID: {record_id})")
+                        else:
+                            logger.error(f"删除DNS记录失败: {domain} (ID: {record_id}), 错误: {result}")
+                    else:
+                        logger.error(f"删除DNS记录请求失败: {response.status_code}")
+                        
+                        
+        except Exception as e:
+            logger.error(f"删除DNS记录时发生错误: {str(e)}")
 
     def _merge_dns_records(self, existing: List[Dict], new: List[Dict]) -> List[Dict]:
         """

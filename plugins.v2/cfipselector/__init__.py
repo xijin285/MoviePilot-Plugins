@@ -34,7 +34,7 @@ class CFIPSelector(_PluginBase):
     plugin_name = "PT云盾优选"
     plugin_desc = "PT站点专属优选IP，自动写入hosts，访问快人一步"
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cfipselector.png"
-    plugin_version = "1.2.0"
+    plugin_version = "1.3.0"
     plugin_author = "xijin285"
     author_url = "https://github.com/xijin285"
     plugin_config_prefix = "cfipselector_"
@@ -990,12 +990,31 @@ class CFIPSelector(_PluginBase):
                 except Exception as e:
                     logger.error(f"tracker优选流程异常: {e}")
 
-            # 3. 合并PT站点和tracker优选结果，统一写入hosts
+            # 3. 合并PT站点和tracker优选结果，根据配置选择写入方式
             merged_ip_map = {**domain_best_ip, **tracker_best_ip}
             if merged_ip_map:
-                hosts_status = self._write_hosts_for_sites_multi(merged_ip_map)
-
-                # 获取爱快 DNS 同步状态
+                hosts_status = False
+                sync_message = ""
+                
+                # 如果启用了爱快DNS同步，则只写入DNS不写hosts
+                if self._enable_ikuai_dns and self._ikuai_dns_manager:
+                    # 同步到爱快DNS
+                    dns_records = [{"domain": domain, "ip": ip} for domain, ip in merged_ip_map.items()]
+                    if self._ikuai_dns_manager.sync_hosts_to_dns(dns_records):
+                        logger.info("成功同步域名解析记录到爱快路由器 DNS")
+                        hosts_status = True  # DNS同步成功也视为成功
+                        sync_message = "DNS同步成功"
+                    else:
+                        logger.error("同步到爱快路由器 DNS 失败")
+                        sync_message = "DNS同步失败"
+                        hosts_status = False
+                    # 不执行本地hosts写入
+                else:
+                    # 没有启用爱快DNS同步，则写入本地hosts
+                    hosts_status = self._write_hosts_for_sites_multi(merged_ip_map)
+                    sync_message = "本地hosts更新"
+                
+                # 获取DNS同步状态
                 ikuai_dns_status = None
                 if self._enable_ikuai_dns:
                     if self._ikuai_dns_manager and hasattr(self._ikuai_dns_manager, '_last_sync_success'):
@@ -1003,19 +1022,26 @@ class CFIPSelector(_PluginBase):
                     else:
                         ikuai_dns_status = "配置异常"
 
+                # 更新最后优选时间和IP
                 if hosts_status:
                     from datetime import datetime
                     self._last_select_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     self._last_selected_ip = ", ".join([f"{d}:{ip}" for d, ip in merged_ip_map.items()])
                     self.__update_config()
-                else:
-                    logger.warning(f"优选成功但写入hosts失败: {merged_ip_map}")
+                
+                # 发送通知
                 if self._notify:
                     text = "\n".join([f"🌐 {d}: {ip}" for d, ip in merged_ip_map.items()])
-                    self._send_notification(True, f"多站点+tracker优选完成，已找到可用IP:", 
-                                         [{"ip": text, "test_method": "HTTPS" if self._tls else "HTTP"}], 
-                                         hosts_status=hosts_status,
-                                         ikuai_dns_status=ikuai_dns_status)
+                    self._send_notification(
+                        success=True,
+                        message=f"多站点+tracker优选完成\n同步方式：{sync_message}", 
+                        result=[{
+                            "ip": text,
+                            "test_method": "HTTPS" if self._tls else "HTTP"
+                        }],
+                        hosts_status=hosts_status,
+                        ikuai_dns_status=ikuai_dns_status
+                    )
                 return
             logger.warning("没有找到任何可用的优选IP！")
             if self._notify:
@@ -1040,19 +1066,20 @@ class CFIPSelector(_PluginBase):
                 text += f"📋 检测站点: {', '.join(test_domains)}\n"
             if message:
                 text += f"📝 {message}\n"
-            # hosts写入状态放在📝后面
-            if hosts_status is not None:
-                text += f"🖥️ hosts写入: {'成功' if hosts_status else '失败'}\n"
-            # 添加爱快DNS同步状态
+            # 根据不同同步方式显示状态
             if self._enable_ikuai_dns and ikuai_dns_status:
                 text += f"🌐 爱快DNS同步: {ikuai_dns_status}\n"
+            elif hosts_status is not None:  # 只在未启用DNS同步时显示hosts状态
+                text += f"🖥️ hosts写入: {'成功' if hosts_status else '失败'}\n"
             text += f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         else:
             title = "🛡️ PT云盾优选 - 优选失败"
             text = "❌ 优选任务执行失败\n"
             if message:
                 text += f"📝 失败原因: {message}\n"
-            if hosts_status is not None:
+            if self._enable_ikuai_dns and ikuai_dns_status:
+                text += f"🌐 爱快DNS同步: {ikuai_dns_status}\n"
+            elif hosts_status is not None:  # 只在未启用DNS同步时显示hosts状态
                 text += f"🖥️ hosts写入: {'成功' if hosts_status else '失败'}\n"
             text += f"⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         

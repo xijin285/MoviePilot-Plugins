@@ -24,7 +24,7 @@ class DoubanFolio(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/douban.png"
     # 插件版本
-    plugin_version = "1.0.2"
+    plugin_version = "1.0.3"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -87,7 +87,7 @@ class DoubanFolio(_PluginBase):
             if not hasattr(self, '_last_skip_log_time'):
                 self._last_skip_log_time = 0
             if now - self._last_skip_log_time > 600:  # 10分钟
-                logger.info("同步流程已在进行中，跳过本次事件处理，防止重复通知。")
+               # logger.info("同步流程已在进行中，跳过本次事件处理，防止重复通知。")
                 self._last_skip_log_time = now
             return
         try:
@@ -190,6 +190,9 @@ class DoubanFolio(_PluginBase):
 
         if processed_items.get(title) and len(episodes) != episode_id:
             logger.info(f"{title} 已同步到豆瓣在看，不处理")
+            # 已处理过的条目直接跳过，无需发送通知
+            if self._notify:
+                logger.info(f"{title} 跳过同步，不发送通知")
             return
 
         sync_ret = self._sync_to_douban(title, status, event_info.item_type, processed_items, mediainfo.poster_path)
