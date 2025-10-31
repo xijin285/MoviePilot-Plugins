@@ -17,18 +17,21 @@ from app.core.config import settings
 from app.log import logger
 from app.plugins import _PluginBase
 from app.schemas import NotificationType
+from app.core.event import eventmanager, Event
+from app.schemas.types import EventType
 from .pve import get_pve_status, get_container_status, get_qemu_status, clean_pve_tmp_files, clean_pve_logs, list_template_images, download_template_image, delete_template_image, upload_template_image, download_template_image_from_url
+from .message_handler import MessageHandler
 
 
 class ProxmoxVEBackup(_PluginBase):
     # 插件名称
     plugin_name = "PVE虚拟机守护神"
     # 插件描述
-    plugin_desc = "一站式可视化PVE虚拟化管理平台"
+    plugin_desc = "一站式PVE虚拟化管理平台，智能自动化集成可视化界面高效掌控虚拟机与容器"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "2.1.2"
+    plugin_version = "2.2.0"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -98,6 +101,7 @@ class ProxmoxVEBackup(_PluginBase):
     _restore_now: bool = False # 立即恢复开关
     _stopped: bool = False  # 增加已停止标志
     _instance = None  # 单例实例
+    _message_handler: Optional[MessageHandler] = None  # 消息处理器实例
 
     # 新增：系统日志清理配置
     _enable_log_cleanup: bool = False
@@ -214,6 +218,9 @@ class ProxmoxVEBackup(_PluginBase):
              logger.error(f"{self.plugin_name} 创建实际备份目录 {self._backup_path} 失败: {e}")
 
         ProxmoxVEBackup._instance = self
+        
+        # 初始化消息处理器
+        self._message_handler = MessageHandler(self)
 
         # 定时任务调度逻辑
         if self._scheduler:
@@ -383,7 +390,74 @@ class ProxmoxVEBackup(_PluginBase):
         return self._enabled
 
     def get_command(self) -> List[Dict[str, Any]]:
-        return []
+        """
+        注册微信消息命令
+        """
+        return [
+            {
+                "cmd": "/pve",
+                "event": EventType.PluginAction,
+                "desc": "查看PVE主机状态信息",
+                "category": "PVE",
+                "data": {
+                    "action": "pve_status"
+                }
+            },
+            {
+                "cmd": "/pve状态",
+                "event": EventType.PluginAction,
+                "desc": "查看PVE主机状态信息（别名）",
+                "category": "PVE",
+                "data": {
+                    "action": "pve_status"
+                }
+            },
+            {
+                "cmd": "/pve主机",
+                "event": EventType.PluginAction,
+                "desc": "查看PVE主机状态信息（别名）",
+                "category": "PVE",
+                "data": {
+                    "action": "pve_status"
+                }
+            },
+            {
+                "cmd": "/pve容器",
+                "event": EventType.PluginAction,
+                "desc": "查看所有容器/虚拟机状态",
+                "category": "PVE",
+                "data": {
+                    "action": "container_status"
+                }
+            },
+            {
+                "cmd": "/容器",
+                "event": EventType.PluginAction,
+                "desc": "查看所有容器/虚拟机状态（别名）",
+                "category": "PVE",
+                "data": {
+                    "action": "container_status"
+                }
+            },
+            {
+                "cmd": "/容器列表",
+                "event": EventType.PluginAction,
+                "desc": "查看所有容器/虚拟机状态（别名）",
+                "category": "PVE",
+                "data": {
+                    "action": "container_status"
+                }
+            },
+            {
+                "cmd": "/pve帮助",
+                "event": EventType.PluginAction,
+                "desc": "查看PVE插件命令帮助",
+                "category": "PVE",
+                "data": {
+                    "action": "help"
+                }
+            }
+        ]
 
     def get_api(self) -> list:
         """
@@ -544,6 +618,76 @@ class ProxmoxVEBackup(_PluginBase):
 
     def get_service(self) -> List[Dict[str, Any]]:
         return []
+
+    @eventmanager.register(EventType.PluginAction)
+    def handle_pve_command(self, event: Event = None):
+        """
+        处理PVE相关命令（通过事件系统）
+        """
+        if not event:
+            return
+        
+        event_data = event.event_data
+        if not event_data:
+            return
+        
+        action = event_data.get("action")
+        if action not in ["pve_status", "container_status", "help"]:
+            return
+        
+        try:
+            logger.info(f"{self.plugin_name} 收到命令事件: action={action}")
+            
+            # 检查SSH配置
+            if not self._pve_host:
+                error_msg = "❌ PVE主机未配置，请在插件配置中设置SSH连接信息"
+                logger.warning(f"{self.plugin_name} {error_msg}")
+                self.post_message(
+                    channel=event_data.get("channel"),
+                    title=error_msg,
+                    userid=event_data.get("user")
+                )
+                return
+            
+            # 使用消息处理器处理命令
+            if not self._message_handler:
+                error_msg = "❌ 插件消息处理器未初始化，请重新加载插件"
+                logger.error(f"{self.plugin_name} {error_msg}")
+                self.post_message(
+                    channel=event_data.get("channel"),
+                    title=error_msg,
+                    userid=event_data.get("user")
+                )
+                return
+            
+            # 根据action获取消息内容
+            result = None
+            if action == "pve_status":
+                result = self._message_handler.format_pve_status_message()
+            elif action == "container_status":
+                result = self._message_handler.format_container_status_message()
+            elif action == "help":
+                result = self._message_handler.format_help_message()
+            
+            if result:
+                logger.info(f"{self.plugin_name} 命令处理成功，发送消息，长度: {len(result)}")
+                self.post_message(
+                    channel=event_data.get("channel"),
+                    title=f"{self.plugin_name}",
+                    text=result,
+                    userid=event_data.get("user")
+                )
+            else:
+                logger.warning(f"{self.plugin_name} 命令处理返回空结果: action={action}")
+                
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 处理命令事件失败: {str(e)}", exc_info=True)
+            error_msg = f"❌ 执行命令时发生错误: {str(e)}"
+            self.post_message(
+                channel=event_data.get("channel") if event_data else None,
+                title=error_msg,
+                userid=event_data.get("user") if event_data else None
+            )
 
     def get_form(self):
         """
