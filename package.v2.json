@@ -57,25 +57,19 @@
     "name": "PVE虚拟机守护神",
     "description": "一站式可视化PVE虚拟化管理平台",
     "labels": "备份,虚拟机",
-    "version": "2.2.0",
+    "version": "2.2.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp",
     "author": "xijin285",
     "level": 2,
     "requirements": ["paramiko>=2.7.0", "pytz>=2021.1", "apscheduler>=3.9.0", "requests>=2.25.0", "psutil>=5.8.0"],
     "history": {
+      "v2.2.1": "限制CPU负载过高问题(建议重置配置/重启主程序)",
       "v2.2.0": "新增消息交互获取虚拟机状态",
       "v2.1.2": "修复已知问题，立即恢复支持远程(WebDAV)备份",
       "v2.1.1": "修复未填容器ID时备份逻辑问题，新增手动执行清理PVE系统临时空间",
       "v2.1.0": "新增临时空间/系统日志清理，新增镜像模板开关（暂未开放交互）",
       "v2.0.1": "优化容器状态细节体验",
-      "v2.0.0": "全新2.0版本，重构底层架构",
-      "v1.1.5": "修复WebDAV配置问题",
-      "v1.1.4": "兼容OpenList网盘",
-      "v1.1.3": "修复多容器备份问题",
-      "v1.1.2": "修复浅色和幻紫主题下UI显示问题",
-      "v1.1.1": "修复部分备份逻辑备份问题",
-      "v1.1.0": "新增恢复功能，支持恢复备份的虚拟机",
-      "v1.0.0": "首个正式版本"
+      "v2.0.0": "全新2.0版本，重构底层架构"
     }
   },
   "QuarkDisk": {

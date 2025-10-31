@@ -56,9 +56,6 @@ class MessageHandler:
             
             if not text:
                 return None
-            
-            # 调试日志
-            get_logger().debug(f"{self.plugin_name} 收到消息: {text}")
         except Exception as e:
             get_logger().error(f"{self.plugin_name} 处理消息事件失败: {e}")
             return None
@@ -76,19 +73,13 @@ class MessageHandler:
         
         # 根据命令内容判断操作类型
         if command in ['pve', 'pve状态', '查看pve', 'pve主机状态', '主机状态', 'pvestatus', 'host', 'pve主机']:
-            get_logger().info(f"{self.plugin_name} 匹配到PVE状态命令: {command}")
             result = self.format_pve_status_message()
-            get_logger().debug(f"{self.plugin_name} PVE状态消息格式化完成，长度: {len(result) if result else 0}")
             return result
         elif command in ['pve容器', '容器', '查看容器', '虚拟机列表', '容器列表', '虚拟机状态', 'lxc', 'containers', 'vm列表']:
-            get_logger().info(f"{self.plugin_name} 匹配到容器状态命令: {command}")
             result = self.format_container_status_message()
-            get_logger().debug(f"{self.plugin_name} 容器状态消息格式化完成，长度: {len(result) if result else 0}")
             return result
         elif command in ['pve帮助', 'pve帮助', '帮助', 'help', 'pve?', 'pvehelp', '命令']:
-            get_logger().info(f"{self.plugin_name} 匹配到帮助命令: {command}")
             result = self.format_help_message()
-            get_logger().debug(f"{self.plugin_name} 帮助消息格式化完成，长度: {len(result) if result else 0}")
             return result
         
         # 如果都不匹配，返回None表示不处理

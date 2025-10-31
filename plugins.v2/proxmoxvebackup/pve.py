@@ -161,17 +161,7 @@ def get_qemu_status(host, port, username, password, key_file):
                     except Exception as e:
                         uptime = 0
                 status = data.get('status','')
-                if not status:
-                    vmid = data.get('vmid','')
-                    if vmid:
-                        try:
-                            stdin3, stdout3, stderr3 = ssh.exec_command(f"qm status {vmid}")
-                            status_line = stdout3.read().decode().strip()
-                            m = re.search(r'status:\s*(\w+)', status_line)
-                            if m:
-                                status = m.group(1)
-                        except Exception:
-                            pass
+                # 移除冗余的status查询，qm list已经包含了status信息
                 vms.append({
                     'vmid': data.get('vmid',''),
                     'name': name,
@@ -262,17 +252,7 @@ def get_container_status(host, port, username, password, key_file):
                     except Exception as e:
                         uptime = 0
                 status = data.get('status','')
-                if not status:
-                    vmid = data.get('vmid','')
-                    if vmid:
-                        try:
-                            stdin3, stdout3, stderr3 = ssh.exec_command(f"pct status {vmid}")
-                            status_line = stdout3.read().decode().strip()
-                            m = re.search(r'status:\s*(\w+)', status_line)
-                            if m:
-                                status = m.group(1)
-                        except Exception:
-                            pass
+                # 移除冗余的status查询，pct list已经包含了status信息
                 containers.append({
                     'vmid': data.get('vmid',''),
                     'name': name,

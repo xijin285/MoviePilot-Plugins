@@ -163,3 +163,4 @@ cython_debug/
 
 # MacBook
 .DS_Store
+**/.DS_Store

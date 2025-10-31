@@ -1,5 +1,5 @@
 import { importShared } from './__federation_fn_import-JrT3xvdd.js';
-import { a as cronstrue } from './zh_CN-CNefNtEK.js';
+import { a as cronstrue } from './zh_CN-BW7ak9RT.js';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-pcqpp-6-.js';
 
 const {resolveComponent:_resolveComponent,createVNode:_createVNode,createElementVNode:_createElementVNode,normalizeClass:_normalizeClass,createTextVNode:_createTextVNode,withCtx:_withCtx,toDisplayString:_toDisplayString,openBlock:_openBlock,createBlock:_createBlock,createCommentVNode:_createCommentVNode,createElementBlock:_createElementBlock,Transition:_Transition,renderList:_renderList,Fragment:_Fragment,createStaticVNode:_createStaticVNode} = await importShared('vue');
@@ -1083,7 +1083,7 @@ return (_ctx, _cache) => {
               innerHTML: getNavAvatarSVG(node.value)
             }, null, 8, _hoisted_11),
             (_openBlock(), _createElementBlock("svg", _hoisted_12, [
-              _cache[55] || (_cache[55] = _createStaticVNode("<defs data-v-a8ff9cab><radialGradient id=\"crystal-gradient\" cx=\"50%\" cy=\"50%\" r=\"50%\" data-v-a8ff9cab><stop offset=\"0%\" stop-color=\"#fff\" stop-opacity=\"0.95\" data-v-a8ff9cab></stop><stop offset=\"60%\" stop-color=\"#b2ebf2\" stop-opacity=\"0.7\" data-v-a8ff9cab></stop><stop offset=\"100%\" stop-color=\"#00eaff\" stop-opacity=\"0.45\" data-v-a8ff9cab></stop></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"44\" fill=\"url(#crystal-gradient)\" data-v-a8ff9cab></circle><ellipse cx=\"38\" cy=\"32\" rx=\"16\" ry=\"7\" fill=\"#fff\" opacity=\"0.35\" data-v-a8ff9cab></ellipse>", 3)),
+              _cache[55] || (_cache[55] = _createStaticVNode("<defs data-v-f27d3423><radialGradient id=\"crystal-gradient\" cx=\"50%\" cy=\"50%\" r=\"50%\" data-v-f27d3423><stop offset=\"0%\" stop-color=\"#fff\" stop-opacity=\"0.95\" data-v-f27d3423></stop><stop offset=\"60%\" stop-color=\"#b2ebf2\" stop-opacity=\"0.7\" data-v-f27d3423></stop><stop offset=\"100%\" stop-color=\"#00eaff\" stop-opacity=\"0.45\" data-v-f27d3423></stop></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"44\" fill=\"url(#crystal-gradient)\" data-v-f27d3423></circle><ellipse cx=\"38\" cy=\"32\" rx=\"16\" ry=\"7\" fill=\"#fff\" opacity=\"0.35\" data-v-f27d3423></ellipse>", 3)),
               _createElementVNode("g", null, [
                 (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(node.particleCount, (n) => {
                   return (_openBlock(), _createElementBlock("circle", {
@@ -1280,7 +1280,7 @@ return (_ctx, _cache) => {
                         modelValue: config.enable_webdav,
                         "onUpdate:modelValue": _cache[20] || (_cache[20] = $event => ((config.enable_webdav) = $event)),
                         label: "启用WebDAV备份",
-                        color: "cyan",
+                        color: "info",
                         "prepend-icon": "mdi-cloud-upload",
                         class: "tight-switch",
                         onChange: _cache[21] || (_cache[21] = $event => (onFeatureSwitch('enable_webdav', $event)))
@@ -1844,6 +1844,6 @@ return (_ctx, _cache) => {
 }
 
 };
-const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-a8ff9cab"]]);
+const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-f27d3423"]]);
 
 export { ConfigComponent as default };

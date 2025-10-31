@@ -31,7 +31,7 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "2.2.0"
+    plugin_version = "2.2.1"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -54,6 +54,10 @@ class ProxmoxVEBackup(_PluginBase):
     _max_restore_history_entries: int = 50  # 恢复历史记录最大数量
     _global_task_lock: Optional[threading.Lock] = None  # 全局任务锁，协调备份和恢复任务
     _last_config_hash: Optional[str] = None  # 上次配置的哈希值
+    _pve_status_cache: Optional[Dict[str, Any]] = None  # PVE状态缓存
+    _pve_status_cache_time: Optional[float] = None  # 缓存时间
+    _container_status_cache: Optional[List[Dict[str, Any]]] = None  # 容器状态缓存
+    _container_status_cache_time: Optional[float] = None  # 容器状态缓存时间
 
     # 配置属性
     _enabled: bool = False
@@ -636,8 +640,6 @@ class ProxmoxVEBackup(_PluginBase):
             return
         
         try:
-            logger.info(f"{self.plugin_name} 收到命令事件: action={action}")
-            
             # 检查SSH配置
             if not self._pve_host:
                 error_msg = "❌ PVE主机未配置，请在插件配置中设置SSH连接信息"
@@ -670,7 +672,6 @@ class ProxmoxVEBackup(_PluginBase):
                 result = self._message_handler.format_help_message()
             
             if result:
-                logger.info(f"{self.plugin_name} 命令处理成功，发送消息，长度: {len(result)}")
                 self.post_message(
                     channel=event_data.get("channel"),
                     title=f"{self.plugin_name}",
@@ -1354,12 +1355,16 @@ class ProxmoxVEBackup(_PluginBase):
                                         # 计算进度
                                         if file_size > 0:
                                             progress = (uploaded_size / file_size) * 100
-                                            # 每10%显示一次进度
-                                            current_progress = int(progress / 10) * 10
-                                            if current_progress > last_progress:
+                                            # 每20%显示一次进度
+                                            current_progress = int(progress / 20) * 20
+                                            if current_progress > last_progress and current_progress < 100:
                                                 self._backup_activity = f"上传WebDAV中: {progress:.1f}%"
                                                 logger.info(f"{self.plugin_name} WebDAV上传进度: {progress:.1f}%")
                                                 last_progress = current_progress
+                                            elif progress >= 99.9 and last_progress < 100:
+                                                self._backup_activity = "上传WebDAV中: 完成中..."
+                                                logger.info(f"{self.plugin_name} WebDAV上传进度: 99.9% (正在完成...)")
+                                                last_progress = 100
                                         yield chunk
                                 
                                 # 设置请求超时
@@ -1385,6 +1390,7 @@ class ProxmoxVEBackup(_PluginBase):
                                     )
 
                             if response.status_code in [200, 201, 204]:
+                                logger.info(f"{self.plugin_name} WebDAV上传进度: 100.0% (上传完成)")
                                 logger.info(f"{self.plugin_name} 成功使用 {method} 方法上传文件到WebDAV: {upload_url}")
                                 return True, None
                             elif response.status_code == 405:
@@ -2360,8 +2366,8 @@ class ProxmoxVEBackup(_PluginBase):
                                     downloaded_size += len(chunk)
                                     if total_size > 0:
                                         progress = (downloaded_size / total_size) * 100
-                                        current_progress = int(progress / 10) * 10
-                                        if current_progress > last_progress:
+                                        current_progress = int(progress / 20) * 20  # 改为每20%显示一次
+                                        if current_progress > last_progress and current_progress < 100:
                                             logger.info(f"{self.plugin_name} 下载进度: {progress:.1f}%")
                                             last_progress = current_progress
                         
@@ -2497,17 +2503,14 @@ class ProxmoxVEBackup(_PluginBase):
                     progress = (transferred / total) * 100
                     # 每20%显示一次进度
                     current_progress = int(progress / 20) * 20
-                    if current_progress > last_progress or progress > 99.9:
+                    # 只在进度到达特定百分比时显示，避免重复
+                    if current_progress > last_progress and current_progress < 100:
                         self._backup_activity = f"下载中: {progress:.1f}%"
                         logger.info(f"{self.plugin_name} 下载进度: {progress:.1f}%")
                         last_progress = current_progress
-                    elif progress > 99.89 and progress < 99.91 and last_progress < 99:  # 只显示一次99.9%
+                    elif progress >= 99.9 and last_progress < 100:
                         self._backup_activity = f"下载中: 99.9%"
                         logger.info(f"{self.plugin_name} 下载进度: 99.9%")
-                        last_progress = 99
-                    elif progress >= 100 and last_progress < 100:  # 只在最后显示一次100%
-                        self._backup_activity = f"下载中: 100.0%"
-                        logger.info(f"{self.plugin_name} 下载进度: 100.0%")
                         last_progress = 100
             
             # 下载文件
@@ -2661,15 +2664,30 @@ class ProxmoxVEBackup(_PluginBase):
         }
 
     def _get_pve_status_api(self):
-        return get_pve_status(
+        # 检查缓存（30秒有效期）
+        if self._pve_status_cache and self._pve_status_cache_time:
+            if time.time() - self._pve_status_cache_time < 30:
+                return self._pve_status_cache
+        
+        # 获取新数据
+        status = get_pve_status(
             self._pve_host,
             self._ssh_port,
             self._ssh_username,
             self._ssh_password,
             self._ssh_key_file
         )
+        # 更新缓存
+        self._pve_status_cache = status
+        self._pve_status_cache_time = time.time()
+        return status
 
     def _get_container_status_api(self):
+        # 检查缓存（60秒有效期）
+        if self._container_status_cache and self._container_status_cache_time:
+            if time.time() - self._container_status_cache_time < 60:
+                return self._container_status_cache
+        
         # 合并QEMU和LXC
         qemu_list = get_qemu_status(
             self._pve_host,
@@ -2686,7 +2704,12 @@ class ProxmoxVEBackup(_PluginBase):
             self._ssh_key_file
         )
         # 直接返回，displayName字段已由pve.py补充
-        return qemu_list + lxc_list
+        result = qemu_list + lxc_list
+        
+        # 更新缓存
+        self._container_status_cache = result
+        self._container_status_cache_time = time.time()
+        return result
 
     def _get_available_backups_api(self):
         """API处理函数：返回可用备份文件列表"""
