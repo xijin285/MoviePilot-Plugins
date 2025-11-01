@@ -3,7 +3,7 @@
 """
 from datetime import datetime
 from typing import Optional, Any
-from .pve import get_pve_status, get_container_status, get_qemu_status
+from ..pve.client import get_pve_status, get_container_status, get_qemu_status
 
 # 延迟导入logger，避免循环导入
 logger = None
@@ -288,4 +288,5 @@ class MessageHandler:
         message += f"作者：{plugin.plugin_author}"
         
         return message
+
 
