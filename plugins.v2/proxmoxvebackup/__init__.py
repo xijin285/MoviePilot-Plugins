@@ -31,7 +31,7 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "2.2.1"
+    plugin_version = "2.3.0"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -109,10 +109,10 @@ class ProxmoxVEBackup(_PluginBase):
 
     # 新增：系统日志清理配置
     _enable_log_cleanup: bool = False
-    _log_journal_days: int = 7
-    _log_vzdump_keep: int = 7
-    _log_pve_keep: int = 7
-    _log_dpkg_keep: int = 7
+    _log_journal_days: int = 0
+    _log_vzdump_keep: int = 0
+    _log_pve_keep: int = 0
+    _log_dpkg_keep: int = 0
     _cleanup_template_images: bool = False
 
     def init_plugin(self, config: Optional[dict] = None):
@@ -169,10 +169,10 @@ class ProxmoxVEBackup(_PluginBase):
             self.auto_cleanup_tmp = saved_config.get("auto_cleanup_tmp", True)
             # 新增系统日志清理配置
             self._enable_log_cleanup = bool(saved_config.get("enable_log_cleanup", False))
-            self._log_journal_days = int(saved_config.get("log_journal_days", 7))
-            self._log_vzdump_keep = int(saved_config.get("log_vzdump_keep", 7))
-            self._log_pve_keep = int(saved_config.get("log_pve_keep", 7))
-            self._log_dpkg_keep = int(saved_config.get("log_dpkg_keep", 7))
+            self._log_journal_days = int(saved_config.get("log_journal_days", 0))
+            self._log_vzdump_keep = int(saved_config.get("log_vzdump_keep", 0))
+            self._log_pve_keep = int(saved_config.get("log_pve_keep", 0))
+            self._log_dpkg_keep = int(saved_config.get("log_dpkg_keep", 0))
             self._cleanup_template_images = bool(saved_config.get("cleanup_template_images", False))
             
         # 新配置覆盖
@@ -614,6 +614,13 @@ class ProxmoxVEBackup(_PluginBase):
                 "auth": "bear",
                 "summary": "列出所有CT模板和ISO镜像"
             },
+            {
+                "path": "/stop_all_tasks",
+                "endpoint": self._stop_all_tasks_api,
+                "methods": ["POST"],
+                "auth": "bear",
+                "summary": "停止所有正在运行的任务"
+            },
         ]
 
     @classmethod
@@ -821,7 +828,7 @@ class ProxmoxVEBackup(_PluginBase):
 
     def _perform_backup_once(self) -> Tuple[bool, Optional[str], Optional[str], Dict[str, Any]]:
         """
-        执行一次备份操作
+        执行一次备份操作 - 逐个备份并上传，避免PVE存储空间不足
         :return: (是否成功, 错误消息, 备份文件名, 备份详情)
         """
         if not self._pve_host:
@@ -846,128 +853,151 @@ class ProxmoxVEBackup(_PluginBase):
             except Exception as e:
                 return False, f"SSH连接失败: {str(e)}", None, {}
 
-            # 1. 创建备份
             logger.info(f"{self.plugin_name} 开始创建备份...")
             
-            # 检查PVE端是否有正在运行的备份任务
-            check_running_cmd = "ps aux | grep vzdump | grep -v grep"
+            # 检查PVE端是否有正在运行的备份任务（只检查进程名为vzdump的进程，不检查命令行参数）
+            # 使用 pgrep 或 ps -C 只检查进程名，避免误判包含vzdump文件名的curl等进程
+            check_running_cmd = "pgrep -x vzdump || ps -C vzdump --no-headers"
             stdin, stdout, stderr = ssh.exec_command(check_running_cmd)
             running_backups = stdout.read().decode().strip()
             
             if running_backups:
-                logger.warning(f"{self.plugin_name}  logger.warning ")
+                logger.warning(f"{self.plugin_name} 检测到正在运行的vzdump备份进程")
                 logger.info(f"{self.plugin_name} 正在运行的备份进程: {running_backups}")
                 return False, "PVE端已有备份任务在运行，为避免冲突跳过本次备份", None, {}
             
-            # 检查是否指定了要备份的容器ID
+            # 获取要备份的VMID列表
             if not self._backup_vmid or self._backup_vmid.strip() == "":
                 # 如果没有指定容器ID，尝试获取所有可用的容器
                 logger.info(f"{self.plugin_name} 未指定容器ID，尝试获取所有可用的容器...")
-                list_cmd = "qm list | grep -E '^[0-9]+' | awk '{print $1}' | tr '\n' ',' | sed 's/,$//'"
-                stdin, stdout, stderr = ssh.exec_command(list_cmd)
-                available_vmids = stdout.read().decode().strip()
                 
-                if not available_vmids:
-                    # 如果还是没有找到，尝试获取所有LXC容器
-                    list_cmd = "pct list | grep -E '^[0-9]+' | awk '{print $1}' | tr '\n' ',' | sed 's/,$//'"
+                # 获取QEMU虚拟机ID（直接获取所有行，不跳过标题，然后用awk过滤）
+                list_cmd = "qm list 2>&1 | grep -E '^[[:space:]]*[0-9]+' | awk '{print $1}' | sort -n | tr '\n' ',' | sed 's/,$//'"
+                stdin, stdout, stderr = ssh.exec_command(list_cmd)
+                qemu_output = stdout.read().decode().strip()
+                qemu_error = stderr.read().decode().strip()
+                qemu_vmids = qemu_output if qemu_output else ""
+                
+                # 如果上面的命令没结果，尝试另一种方式
+                if not qemu_vmids:
+                    list_cmd = "qm list 2>&1 | tail -n +2 | grep -v '^$' | awk '{print $1}' | grep -E '^[0-9]+$' | sort -n | tr '\n' ',' | sed 's/,$//'"
                     stdin, stdout, stderr = ssh.exec_command(list_cmd)
-                    available_vmids = stdout.read().decode().strip()
+                    qemu_output = stdout.read().decode().strip()
+                    qemu_error = stderr.read().decode().strip()
+                    qemu_vmids = qemu_output if qemu_output else ""
+                
+                # 获取所有LXC容器ID
+                list_cmd = "pct list 2>&1 | grep -E '^[[:space:]]*[0-9]+' | awk '{print $1}' | sort -n | tr '\n' ',' | sed 's/,$//'"
+                stdin, stdout, stderr = ssh.exec_command(list_cmd)
+                lxc_output = stdout.read().decode().strip()
+                lxc_error = stderr.read().decode().strip()
+                lxc_vmids = lxc_output if lxc_output else ""
+                
+                # 如果上面的命令没结果，尝试另一种方式
+                if not lxc_vmids:
+                    list_cmd = "pct list 2>&1 | tail -n +2 | grep -v '^$' | awk '{print $1}' | grep -E '^[0-9]+$' | sort -n | tr '\n' ',' | sed 's/,$//'"
+                    stdin, stdout, stderr = ssh.exec_command(list_cmd)
+                    lxc_output = stdout.read().decode().strip()
+                    lxc_error = stderr.read().decode().strip()
+                    lxc_vmids = lxc_output if lxc_output else ""
+                
+                # 合并QEMU和LXC的ID列表
+                available_vmids = []
+                if qemu_vmids:
+                    qemu_list = [vmid.strip() for vmid in qemu_vmids.split(',') if vmid.strip() and vmid.strip().isdigit()]
+                    available_vmids.extend(qemu_list)
+                if lxc_vmids:
+                    lxc_list = [vmid.strip() for vmid in lxc_vmids.split(',') if vmid.strip() and vmid.strip().isdigit()]
+                    available_vmids.extend(lxc_list)
                 
                 if not available_vmids:
                     return False, "未找到任何可用的虚拟机或容器，请检查PVE主机状态或手动指定容器ID", None, {}
                 
-                self._backup_vmid = available_vmids
+                # 去重并排序
+                available_vmids = sorted(set(available_vmids), key=lambda x: int(x) if x.isdigit() else 0)
+                self._backup_vmid = ','.join(available_vmids)
                 logger.info(f"{self.plugin_name} 自动获取到容器ID: {self._backup_vmid}")
             
-            # 构建vzdump命令
-            backup_cmd = f"vzdump {self._backup_vmid} "
-            backup_cmd += f"--compress {self._compress_mode} "
-            backup_cmd += f"--mode {self._backup_mode} "
-            backup_cmd += f"--storage {self._storage_name} "
+            # 将逗号分隔的VMID列表转换为列表
+            if isinstance(self._backup_vmid, str):
+                vmid_list = [vmid.strip() for vmid in self._backup_vmid.split(',') if vmid.strip()]
+            else:
+                vmid_list = [str(self._backup_vmid)]
             
-            # 执行备份命令
-            logger.info(f"{self.plugin_name} 执行命令: {backup_cmd}")
-            stdin, stdout, stderr = ssh.exec_command(backup_cmd)
-    
-            created_backup_files = []
-            # 实时输出vzdump日志
-            while True:
-                line = stdout.readline()
-                if not line:
-                    break
-                line = line.strip()
-                #logger.info(f"{self.plugin_name} vzdump输出: {line}")
-                # 从vzdump日志中解析出备份文件名
-                match = re.search(r"creating vzdump archive '(.+)'", line)
-                if match:
-                    filepath = match.group(1)
-                    logger.info(f"{self.plugin_name} 从日志中检测到备份文件: {filepath}")
-                    created_backup_files.append(filepath)
+            logger.info(f"{self.plugin_name} 准备逐个备份 {len(vmid_list)} 个容器: {', '.join(vmid_list)}")
             
-            # 等待命令完成
-            exit_status = stdout.channel.recv_exit_status()
-            if exit_status != 0:
-                error_output = stderr.read().decode().strip()
-                
-                # 检查是否是手动暂停或中断的情况
-                if "got unexpected control message" in error_output or exit_status == -1:
-                    # 检查PVE端是否有正在运行的备份任务
-                    check_backup_cmd = "ps aux | grep vzdump | grep -v grep"
-                    stdin, stdout, stderr = ssh.exec_command(check_backup_cmd)
-                    running_backups = stdout.read().decode().strip()
-                    
-                    if running_backups:
-                        error_msg = f"备份任务被手动暂停或中断。检测到PVE端仍有备份进程在运行，可能是您在PVE界面手动暂停了备份任务。"
-                        logger.warning(f"{self.plugin_name} {error_msg}")
-                        logger.info(f"{self.plugin_name} 检测到的备份进程: {running_backups}")
-                    else:
-                        error_msg = f"备份任务被中断。SSH连接出现意外控制消息，可能是网络问题或PVE端任务被强制终止。"
-                        logger.warning(f"{self.plugin_name} {error_msg}")
-                    
-                    return False, error_msg, None, {}
-                else:
-                    # 其他类型的错误
-                    return False, f"备份创建失败: {error_output}", None, {}
-
-            if not created_backup_files:
-                return False, "未能从vzdump日志中解析出备份文件名, 无法进行下载。", None, {}
-
-            files_to_download = []
-            if self._download_all_backups:
-                files_to_download = created_backup_files
-            elif created_backup_files:
-                # 仅下载最后一个，即最新的
-                files_to_download.append(created_backup_files[-1])
-
-            if not files_to_download:
-                return False, "没有找到需要下载的备份文件。", None, {}
-            
-            #logger.info(f"{self.plugin_name} 准备下载 {len(files_to_download)} 个文件: {', '.join(files_to_download)}")
-
+            # 打开SFTP连接
             sftp = ssh.open_sftp()
             
+            # 逐个备份每个容器
             all_downloads_successful = True
             downloaded_files_info = []
             filenames = []
             vmids = []
 
-            for remote_file_path in files_to_download:
-                success, error_msg, filename, details = self._download_single_backup_file(ssh, sftp, remote_file_path, os.path.basename(remote_file_path))
-                if success:
-                    downloaded_files_info.append({
-                        "filename": filename,
-                        "details": details
-                    })
-                    filenames.append(filename)
-                    # 提取VMID
-                    vmid = self._extract_vmid_from_backup(filename)
-                    if vmid:
+            for vmid in vmid_list:
+                try:
+                    logger.info(f"{self.plugin_name} 开始备份容器 {vmid}...")
+                    
+                    # 构建单个容器的vzdump命令
+                    backup_cmd = f"vzdump {vmid} "
+                    backup_cmd += f"--compress {self._compress_mode} "
+                    backup_cmd += f"--mode {self._backup_mode} "
+                    backup_cmd += f"--storage {self._storage_name} "
+                    
+                    # 执行备份命令
+                    logger.info(f"{self.plugin_name} 执行命令: {backup_cmd}")
+                    stdin, stdout, stderr = ssh.exec_command(backup_cmd)
+                    
+                    created_backup_file = None
+                    # 实时输出vzdump日志
+                    while True:
+                        line = stdout.readline()
+                        if not line:
+                            break
+                        line = line.strip()
+                        # 从vzdump日志中解析出备份文件名
+                        match = re.search(r"creating vzdump archive '(.+)'", line)
+                        if match:
+                            filepath = match.group(1)
+                            logger.info(f"{self.plugin_name} 从日志中检测到备份文件: {filepath}")
+                            created_backup_file = filepath
+                    
+                    # 等待命令完成
+                    exit_status = stdout.channel.recv_exit_status()
+                    if exit_status != 0:
+                        error_output = stderr.read().decode().strip()
+                        logger.error(f"{self.plugin_name} 容器 {vmid} 备份失败: {error_output}")
+                        all_downloads_successful = False
+                        continue
+                    
+                    if not created_backup_file:
+                        logger.error(f"{self.plugin_name} 未能从日志中解析出容器 {vmid} 的备份文件名")
+                        all_downloads_successful = False
+                        continue
+                    
+                    # 下载备份文件到本地，然后上传到WebDAV
+                    success, error_msg, filename, details = self._download_single_backup_file(
+                        ssh, sftp, created_backup_file, os.path.basename(created_backup_file)
+                    )
+                    
+                    if success:
+                        downloaded_files_info.append({
+                            "filename": filename,
+                            "details": details
+                        })
+                        filenames.append(filename)
                         vmids.append(vmid)
-                else:
+                        logger.info(f"{self.plugin_name} 容器 {vmid} 备份成功: {filename}")
+                    else:
+                        logger.error(f"{self.plugin_name} 容器 {vmid} 处理失败: {error_msg}")
+                        all_downloads_successful = False
+                        
+                except Exception as e:
+                    logger.error(f"{self.plugin_name} 容器 {vmid} 备份过程中发生错误: {str(e)}")
                     all_downloads_successful = False
-                    logger.error(f"{self.plugin_name} 处理文件 {remote_file_path} 失败: {error_msg}")
 
-            # --- 所有文件处理完成后，统一执行清理 ---
+            # --- 所有容器处理完成后，统一执行清理 ---
             if self._enable_local_backup:
                 self._cleanup_old_backups()
             if self._enable_webdav and self._webdav_url:
@@ -996,10 +1026,10 @@ class ProxmoxVEBackup(_PluginBase):
                     "timestamp": time.time(),
                     "success": False,
                     "filename": None,
-                    "message": "所有备份文件下载失败，详情请查看日志"
+                    "message": "所有容器备份失败，详情请查看日志"
                 }
                 self._save_backup_history_entry(history_entry)
-                return False, "所有备份文件下载失败，详情请查看日志", None, {}
+                return False, "所有容器备份失败，详情请查看日志", None, {}
 
         except Exception as e:
             error_msg = f"备份过程中发生错误: {str(e)}"
@@ -1099,351 +1129,45 @@ class ProxmoxVEBackup(_PluginBase):
         except Exception as e:
             logger.error(f"{self.plugin_name} 清理旧备份文件时发生错误: {e}")
 
-    def _create_webdav_directories(self, auth, base_url: str, path: str) -> Tuple[bool, Optional[str]]:
-        """递归创建WebDAV目录"""
-        try:
-            import requests
-            from urllib.parse import urljoin, urlparse
-
-            # 检测是否为Alist服务器（端口5244）
-            parsed_url = urlparse(base_url)
-            is_alist = parsed_url.port == 5244 or '5244' in base_url
-
-            # 分割路径
-            path_parts = [p for p in path.split('/') if p]
-            current_path = base_url.rstrip('/')
-
-            # 如果是Alist服务器且base_url不包含/dav,添加dav前缀
-            if is_alist and '/dav' not in current_path:
-                current_path = f"{current_path}/dav"
-
-            # 逐级创建目录
-            for part in path_parts:
-                current_path = f"{current_path}/{part}"
-                
-                # 检查当前目录是否存在
-                check_response = requests.request(
-                    'PROPFIND',
-                    current_path,
-                    auth=auth,
-                    headers={
-                        'Depth': '0',
-                        'User-Agent': 'MoviePilot/1.0',
-                        'Connection': 'keep-alive'
-                    },
-                    timeout=10,
-                    verify=False
-                )
-
-                if check_response.status_code == 404:
-                    # 目录不存在，创建它
-                    logger.info(f"{self.plugin_name} 创建WebDAV目录: {current_path}")
-                    mkdir_response = requests.request(
-                        'MKCOL',
-                        current_path,
-                        auth=auth,
-                        headers={
-                            'User-Agent': 'MoviePilot/1.0',
-                            'Connection': 'keep-alive'
-                        },
-                        timeout=10,
-                        verify=False
-                    )
-                    
-                    if mkdir_response.status_code not in [200, 201, 204]:
-                        # 如果是405错误(Method Not Allowed),可能目录已存在
-                        if mkdir_response.status_code == 405:
-                            logger.warning(f"{self.plugin_name} 目录可能已存在: {current_path}")
-                            continue
-                        return False, f"创建WebDAV目录失败 {current_path}, 状态码: {mkdir_response.status_code}, 响应: {mkdir_response.text}"
-                elif check_response.status_code not in [200, 207]:
-                    return False, f"检查WebDAV目录失败 {current_path}, 状态码: {check_response.status_code}, 响应: {check_response.text}"
-
-            return True, None
-        except Exception as e:
-            return False, f"创建WebDAV目录时发生错误: {str(e)}"
-
     def _upload_to_webdav(self, local_file_path: str, filename: str) -> Tuple[bool, Optional[str]]:
-        """上传文件到WebDAV服务器"""
+        """上传文件到WebDAV服务器（使用新的WebDAV客户端）"""
         if not self._enable_webdav or not self._webdav_url:
             return False, "WebDAV未启用或URL未配置"
-
+        
         try:
-            import requests
-            from urllib.parse import urljoin, urlparse
-            import base64
-            from requests.auth import HTTPBasicAuth, HTTPDigestAuth
-            import socket
-
-            # 验证WebDAV URL格式
-            parsed_url = urlparse(self._webdav_url)
-            if not parsed_url.scheme or not parsed_url.netloc:
-                return False, f"WebDAV URL格式无效: {self._webdav_url}"
-
-            # 检查服务器连接
-            try:
-                host = parsed_url.netloc.split(':')[0]
-                port = int(parsed_url.port or (443 if parsed_url.scheme == 'https' else 80))
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(5)
-                result = sock.connect_ex((host, port))
-                sock.close()
-                if result != 0:
-                    return False, f"无法连接到WebDAV服务器 {host}:{port}，请检查服务器地址和端口是否正确"
-            except Exception as e:
-                return False, f"检查WebDAV服务器连接时出错: {str(e)}"
-
-            # 构建WebDAV基础URL
-            base_url = self._webdav_url.rstrip('/')
-            webdav_path = self._webdav_path.lstrip('/')
+            from .webdav_client import WebDAVClient
             
-            # 检测是否为Alist服务器（端口5244）
-            is_alist = parsed_url.port == 5244 or '5244' in self._webdav_url
+            # 创建WebDAV客户端
+            client = WebDAVClient(
+                url=self._webdav_url,
+                username=self._webdav_username,
+                password=self._webdav_password,
+                path=self._webdav_path,
+                skip_dir_check=True,
+                logger=logger,
+                plugin_name=self.plugin_name
+            )
             
-            # 构建可能的上传URL列表
-            possible_upload_urls = []
+            # 定义进度回调
+            def progress_callback(uploaded: int, total: int, speed: float):
+                progress = (uploaded / total) * 100 if total > 0 else 0
+                self._backup_activity = f"上传WebDAV中: {progress:.1f}% 平均速度: {speed:.2f}MB/s"
+                logger.info(f"{self.plugin_name} WebDAV上传进度: {progress:.1f}% 平均速度: {speed:.2f}MB/s")
             
-            if is_alist:
-                # 如果base_url不包含/dav,添加dav前缀
-                if '/dav' not in base_url:
-                    base_url = f"{base_url}/dav"
-                
-                # Alist的特殊路径结构
-                if webdav_path:
-                    possible_upload_urls.extend([
-                        f"{base_url}/{webdav_path}/{filename}"      # Alist标准路径
-                    ])
-                else:
-                    possible_upload_urls.extend([
-                        f"{base_url}/{filename}"      # Alist标准路径
-                    ])
-            else:
-                # 标准WebDAV路径
-                if webdav_path:
-                    possible_upload_urls.extend([
-                        f"{base_url}/{webdav_path}/{filename}",
-                        f"{base_url}/dav/{webdav_path}/{filename}",
-                        f"{base_url}/remote.php/webdav/{webdav_path}/{filename}",
-                        f"{base_url}/dav/files/{self._webdav_username}/{webdav_path}/{filename}"
-                    ])
-                else:
-                    possible_upload_urls.extend([
-                        f"{base_url}/{filename}",
-                        f"{base_url}/dav/{filename}",
-                        f"{base_url}/remote.php/webdav/{filename}"
-                    ])
-
-            # 准备认证信息
-            auth_methods = [
-                HTTPBasicAuth(self._webdav_username, self._webdav_password),
-                HTTPDigestAuth(self._webdav_username, self._webdav_password),
-                (self._webdav_username, self._webdav_password)
-            ]
-
-            # 设置重试次数和间隔
-            max_retries = 3  # 最大重试次数
-            retry_interval = 5  # 重试间隔(秒)
-            retry_count = 0
-
-            # 首先尝试检查目录是否存在
-            auth_success = False
-            last_error = None
-            successful_auth = None
-
-            for auth in auth_methods:
-                try:
-                    logger.info(f"{self.plugin_name} 尝试使用认证方式 {type(auth).__name__} 连接WebDAV服务器...")
-                    
-                    # 测试连接
-                    test_response = requests.request(
-                        'PROPFIND',
-                        base_url,
-                        auth=auth,
-                        headers={
-                            'Depth': '0',
-                            'User-Agent': 'MoviePilot/1.0',
-                            'Accept': '*/*',
-                            'Connection': 'keep-alive'
-                        },
-                        timeout=30,  # 增加超时时间
-                        verify=False
-                    )
-
-                    if test_response.status_code in [200, 207]:
-                        logger.info(f"{self.plugin_name} WebDAV认证成功，使用认证方式: {type(auth).__name__}")
-                        auth_success = True
-                        successful_auth = auth
-                        break
-                    elif test_response.status_code == 401:
-                        last_error = f"认证失败，状态码: 401, 响应: {test_response.text}"
-                        continue
-                    else:
-                        last_error = f"检查WebDAV服务器失败，状态码: {test_response.status_code}, 响应: {test_response.text}"
-                        continue
-
-                except requests.exceptions.RequestException as e:
-                    last_error = f"连接WebDAV服务器失败: {str(e)}"
-                    continue
-
-            if not auth_success:
-                return False, f"所有认证方式均失败。最后错误: {last_error}"
-
-            # 创建目录结构
-            if webdav_path:
-                create_success, create_error = self._create_webdav_directories(successful_auth, base_url, webdav_path)
-                if not create_success:
-                    logger.warning(f"{self.plugin_name} 创建目录失败，但继续尝试上传: {create_error}")
-
-            # 准备上传请求头
-            headers = {
-                'Content-Type': 'application/octet-stream',
-                'User-Agent': 'MoviePilot/1.0',
-                'Accept': '*/*',
-                'Connection': 'keep-alive'
-            }
-
-            # 尝试多种上传方法
-            upload_methods = [
-                ('PUT', headers),
-                ('PUT', {**headers, 'Content-Type': 'application/x-tar'}),
-                ('PUT', {**headers, 'Overwrite': 'T'}),
-                ('POST', headers),
-                ('POST', {**headers, 'Content-Type': 'application/x-tar'}),
-                ('POST', {**headers, 'Overwrite': 'T'})
-            ]
-
-            # 获取文件大小
-            file_size = os.path.getsize(local_file_path)
-            chunk_size = 8192 * 1024
-
-            # 尝试每个URL和每种方法
-            for upload_url in possible_upload_urls:
-                logger.info(f"{self.plugin_name} 尝试上传到URL: {upload_url}")
-                
-                for method, method_headers in upload_methods:
-                    retry_count = 0
-                    while retry_count <= max_retries:
-                        try:
-                            if retry_count > 0:
-                                logger.info(f"{self.plugin_name} 第{retry_count}次重试上传...")
-                                time.sleep(retry_interval)
-                            
-                            logger.info(f"{self.plugin_name} 尝试使用 {method} 方法上传到WebDAV...")
-                            
-                            # 使用requests的data参数流式上传
-                            with open(local_file_path, 'rb') as f:
-                                uploaded_size = 0
-                                last_progress = -1  # 记录上次显示的进度
-                                last_activity_time = time.time()  # 记录最后活动时间
-                                
-                                def upload_callback():
-                                    nonlocal uploaded_size, last_progress, last_activity_time
-                                    while True:
-                                        chunk = f.read(chunk_size)
-                                        if not chunk:
-                                            break
-                                        uploaded_size += len(chunk)
-                                        current_time = time.time()
-                                        
-                                        # 检查是否超过30秒没有进度更新
-                                        if current_time - last_activity_time > 30:
-                                            logger.warning(f"{self.plugin_name} 上传可能停滞，已有30秒没有进度更新")
-                                        
-                                        # 更新最后活动时间
-                                        last_activity_time = current_time
-                                        
-                                        # 计算进度
-                                        if file_size > 0:
-                                            progress = (uploaded_size / file_size) * 100
-                                            # 每20%显示一次进度
-                                            current_progress = int(progress / 20) * 20
-                                            if current_progress > last_progress and current_progress < 100:
-                                                self._backup_activity = f"上传WebDAV中: {progress:.1f}%"
-                                                logger.info(f"{self.plugin_name} WebDAV上传进度: {progress:.1f}%")
-                                                last_progress = current_progress
-                                            elif progress >= 99.9 and last_progress < 100:
-                                                self._backup_activity = "上传WebDAV中: 完成中..."
-                                                logger.info(f"{self.plugin_name} WebDAV上传进度: 99.9% (正在完成...)")
-                                                last_progress = 100
-                                        yield chunk
-                                
-                                # 设置请求超时
-                                timeout = max(300, int(file_size / (1024 * 1024) * 2))  # 根据文件大小动态调整超时时间,最少5分钟
-                                
-                                if method == 'PUT':
-                                    response = requests.put(
-                                        upload_url,
-                                        data=upload_callback(),
-                                        auth=successful_auth,
-                                        headers=method_headers,
-                                        timeout=timeout,
-                                        verify=False
-                                    )
-                                else:  # POST
-                                    response = requests.post(
-                                        upload_url,
-                                        data=upload_callback(),
-                                        auth=successful_auth,
-                                        headers=method_headers,
-                                        timeout=timeout,
-                                        verify=False
-                                    )
-
-                            if response.status_code in [200, 201, 204]:
-                                logger.info(f"{self.plugin_name} WebDAV上传进度: 100.0% (上传完成)")
-                                logger.info(f"{self.plugin_name} 成功使用 {method} 方法上传文件到WebDAV: {upload_url}")
-                                return True, None
-                            elif response.status_code == 405:
-                                logger.warning(f"{self.plugin_name} {method} 方法不被支持，状态码: 405")
-                                break  # 直接尝试下一种方法
-                            elif response.status_code == 404:
-                                logger.warning(f"{self.plugin_name} URL不存在，状态码: 404 - {upload_url}")
-                                break  # 这个URL不存在，尝试下一个URL
-                            elif response.status_code == 409:
-                                # 文件冲突，这是WebDAV标准中的常见问题
-                                logger.warning(f"{self.plugin_name} WebDAV文件冲突(409)，尝试使用Overwrite头: {upload_url}")
-                                # 添加Overwrite头并重试
-                                method_headers['Overwrite'] = 'T'
-                                continue
-                            elif response.status_code == 507:
-                                logger.error(f"{self.plugin_name} WebDAV服务器存储空间不足，状态码: 507")
-                                return False, "WebDAV服务器存储空间不足"
-                            else:
-                                error_msg = f"{method} 方法上传失败，状态码: {response.status_code}, 响应: {response.text}"
-                                logger.warning(f"{self.plugin_name} {error_msg}")
-                                if retry_count < max_retries:
-                                    retry_count += 1
-                                    continue
-                                break  # 达到最大重试次数，尝试下一种方法
-
-                        except requests.exceptions.Timeout:
-                            error_msg = "上传请求超时"
-                            logger.warning(f"{self.plugin_name} {error_msg}")
-                            if retry_count < max_retries:
-                                retry_count += 1
-                                continue
-                            break
-                            
-                        except requests.exceptions.RequestException as e:
-                            error_msg = f"上传请求失败: {str(e)}"
-                            logger.warning(f"{self.plugin_name} {error_msg}")
-                            if retry_count < max_retries:
-                                retry_count += 1
-                                continue
-                            break
-
-            # 所有URL和方法都失败了
-            error_msg = f"WebDAV上传失败：所有上传URL和方法均失败。\n\n尝试的URL:\n" + "\n".join([f"- {url}" for url in possible_upload_urls]) + f"\n\n可能的原因：\n1. WebDAV服务器不支持PUT/POST方法\n2. 服务器配置不允许文件上传\n3. 认证信息不正确或权限不足\n4. 服务器需要特定的请求头或协议版本\n5. URL路径构建不正确\n\n建议：\n1. 检查WebDAV服务器配置，确保支持PUT方法\n2. 验证用户权限，确保有写入权限\n3. 尝试使用其他WebDAV客户端测试\n4. 联系WebDAV服务提供商确认支持的功能\n5. 检查WebDAV路径配置是否正确"
-            logger.error(f"{self.plugin_name} {error_msg}")
-            return False, error_msg
+            # 执行上传
+            success, error = client.upload(local_file_path, filename, progress_callback)
+            client.close()
+            
+            return success, error
 
         except Exception as e:
             error_msg = f"WebDAV上传过程中发生错误: {str(e)}"
             logger.error(f"{self.plugin_name} {error_msg}")
             return False, error_msg
 
+
     def _cleanup_webdav_backups(self):
-        """清理WebDAV上的旧备份文件"""
+        """清理WebDAV上的旧备份文件（使用新的WebDAV客户端）"""
         if not self._enable_webdav or not self._webdav_url:
             return
         # 如果保留数量为0，表示保留全部备份，不进行清理
@@ -1452,188 +1176,34 @@ class ProxmoxVEBackup(_PluginBase):
             return
 
         try:
-            import requests
-            from urllib.parse import urljoin, quote, urlparse
-            from xml.etree import ElementTree
-
-            # 构建WebDAV基础URL
-            base_url = self._webdav_url.rstrip('/')
-            webdav_path = self._webdav_path.lstrip('/')
+            from .webdav_client import WebDAVClient
             
-            parsed_url = urlparse(self._webdav_url)
-            is_alist = parsed_url.port == 5244 or '5244' in self._webdav_url
-            
-            # 构建可能的URL列表
-            possible_urls = []
-            if is_alist:
-                if webdav_path:
-                    possible_urls.extend([
-                        f"{base_url}/dav/{webdav_path}", 
-                        f"{base_url}/{webdav_path}"
-                    ])
-                else:
-                    possible_urls.extend([
-                        f"{base_url}/dav",
-                        f"{base_url}" 
-                    ])
-            else:
-                # 标准WebDAV路径
-                if webdav_path:
-                    possible_urls.extend([
-                        f"{base_url}/{webdav_path}",
-                        f"{base_url}/dav/{webdav_path}",
-                        f"{base_url}/remote.php/webdav/{webdav_path}",
-                        f"{base_url}/dav/files/{self._webdav_username}/{webdav_path}"
-                    ])
-                else:
-                    possible_urls.extend([
-                        f"{base_url}",
-                        f"{base_url}/dav",
-                        f"{base_url}/remote.php/webdav"
-                    ])
-            
-            # 尝试不同的URL结构
-            working_url = None
-            for test_url in possible_urls:
-                try:
-                    response = requests.request(
-                        'PROPFIND',
-                        test_url,
-                        auth=(self._webdav_username, self._webdav_password),
-                        headers={
-                            'Depth': '1',
-                            'Content-Type': 'application/xml',
-                            'Accept': '*/*',
-                            'User-Agent': 'MoviePilot/1.0'
-                        },
-                        timeout=10,
-                        verify=False
-                    )
-                    if response.status_code == 207:
-                        working_url = test_url
-                        logger.info(f"{self.plugin_name} 找到可用的WebDAV清理URL: {working_url}")
-                        break
-                except Exception as e:
-                    logger.debug(f"{self.plugin_name} 测试WebDAV清理URL失败: {test_url}, 错误: {e}")
-                    continue
-            
-            if not working_url:
-                logger.warning(f"{self.plugin_name} 无法找到可用的WebDAV清理URL，跳过清理")
-                return
-            
-            # 发送PROPFIND请求获取文件列表
-            headers = {
-                'Depth': '1',
-                'Content-Type': 'application/xml',
-                'Accept': '*/*',
-                'User-Agent': 'MoviePilot/1.0'
-            }
-            
-            response = requests.request(
-                'PROPFIND',
-                working_url,
-                auth=(self._webdav_username, self._webdav_password),
-                headers=headers,
-                timeout=30,
-                verify=False
+            # 创建WebDAV客户端
+            client = WebDAVClient(
+                url=self._webdav_url,
+                username=self._webdav_username,
+                password=self._webdav_password,
+                path=self._webdav_path,
+                skip_dir_check=True,
+                logger=logger,
+                plugin_name=self.plugin_name
             )
+            
+            # 执行清理（保留最新的N个文件）
+            deleted_count, error = client.cleanup_old_files(
+                keep_count=self._webdav_keep_backup_num,
+                pattern=None  # 可以根据需要添加文件名模式
+            )
+            
+            if error:
+                logger.error(f"{self.plugin_name} WebDAV清理失败: {error}")
+            else:
+                logger.info(f"{self.plugin_name} WebDAV清理完成，已删除 {deleted_count} 个旧备份文件")
 
-            if response.status_code != 207:
-                logger.error(f"{self.plugin_name} 获取WebDAV文件列表失败，状态码: {response.status_code}")
-                return
-
-            # 解析XML响应
-            try:
-                root = ElementTree.fromstring(response.content)
-            except ElementTree.ParseError as e:
-                logger.error(f"{self.plugin_name} 解析WebDAV响应XML失败: {str(e)}")
-                return
-
-            files = []
-
-            # 遍历所有文件
-            for response in root.findall('.//{DAV:}response'):
-                href = response.find('.//{DAV:}href')
-                if href is None or not href.text:
-                    continue
-
-                file_path = href.text
-                # 只处理Proxmox备份文件
-                if not (file_path.lower().endswith('.tar.gz') or 
-                       file_path.lower().endswith('.tar.lzo') or 
-                       file_path.lower().endswith('.tar.zst') or
-                       file_path.lower().endswith('.vma.gz') or 
-                       file_path.lower().endswith('.vma.lzo') or 
-                       file_path.lower().endswith('.vma.zst')):
-                    continue
-
-                # 获取文件修改时间
-                propstat = response.find('.//{DAV:}propstat')
-                if propstat is None:
-                    continue
-
-                prop = propstat.find('.//{DAV:}prop')
-                if prop is None:
-                    continue
-
-                getlastmodified = prop.find('.//{DAV:}getlastmodified')
-                if getlastmodified is None:
-                    continue
-
-                try:
-                    # 解析时间字符串
-                    from email.utils import parsedate_to_datetime
-                    file_time = parsedate_to_datetime(getlastmodified.text).timestamp()
-                    files.append({
-                        'path': file_path,
-                        'time': file_time
-                    })
-                except Exception as e:
-                    logger.error(f"{self.plugin_name} 解析WebDAV文件时间失败: {e}")
-                    # 如果无法解析时间，使用当前时间
-                    files.append({
-                        'path': file_path,
-                        'time': time.time()
-                    })
-
-            # 按时间排序
-            files.sort(key=lambda x: x['time'], reverse=True)
-
-            # 删除超出保留数量的旧文件
-            if len(files) > self._webdav_keep_backup_num:
-                files_to_delete = files[self._webdav_keep_backup_num:]
-                logger.info(f"{self.plugin_name} 找到 {len(files_to_delete)} 个WebDAV旧备份文件需要删除")
-
-                for file_info in files_to_delete:
-                    try:
-                        # 从href中提取文件名
-                        file_path = file_info['path']
-                        if file_path.startswith('/'):
-                            file_path = file_path[1:]
-                        
-                        # 构建删除URL
-                        delete_url = urljoin(working_url + '/', file_path)
-                        filename = os.path.basename(file_path)
-
-                        # 删除文件
-                        delete_response = requests.delete(
-                            delete_url,
-                            auth=(self._webdav_username, self._webdav_password),
-                            headers={'User-Agent': 'MoviePilot/1.0'},
-                            timeout=30,
-                            verify=False
-                        )
-
-                        if delete_response.status_code in [200, 201, 204, 404]:  # 404意味着文件已经不存在
-                            logger.info(f"{self.plugin_name} 成功删除WebDAV旧备份文件: {filename}")
-                        else:
-                            logger.error(f"{self.plugin_name} 删除文件失败: {filename}, 状态码: {delete_response.status_code}")
-
-                    except Exception as e:
-                        logger.error(f"{self.plugin_name} 处理WebDAV文件时发生错误: {str(e)}")
+            client.close()
 
         except Exception as e:
-            logger.error(f"{self.plugin_name} 清理WebDAV旧备份文件时发生错误: {str(e)}")
+            logger.error(f"{self.plugin_name} WebDAV清理过程中发生错误: {str(e)}")
 
     def _clear_all_history(self):
         """清理所有历史记录"""
@@ -1824,149 +1394,57 @@ class ProxmoxVEBackup(_PluginBase):
         return backups
 
     def _get_webdav_backups(self) -> List[Dict[str, Any]]:
-        """获取WebDAV上的备份文件列表"""
+        """获取WebDAV上的备份文件列表（使用新的WebDAV客户端）"""
         backups = []
         
         try:
-            import requests
-            from urllib.parse import urljoin, urlparse
-            from xml.etree import ElementTree
+            from .webdav_client import WebDAVClient
             
-            # 构建WebDAV基础URL
-            base_url = self._webdav_url.rstrip('/')
-            webdav_path = self._webdav_path.lstrip('/')
-            
-            # 检测是否为Alist服务器（端口5244）
-            parsed_url = urlparse(self._webdav_url)
-            is_alist = parsed_url.port == 5244 or '5244' in self._webdav_url
-            
-            # 构建可能的URL列表
-            possible_urls = []
-            if is_alist:
-                # Alist的特殊路径结构
-                if webdav_path:
-                    possible_urls.extend([
-                        f"{base_url}/dav/{webdav_path}",
-                        f"{base_url}/{webdav_path}" 
-                    ])
-                else:
-                    possible_urls.extend([
-                        f"{base_url}/dav",
-                        f"{base_url}"
-                    ])
-            else:
-                # 标准WebDAV路径
-                if webdav_path:
-                    possible_urls.extend([
-                        f"{base_url}/{webdav_path}",
-                        f"{base_url}/dav/{webdav_path}",
-                        f"{base_url}/remote.php/webdav/{webdav_path}",
-                        f"{base_url}/dav/files/{self._webdav_username}/{webdav_path}"
-                    ])
-                else:
-                    possible_urls.extend([
-                        f"{base_url}",
-                        f"{base_url}/dav",
-                        f"{base_url}/remote.php/webdav"
-                    ])
-            
-            # 尝试不同的URL结构
-            working_url = None
-            for test_url in possible_urls:
-                try:
-                    response = requests.request(
-                        'PROPFIND',
-                        test_url,
-                        auth=(self._webdav_username, self._webdav_password),
-                        headers={
-                            'Depth': '1',
-                            'Content-Type': 'application/xml',
-                            'Accept': '*/*',
-                            'User-Agent': 'MoviePilot/1.0'
-                        },
-                        timeout=10,
-                        verify=False
-                    )
-                    if response.status_code == 207:
-                        working_url = test_url
-                        break
-                except Exception as e:
-                    logger.debug(f"{self.plugin_name} 测试WebDAV清理URL失败: {test_url}, 错误: {e}")
-                    continue
-            
-            if not working_url:
-                return backups
-            
-            # 发送PROPFIND请求获取文件列表
-            response = requests.request(
-                'PROPFIND',
-                working_url,
-                auth=(self._webdav_username, self._webdav_password),
-                headers={
-                    'Depth': '1',
-                    'Content-Type': 'application/xml',
-                    'Accept': '*/*',
-                    'User-Agent': 'MoviePilot/1.0'
-                },
-                timeout=30,
-                verify=False
+            # 创建WebDAV客户端
+            client = WebDAVClient(
+                url=self._webdav_url,
+                username=self._webdav_username,
+                password=self._webdav_password,
+                path=self._webdav_path,
+                skip_dir_check=True,
+                logger=logger,
+                plugin_name=self.plugin_name
             )
-
-            if response.status_code != 207:
+            
+            # 获取文件列表（只获取Proxmox备份文件）
+            files, error = client.list_files()
+            
+            if error:
+                logger.error(f"{self.plugin_name} 获取WebDAV文件列表失败: {error}")
+                client.close()
                 return backups
 
-            # 解析XML响应
-            root = ElementTree.fromstring(response.content)
-            
-            for response_elem in root.findall('.//{DAV:}response'):
-                href = response_elem.find('.//{DAV:}href')
-                if href is None or not href.text:
+            # 过滤并格式化备份文件
+            backup_extensions = ('.tar.gz', '.tar.lzo', '.tar.zst', '.vma.gz', '.vma.lzo', '.vma.zst')
+            for file_info in files:
+                filename = file_info.get('filename', '')
+                if not any(filename.lower().endswith(ext) for ext in backup_extensions):
                     continue
 
-                file_path = href.text
-                # 只处理Proxmox备份文件
-                if not (file_path.lower().endswith('.tar.gz') or 
-                       file_path.lower().endswith('.tar.lzo') or 
-                       file_path.lower().endswith('.tar.zst') or
-                       file_path.lower().endswith('.vma.gz') or 
-                       file_path.lower().endswith('.vma.lzo') or 
-                       file_path.lower().endswith('.vma.zst')):
-                    continue
-
-                # 获取文件信息
-                propstat = response_elem.find('.//{DAV:}propstat')
-                if propstat is None:
-                    continue
-
-                prop = propstat.find('.//{DAV:}prop')
-                if prop is None:
-                    continue
-
-                # 获取文件大小
-                getcontentlength = prop.find('.//{DAV:}getcontentlength')
-                size_mb = 0
-                if getcontentlength is not None and getcontentlength.text:
-                    size_mb = int(getcontentlength.text) / (1024 * 1024)
-
-                # 获取文件修改时间
-                getlastmodified = prop.find('.//{DAV:}getlastmodified')
-                time_str = "未知"
-                if getlastmodified is not None and getlastmodified.text:
+                # 格式化时间
+                file_time = file_info.get('time')
+                if file_time:
                     try:
-                        from email.utils import parsedate_to_datetime
-                        file_time = parsedate_to_datetime(getlastmodified.text)
-                        time_str = file_time.strftime('%Y-%m-%d %H:%M:%S')
-                    except Exception:
-                        pass
-
-                filename = os.path.basename(file_path)
+                        time_str = datetime.fromtimestamp(file_time).strftime('%Y-%m-%d %H:%M:%S')
+                    except:
+                        time_str = "未知"
+                else:
+                    time_str = "未知"
+                
                 backups.append({
                     'filename': filename,
-                    'path': file_path,
-                    'size_mb': size_mb,
+                    'path': file_info.get('href', ''),
+                    'size_mb': file_info.get('size_mb', 0),
                     'time_str': time_str,
                     'source': 'WebDAV备份'
                 })
+
+            client.close()
 
         except Exception as e:
             logger.error(f"{self.plugin_name} 获取WebDAV备份文件列表时发生错误: {str(e)}")
@@ -2294,96 +1772,41 @@ class ProxmoxVEBackup(_PluginBase):
             return False, str(e)
 
     def _download_from_webdav(self, filename: str, local_path: str) -> Tuple[bool, Optional[str]]:
-        """从WebDAV下载备份文件"""
+        """从WebDAV下载文件（使用新的WebDAV客户端）"""
+        if not self._enable_webdav or not self._webdav_url:
+            return False, "WebDAV未启用或URL未配置"
+        
         try:
-            import requests
-            from urllib.parse import urljoin, urlparse
+            from .webdav_client import WebDAVClient
             
-            # 构建WebDAV基础URL
-            base_url = self._webdav_url.rstrip('/')
-            webdav_path = self._webdav_path.lstrip('/')
+            # 创建WebDAV客户端
+            client = WebDAVClient(
+                url=self._webdav_url,
+                username=self._webdav_username,
+                password=self._webdav_password,
+                path=self._webdav_path,
+                skip_dir_check=True,
+                logger=logger,
+                plugin_name=self.plugin_name
+            )
             
-            # 检测是否为Alist服务器（端口5244）
-            parsed_url = urlparse(self._webdav_url)
-            is_alist = parsed_url.port == 5244 or '5244' in self._webdav_url
+            # 定义进度回调
+            def progress_callback(downloaded: int, total: int, speed: float):
+                progress = (downloaded / total) * 100 if total > 0 else 0
+                self._restore_activity = f"下载WebDAV中: {progress:.1f}% 速度: {speed:.2f}MB/s"
+                logger.info(f"{self.plugin_name} WebDAV下载进度: {progress:.1f}% 速度: {speed:.2f}MB/s")
             
-            # 构建可能的下载URL列表
-            possible_urls = []
-            if is_alist:
-                # Alist的特殊路径结构
-                if webdav_path:
-                    possible_urls.extend([
-                        f"{base_url}/dav/{webdav_path}/{filename}",      # Alist标准路径
-                        f"{base_url}/{webdav_path}/{filename}"           # 直接路径
-                    ])
-                else:
-                    possible_urls.extend([
-                        f"{base_url}/dav/{filename}",      # Alist标准路径
-                        f"{base_url}/{filename}"           # 直接路径
-                    ])
-            else:
-                # 标准WebDAV路径
-                if webdav_path:
-                    possible_urls.extend([
-                        f"{base_url}/{webdav_path}/{filename}",
-                        f"{base_url}/dav/{webdav_path}/{filename}",
-                        f"{base_url}/remote.php/webdav/{webdav_path}/{filename}",
-                        f"{base_url}/dav/files/{self._webdav_username}/{webdav_path}/{filename}"
-                    ])
-                else:
-                    possible_urls.extend([
-                        f"{base_url}/{filename}",
-                        f"{base_url}/dav/{filename}",
-                        f"{base_url}/remote.php/webdav/{filename}"
-                    ])
+            # 执行下载
+            success, error = client.download(filename, local_path, progress_callback)
+            client.close()
             
-            # 尝试每个可能的URL
-            for download_url in possible_urls:
-                try:
-                    logger.info(f"{self.plugin_name} 尝试从WebDAV下载文件: {download_url}")
-                    
-                    # 下载文件
-                    response = requests.get(
-                        download_url,
-                        auth=(self._webdav_username, self._webdav_password),
-                        headers={'User-Agent': 'MoviePilot/1.0'},
-                        timeout=300,  # 5分钟超时
-                        verify=False,
-                        stream=True
-                    )
-                    
-                    if response.status_code == 200:
-                        # 获取文件大小
-                        total_size = int(response.headers.get('content-length', 0))
-                        downloaded_size = 0
-                        last_progress = -1
-                        
-                        # 写入文件
-                        with open(local_path, 'wb') as f:
-                            for chunk in response.iter_content(chunk_size=8192):
-                                if chunk:
-                                    f.write(chunk)
-                                    downloaded_size += len(chunk)
-                                    if total_size > 0:
-                                        progress = (downloaded_size / total_size) * 100
-                                        current_progress = int(progress / 20) * 20  # 改为每20%显示一次
-                                        if current_progress > last_progress and current_progress < 100:
-                                            logger.info(f"{self.plugin_name} 下载进度: {progress:.1f}%")
-                                            last_progress = current_progress
-                        
-                        logger.info(f"{self.plugin_name} 文件下载完成: {filename}")
-                        return True, None
-                    
-                except Exception as e:
-                    logger.warning(f"{self.plugin_name} 从URL下载失败: {download_url}, 错误: {str(e)}")
-                    continue
-            
-            return False, "所有下载URL均失败"
+            return success, error
             
         except Exception as e:
             error_msg = f"WebDAV下载过程中发生错误: {str(e)}"
             logger.error(f"{self.plugin_name} {error_msg}")
             return False, error_msg
+
 
     def _load_restore_history(self) -> List[Dict[str, Any]]:
         """加载恢复历史记录"""
@@ -2495,14 +1918,14 @@ class ProxmoxVEBackup(_PluginBase):
             logger.info(f"{self.plugin_name} 本地路径: {local_path}")
             logger.info(f"{self.plugin_name} 文件大小: {total_size / 1024 / 1024:.2f} MB")
             
-            # 使用回调函数显示进度
+            # 使用回调函数显示进度（减少日志输出频率）
             last_progress = -1  # 记录上次显示的进度
             def progress_callback(transferred: int, total: int):
                 nonlocal last_progress
                 if total > 0:
                     progress = (transferred / total) * 100
-                    # 每20%显示一次进度
-                    current_progress = int(progress / 20) * 20
+                    # 每25%显示一次进度（减少日志输出）
+                    current_progress = int(progress / 25) * 25
                     # 只在进度到达特定百分比时显示，避免重复
                     if current_progress > last_progress and current_progress < 100:
                         self._backup_activity = f"下载中: {progress:.1f}%"
@@ -2516,14 +1939,6 @@ class ProxmoxVEBackup(_PluginBase):
             # 下载文件
             sftp.get(remote_file, local_path, callback=progress_callback)
             logger.info(f"{self.plugin_name} 文件下载完成: {backup_filename}")
-            
-            # 如果配置了下载后删除
-            if self._auto_delete_after_download:
-                try:
-                    sftp.remove(remote_file)
-                    logger.info(f"{self.plugin_name} 已删除远程备份文件: {remote_file}")
-                except Exception as e:
-                    logger.error(f"{self.plugin_name} 删除远程备份文件失败: {str(e)}")
 
             # 构建备份详情
             backup_details = {
@@ -2543,17 +1958,37 @@ class ProxmoxVEBackup(_PluginBase):
                 }
             }
 
-            # 如果启用了WebDAV备份,上传到WebDAV
+            # 如果启用了WebDAV备份，直接实时上传（同步执行）
             if self._enable_webdav and self._webdav_url:
-                self._backup_activity = f"上传WebDAV中: {backup_filename}"
-                webdav_success, webdav_error = self._upload_to_webdav(local_path, backup_filename)
-                backup_details["webdav_backup"]["success"] = webdav_success
-                backup_details["webdav_backup"]["error"] = webdav_error
-                
-                if webdav_success:
-                    logger.info(f"{self.plugin_name} WebDAV备份成功: {backup_filename}")
-                else:
-                    logger.error(f"{self.plugin_name} WebDAV备份失败: {backup_filename} - {webdav_error}")
+                try:
+                    self._backup_activity = f"上传WebDAV中: {backup_filename}"
+                    logger.info(f"{self.plugin_name} 开始上传到WebDAV: {backup_filename}")
+                    webdav_success, webdav_error = self._upload_to_webdav(local_path, backup_filename)
+                    
+                    if webdav_success:
+                        logger.info(f"{self.plugin_name} WebDAV备份成功: {backup_filename}")
+                        self._backup_activity = "WebDAV上传完成"
+                        backup_details["webdav_backup"]["success"] = True
+                        backup_details["webdav_backup"]["error"] = None
+                    else:
+                        logger.error(f"{self.plugin_name} WebDAV备份失败: {backup_filename} - {webdav_error}")
+                        self._backup_activity = f"WebDAV上传失败: {webdav_error[:50]}..."
+                        backup_details["webdav_backup"]["success"] = False
+                        backup_details["webdav_backup"]["error"] = webdav_error
+                except Exception as e:
+                    error_msg = f"WebDAV上传异常: {str(e)}"
+                    logger.error(f"{self.plugin_name} {error_msg}")
+                    self._backup_activity = f"WebDAV上传异常: {str(e)[:50]}..."
+                    backup_details["webdav_backup"]["success"] = False
+                    backup_details["webdav_backup"]["error"] = error_msg
+            
+            # 上传完成后，如果配置了自动删除，再删除PVE上的备份文件
+            if self._auto_delete_after_download:
+                try:
+                    sftp.remove(remote_file)
+                    logger.info(f"{self.plugin_name} 已删除远程备份文件: {remote_file}")
+                except Exception as e:
+                    logger.error(f"{self.plugin_name} 删除远程备份文件失败: {str(e)}")
             
             return True, None, backup_filename, backup_details
             
@@ -2744,61 +2179,29 @@ class ProxmoxVEBackup(_PluginBase):
             except Exception as e:
                 return {"success": False, "message": f"删除失败: {str(e)}"}
         elif source == "WebDAV备份":
-            # WebDAV 删除逻辑
+            # WebDAV 删除逻辑（使用新的WebDAV客户端）
             try:
-                import requests
-                from urllib.parse import urljoin, urlparse
-                # 构建WebDAV基础URL
-                base_url = self._webdav_url.rstrip('/')
-                webdav_path = self._webdav_path.lstrip('/')
-                parsed_url = urlparse(self._webdav_url)
-                is_alist = parsed_url.port == 5244 or '5244' in self._webdav_url
-                # 构建可能的URL列表
-                possible_urls = []
-                if is_alist:
-                    if webdav_path:
-                        possible_urls.extend([
-                            f"{base_url}/dav/{webdav_path}/{filename}",
-                            f"{base_url}/{webdav_path}/{filename}"
-                        ])
-                    else:
-                        possible_urls.extend([
-                            f"{base_url}/dav/{filename}",
-                            f"{base_url}/{filename}"
-                        ])
+                from .webdav_client import WebDAVClient
+                
+                # 创建WebDAV客户端
+                client = WebDAVClient(
+                    url=self._webdav_url,
+                    username=self._webdav_username,
+                    password=self._webdav_password,
+                    path=self._webdav_path,
+                    skip_dir_check=True,
+                    logger=logger,
+                    plugin_name=self.plugin_name
+                )
+                
+                # 执行删除
+                success, error = client.delete_file(filename)
+                client.close()
+                
+                if success:
+                    return {"success": True, "message": f"已删除WebDAV备份文件: {filename}"}
                 else:
-                    if webdav_path:
-                        possible_urls.extend([
-                            f"{base_url}/{webdav_path}/{filename}",
-                            f"{base_url}/dav/{webdav_path}/{filename}",
-                            f"{base_url}/remote.php/webdav/{webdav_path}/{filename}",
-                            f"{base_url}/dav/files/{self._webdav_username}/{webdav_path}/{filename}"
-                        ])
-                    else:
-                        possible_urls.extend([
-                            f"{base_url}/{filename}",
-                            f"{base_url}/dav/{filename}",
-                            f"{base_url}/remote.php/webdav/{filename}"
-                        ])
-                # 依次尝试删除
-                last_error = None
-                for url in possible_urls:
-                    try:
-                        resp = requests.delete(
-                            url,
-                            auth=(self._webdav_username, self._webdav_password),
-                            headers={'User-Agent': 'MoviePilot/1.0'},
-                            timeout=30,
-                            verify=False
-                        )
-                        if resp.status_code in [200, 201, 204, 404]:
-                            return {"success": True, "message": f"已删除WebDAV备份文件: {filename}"}
-                        else:
-                            last_error = f"状态码: {resp.status_code}, 响应: {resp.text}"
-                    except Exception as e:
-                        last_error = str(e)
-                        continue
-                return {"success": False, "message": f"WebDAV删除失败: {last_error or '所有URL均失败'}"}
+                    return {"success": False, "message": f"WebDAV删除失败: {error}"}
             except Exception as e:
                 return {"success": False, "message": f"WebDAV删除异常: {str(e)}"}
         else:
@@ -3098,3 +2501,44 @@ class ProxmoxVEBackup(_PluginBase):
             return images  # 直接返回数组，兼容前端
         except Exception as e:
             return []
+
+    def _stop_all_tasks_api(self, data: dict = None):
+        """停止所有正在运行的任务"""
+        stopped_tasks = []
+        
+        # 释放备份锁
+        if self._lock and hasattr(self._lock, 'locked') and self._lock.locked():
+            try:
+                self._lock.release()
+                stopped_tasks.append("备份任务")
+                self._backup_activity = "空闲"
+                logger.info(f"{self.plugin_name} 已释放备份任务锁")
+            except RuntimeError:
+                pass
+        
+        # 释放恢复锁
+        if self._restore_lock and hasattr(self._restore_lock, 'locked') and self._restore_lock.locked():
+            try:
+                self._restore_lock.release()
+                stopped_tasks.append("恢复任务")
+                self._restore_activity = "空闲"
+                logger.info(f"{self.plugin_name} 已释放恢复任务锁")
+            except RuntimeError:
+                pass
+        
+        # 释放全局任务锁
+        if self._global_task_lock and hasattr(self._global_task_lock, 'locked') and self._global_task_lock.locked():
+            try:
+                self._global_task_lock.release()
+                logger.info(f"{self.plugin_name} 已释放全局任务锁")
+            except RuntimeError:
+                pass
+        
+        # 重置运行状态
+        self._running = False
+        
+        if stopped_tasks:
+            logger.info(f"{self.plugin_name} 已停止任务: {', '.join(stopped_tasks)}")
+            return {"success": True, "msg": f"已停止任务: {', '.join(stopped_tasks)}"}
+        else:
+            return {"success": True, "msg": "没有正在运行的任务"}

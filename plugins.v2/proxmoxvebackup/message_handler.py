@@ -117,6 +117,7 @@ class MessageHandler:
             cpu_usage = status.get('cpu_usage')
             cpu_cores = status.get('cpu_cores', 'N/A')
             cpu_model = status.get('cpu_model', 'N/A')
+            cpu_temp = status.get('cpu_temp')
             if cpu_model:
                 cpu_model = cpu_model[:50]  # 截断过长的CPU型号
             message += f"💻 CPU：{cpu_model}\n"
@@ -124,6 +125,9 @@ class MessageHandler:
             if cpu_usage is not None:
                 cpu_emoji = "🟢" if cpu_usage < 50 else "🟡" if cpu_usage < 80 else "🔴"
                 message += f"   使用率：{cpu_emoji} {cpu_usage:.1f}%\n"
+            if cpu_temp is not None:
+                temp_emoji = "🟢" if cpu_temp < 60 else "🟡" if cpu_temp < 80 else "🔴"
+                message += f"   温度：{temp_emoji} {cpu_temp:.1f}°C\n"
             
             # 负载信息
             load_avg = status.get('load_avg')
@@ -156,6 +160,7 @@ class MessageHandler:
             disk_usage = status.get('disk_usage')
             disk_total = status.get('disk_total')
             disk_used = status.get('disk_used')
+            disk_temp = status.get('disk_temp')
             if disk_total:
                 disk_gb = disk_total / 1024
                 disk_used_gb = disk_used / 1024 if disk_used else 0
@@ -163,6 +168,9 @@ class MessageHandler:
                     disk_emoji = "🟢" if disk_usage < 70 else "🟡" if disk_usage < 90 else "🔴"
                     message += f"\n💿 磁盘：{disk_emoji} {disk_usage:.1f}%\n"
                     message += f"   已用：{disk_used_gb:.1f} GB / {disk_gb:.1f} GB\n"
+                if disk_temp is not None:
+                    temp_emoji = "🟢" if disk_temp < 50 else "🟡" if disk_temp < 60 else "🔴"
+                    message += f"   温度：{temp_emoji} {disk_temp}°C\n"
             
             message += "\n━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             message += f"⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"

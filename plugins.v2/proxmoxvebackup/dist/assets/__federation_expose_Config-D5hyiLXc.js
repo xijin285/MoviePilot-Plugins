@@ -1,5 +1,5 @@
 import { importShared } from './__federation_fn_import-JrT3xvdd.js';
-import { a as cronstrue } from './zh_CN-BW7ak9RT.js';
+import { a as cronstrue } from './zh_CN-CNefNtEK.js';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-pcqpp-6-.js';
 
 const {resolveComponent:_resolveComponent,createVNode:_createVNode,createElementVNode:_createElementVNode,normalizeClass:_normalizeClass,createTextVNode:_createTextVNode,withCtx:_withCtx,toDisplayString:_toDisplayString,openBlock:_openBlock,createBlock:_createBlock,createCommentVNode:_createCommentVNode,createElementBlock:_createElementBlock,Transition:_Transition,renderList:_renderList,Fragment:_Fragment,createStaticVNode:_createStaticVNode} = await importShared('vue');
@@ -140,10 +140,10 @@ const config = reactive({
   auto_cleanup_tmp: true,
   // 新增系统日志清理配置
   enable_log_cleanup: false,
-  log_journal_days: 7,
-  log_vzdump_keep: 7,
-  log_pve_keep: 7,
-  log_dpkg_keep: 7,
+  log_journal_days: 0,
+  log_vzdump_keep: 0,
+  log_pve_keep: 0,
+  log_dpkg_keep: 0,
   cleanup_template_images: false,
 });
 
@@ -159,10 +159,10 @@ async function fetchConfig() {
       if (typeof config.auto_cleanup_tmp === 'undefined') config.auto_cleanup_tmp = true;
       // 新增系统日志清理配置默认
       if (typeof config.enable_log_cleanup === 'undefined') config.enable_log_cleanup = false;
-      if (typeof config.log_journal_days === 'undefined') config.log_journal_days = 7;
-      if (typeof config.log_vzdump_keep === 'undefined') config.log_vzdump_keep = 7;
-      if (typeof config.log_pve_keep === 'undefined') config.log_pve_keep = 7;
-      if (typeof config.log_dpkg_keep === 'undefined') config.log_dpkg_keep = 7;
+      if (typeof config.log_journal_days === 'undefined') config.log_journal_days = 0;
+      if (typeof config.log_vzdump_keep === 'undefined') config.log_vzdump_keep = 0;
+      if (typeof config.log_pve_keep === 'undefined') config.log_pve_keep = 0;
+      if (typeof config.log_dpkg_keep === 'undefined') config.log_dpkg_keep = 0;
       if (typeof config.cleanup_template_images === 'undefined') config.cleanup_template_images = false;
     } else {
       throw new Error('获取配置响应无效或为空');
@@ -287,10 +287,10 @@ function resetConfig() {
     auto_cleanup_tmp: true,
     cleanup_template_images: false,
     enable_log_cleanup: false,
-    log_journal_days: 7,
-    log_vzdump_keep: 7,
-    log_pve_keep: 7,
-    log_dpkg_keep: 7,
+    log_journal_days: 0,
+    log_vzdump_keep: 0,
+    log_pve_keep: 0,
+    log_dpkg_keep: 0,
   });
   energy.value = 10;
   guardianLevel.value = 1;
@@ -1083,7 +1083,7 @@ return (_ctx, _cache) => {
               innerHTML: getNavAvatarSVG(node.value)
             }, null, 8, _hoisted_11),
             (_openBlock(), _createElementBlock("svg", _hoisted_12, [
-              _cache[55] || (_cache[55] = _createStaticVNode("<defs data-v-f27d3423><radialGradient id=\"crystal-gradient\" cx=\"50%\" cy=\"50%\" r=\"50%\" data-v-f27d3423><stop offset=\"0%\" stop-color=\"#fff\" stop-opacity=\"0.95\" data-v-f27d3423></stop><stop offset=\"60%\" stop-color=\"#b2ebf2\" stop-opacity=\"0.7\" data-v-f27d3423></stop><stop offset=\"100%\" stop-color=\"#00eaff\" stop-opacity=\"0.45\" data-v-f27d3423></stop></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"44\" fill=\"url(#crystal-gradient)\" data-v-f27d3423></circle><ellipse cx=\"38\" cy=\"32\" rx=\"16\" ry=\"7\" fill=\"#fff\" opacity=\"0.35\" data-v-f27d3423></ellipse>", 3)),
+              _cache[55] || (_cache[55] = _createStaticVNode("<defs data-v-7637face><radialGradient id=\"crystal-gradient\" cx=\"50%\" cy=\"50%\" r=\"50%\" data-v-7637face><stop offset=\"0%\" stop-color=\"#fff\" stop-opacity=\"0.95\" data-v-7637face></stop><stop offset=\"60%\" stop-color=\"#b2ebf2\" stop-opacity=\"0.7\" data-v-7637face></stop><stop offset=\"100%\" stop-color=\"#00eaff\" stop-opacity=\"0.45\" data-v-7637face></stop></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"44\" fill=\"url(#crystal-gradient)\" data-v-7637face></circle><ellipse cx=\"38\" cy=\"32\" rx=\"16\" ry=\"7\" fill=\"#fff\" opacity=\"0.35\" data-v-7637face></ellipse>", 3)),
               _createElementVNode("g", null, [
                 (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(node.particleCount, (n) => {
                   return (_openBlock(), _createElementBlock("circle", {
@@ -1215,7 +1215,7 @@ return (_ctx, _cache) => {
                 default: _withCtx(() => [
                   _createVNode(_component_v_col, {
                     cols: "12",
-                    md: "4"
+                    md: "3"
                   }, {
                     default: _withCtx(() => [
                       _createVNode(_component_v_switch, {
@@ -1232,7 +1232,7 @@ return (_ctx, _cache) => {
                   }),
                   _createVNode(_component_v_col, {
                     cols: "12",
-                    md: "5"
+                    md: "6"
                   }, {
                     default: _withCtx(() => [
                       _createVNode(_component_v_text_field, {
@@ -1273,7 +1273,7 @@ return (_ctx, _cache) => {
                 default: _withCtx(() => [
                   _createVNode(_component_v_col, {
                     cols: "12",
-                    md: "4"
+                    md: "3"
                   }, {
                     default: _withCtx(() => [
                       _createVNode(_component_v_switch, {
@@ -1290,7 +1290,7 @@ return (_ctx, _cache) => {
                   }),
                   _createVNode(_component_v_col, {
                     cols: "12",
-                    md: "5"
+                    md: "9"
                   }, {
                     default: _withCtx(() => [
                       _createVNode(_component_v_text_field, {
@@ -1348,7 +1348,7 @@ return (_ctx, _cache) => {
                 default: _withCtx(() => [
                   _createVNode(_component_v_col, {
                     cols: "12",
-                    md: "8"
+                    md: "7"
                   }, {
                     default: _withCtx(() => [
                       _createVNode(_component_v_text_field, {
@@ -1363,7 +1363,7 @@ return (_ctx, _cache) => {
                   }),
                   _createVNode(_component_v_col, {
                     cols: "12",
-                    md: "4"
+                    md: "5"
                   }, {
                     default: _withCtx(() => [
                       _createVNode(_component_v_text_field, {
@@ -1576,7 +1576,7 @@ return (_ctx, _cache) => {
                             disabled: !config.enable_log_cleanup,
                             label: "journalctl保留天数",
                             type: "number",
-                            min: "1",
+                            min: "0",
                             "prepend-inner-icon": "mdi-calendar-clock",
                             hint: "仅清理早于N天的systemd日志，留空或0为全部清理",
                             "persistent-hint": "",
@@ -1844,6 +1844,6 @@ return (_ctx, _cache) => {
 }
 
 };
-const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-f27d3423"]]);
+const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-7637face"]]);
 
 export { ConfigComponent as default };

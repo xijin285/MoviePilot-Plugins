@@ -22,6 +22,9 @@ def get_pve_status(host, port, username, password, key_file):
         "pve_version": "",
         "hostname": "",
         "ip": "-",
+        "cpu_temp": None,
+        "disk_temp": None,
+        "io_delay": None,
     }
     try:
         ssh = paramiko.SSHClient()
@@ -84,6 +87,140 @@ def get_pve_status(host, port, username, password, key_file):
         if ip_output:
             ip = next((x for x in ip_output.split() if x and not x.startswith("127.")), "-")
         result["ip"] = ip
+
+        # 获取CPU温度（多种方法尝试）
+        try:
+            # 方法1: sensors命令
+            stdin, stdout, stderr = ssh.exec_command("sensors 2>/dev/null | grep -E '(Core 0|Tctl|CPU Temperature|Package id)' | head -1")
+            sensors_output = stdout.read().decode().strip()
+            if sensors_output:
+                # 提取温度数值
+                temp_match = re.search(r'\+?(\d+\.?\d*)°?C', sensors_output)
+                if temp_match:
+                    result["cpu_temp"] = float(temp_match.group(1))
+                else:
+                    result["cpu_temp"] = None
+            
+            # 如果没有获取到，尝试方法2: /sys/class/thermal
+            if result["cpu_temp"] is None:
+                stdin, stdout, stderr = ssh.exec_command("cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null | head -1")
+                thermal_output = stdout.read().decode().strip()
+                if thermal_output:
+                    try:
+                        temp_raw = int(thermal_output.strip())
+                        result["cpu_temp"] = round(temp_raw / 1000.0, 1)  # 转换为摄氏度
+                    except ValueError:
+                        result["cpu_temp"] = None
+                else:
+                    result["cpu_temp"] = None
+            
+            # 如果还没有，尝试方法3: vcgencmd (树莓派)
+            if result["cpu_temp"] is None:
+                stdin, stdout, stderr = ssh.exec_command("vcgencmd measure_temp 2>/dev/null")
+                vcgencmd_output = stdout.read().decode().strip()
+                if vcgencmd_output:
+                    temp_match = re.search(r'temp=(\d+\.?\d*)', vcgencmd_output)
+                    if temp_match:
+                        result["cpu_temp"] = float(temp_match.group(1))
+                    else:
+                        result["cpu_temp"] = None
+                else:
+                    result["cpu_temp"] = None
+        except Exception:
+            result["cpu_temp"] = None
+        
+        # 获取硬盘温度（多种方法尝试）
+        try:
+            # 先尝试获取第一个可用磁盘设备
+            stdin, stdout, stderr = ssh.exec_command("lsblk -dn -o NAME,TYPE 2>/dev/null | grep -E 'disk' | head -1 | awk '{print $1}'")
+            disk_device = stdout.read().decode().strip()
+            
+            if not disk_device:
+                # 如果没有找到，尝试硬编码设备
+                disk_device = "sda"
+            
+            # 方法1: smartctl (支持SATA和NVMe)
+            if disk_device.startswith('nvme'):
+                # NVMe设备
+                stdin, stdout, stderr = ssh.exec_command(f"smartctl -A /dev/{disk_device} 2>/dev/null | grep -i 'Temperature:' | head -1 | awk '{{print $2}}'")
+            else:
+                # SATA/SCSI设备
+                stdin, stdout, stderr = ssh.exec_command(f"smartctl -A /dev/{disk_device} 2>/dev/null | grep -i 'Temperature_Celsius' | awk '{{print $10}}' | head -1")
+            
+            smartctl_output = stdout.read().decode().strip()
+            if smartctl_output and smartctl_output.isdigit():
+                result["disk_temp"] = int(smartctl_output)
+            else:
+                result["disk_temp"] = None
+            
+            # 如果没有，尝试方法2: hddtemp
+            if result["disk_temp"] is None and not disk_device.startswith('nvme'):
+                stdin, stdout, stderr = ssh.exec_command(f"hddtemp /dev/{disk_device} 2>/dev/null")
+                hddtemp_output = stdout.read().decode().strip()
+                if hddtemp_output and '°C' in hddtemp_output:
+                    temp_match = re.search(r'(\d+)', hddtemp_output)
+                    if temp_match:
+                        result["disk_temp"] = int(temp_match.group(1))
+                    else:
+                        result["disk_temp"] = None
+                else:
+                    result["disk_temp"] = None
+            
+            # 如果还没有，尝试方法3: 使用smartctl -a (某些NVMe驱动)
+            if result["disk_temp"] is None and disk_device.startswith('nvme'):
+                stdin, stdout, stderr = ssh.exec_command(f"smartctl -a /dev/{disk_device} 2>/dev/null | grep -i 'temperature sensor' | head -1 | grep -oE '[0-9]+'")
+                nvme_temp_output = stdout.read().decode().strip()
+                if nvme_temp_output:
+                    try:
+                        result["disk_temp"] = int(nvme_temp_output)
+                    except ValueError:
+                        result["disk_temp"] = None
+                else:
+                    result["disk_temp"] = None
+        except Exception:
+            result["disk_temp"] = None
+        
+        # 获取IO延迟（iostat await值，毫秒）
+        try:
+            # 使用iostat获取平均等待时间（await列，通常是第10列）
+            stdin, stdout, stderr = ssh.exec_command("iostat -x 1 1 2>/dev/null | grep -v '^$' | tail -n +4 | awk 'NF>=10 {sum+=$10; count++} END {if(count>0 && sum>0) print sum/count; else print 0}'")
+            iostat_output = stdout.read().decode().strip()
+            if iostat_output:
+                try:
+                    io_delay = float(iostat_output)
+                    # 只有当延迟值合理时才使用（大于0且小于10000ms）
+                    if 0 < io_delay < 10000:
+                        result["io_delay"] = round(io_delay, 2)
+                    else:
+                        result["io_delay"] = None
+                except (ValueError, TypeError):
+                    result["io_delay"] = None
+            else:
+                result["io_delay"] = None
+            
+            # 如果iostat不可用或获取失败，尝试从/proc/stat计算iowait
+            if result["io_delay"] is None:
+                stdin, stdout, stderr = ssh.exec_command("cat /proc/stat | grep '^cpu ' | head -1")
+                cpu_stat = stdout.read().decode().strip()
+                if cpu_stat:
+                    parts = cpu_stat.split()
+                    if len(parts) >= 6:
+                        try:
+                            # cpu user nice system idle iowait irq softirq
+                            iowait = int(parts[5]) if len(parts) > 5 else 0
+                            total = sum(int(x) for x in parts[1:] if x.isdigit())
+                            if total > 0 and iowait > 0:
+                                # iowait百分比转换为近似毫秒延迟（经验公式：1% iowait ≈ 5-15ms延迟）
+                                iowait_percent = (iowait / total) * 100
+                                # 使用保守的转换：1% = 10ms
+                                estimated_delay = iowait_percent * 10
+                                result["io_delay"] = round(estimated_delay, 2) if estimated_delay > 0.1 else None
+                            else:
+                                result["io_delay"] = None
+                        except (ValueError, IndexError):
+                            result["io_delay"] = None
+        except Exception:
+            result["io_delay"] = None
 
         ssh.close()
     except Exception as e:
