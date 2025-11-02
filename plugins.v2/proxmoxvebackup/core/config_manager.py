@@ -122,6 +122,10 @@ class ConfigManager:
             
             # 新增系统日志清理配置
             "enable_log_cleanup": getattr(self.plugin, "_enable_log_cleanup", False),
+            
+            # 状态页轮询配置（单位：毫秒）
+            "status_poll_interval": self.plugin.get_config().get("status_poll_interval", 30000) if self.plugin.get_config() else 30000,
+            "container_poll_interval": self.plugin.get_config().get("container_poll_interval", 30000) if self.plugin.get_config() else 30000,
             "log_journal_days": getattr(self.plugin, "_log_journal_days", 7),
             "log_vzdump_keep": getattr(self.plugin, "_log_vzdump_keep", 7),
             "log_pve_keep": getattr(self.plugin, "_log_pve_keep", 7),

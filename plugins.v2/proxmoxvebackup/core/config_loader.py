@@ -114,7 +114,23 @@ class ConfigLoader:
             if k == "cleanup_template_images":
                 self.plugin._cleanup_template_images = bool(v)
         
+        # 保存轮询配置等不需要实例属性的配置字段
+        # 这些字段直接保存到配置字典中，不存储为实例属性
+        poll_config_fields = {"status_poll_interval", "container_poll_interval"}
+        poll_config_updated = False
+        if any(k in poll_config_fields for k in config.keys()):
+            # 获取当前完整配置并更新轮询字段
+            current_config = self.plugin.get_config() or {}
+            for field in poll_config_fields:
+                if field in config:
+                    current_config[field] = int(config[field])
+                    poll_config_updated = True
+            # 先保存轮询配置到配置字典
+            if poll_config_updated:
+                self.plugin.update_config(current_config)
+        
         if self.plugin._config_manager:
+            # update_config 会保存完整配置，包括轮询配置
             self.plugin._config_manager.update_config()
     
     def process_special_actions(self):

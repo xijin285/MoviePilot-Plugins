@@ -14,6 +14,7 @@ from app.log import logger
 from app.plugins import _PluginBase
 from app.core.event import eventmanager, Event
 from app.schemas.types import EventType
+from app.core.cache import TTLCache
 from .pve.client import get_pve_status, get_container_status, get_qemu_status, clean_pve_tmp_files, clean_pve_logs, list_template_images, download_template_image, delete_template_image, upload_template_image, download_template_image_from_url
 from .core import ConfigManager, ConfigLoader, HistoryHandler, EventHandler, SchedulerManager
 from .backup import BackupManager, BackupExecutor
@@ -31,7 +32,7 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "2.3.1"
+    plugin_version = "2.3.2"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -54,10 +55,6 @@ class ProxmoxVEBackup(_PluginBase):
     _max_restore_history_entries: int = 50  # 恢复历史记录最大数量
     _global_task_lock: Optional[threading.Lock] = None  # 全局任务锁，协调备份和恢复任务
     _last_config_hash: Optional[str] = None  # 上次配置的哈希值
-    _pve_status_cache: Optional[Dict[str, Any]] = None  # PVE状态缓存
-    _pve_status_cache_time: Optional[float] = None  # 缓存时间
-    _container_status_cache: Optional[List[Dict[str, Any]]] = None  # 容器状态缓存
-    _container_status_cache_time: Optional[float] = None  # 容器状态缓存时间
 
     # 配置属性
     _enabled: bool = False
@@ -136,6 +133,66 @@ class ProxmoxVEBackup(_PluginBase):
         # 初始化配置加载器和配置管理器（需要在加载配置之前）
         self._config_loader = ConfigLoader(self)
         self._config_manager = ConfigManager(self)
+        
+        # 初始化缓存实例（TTLCache会自动根据系统配置选择Redis或内存缓存）
+        # PVE状态缓存：30秒TTL，最大10项
+        self._pve_status_cache = TTLCache(region="proxmox_pve_status", maxsize=10, ttl=30)
+        # 容器状态缓存：60秒TTL，最大50项
+        self._container_status_cache = TTLCache(region="proxmox_container_status", maxsize=50, ttl=60)
+        
+        # 检测实际使用的缓存后端并记录日志
+        # 系统会根据配置自动选择缓存后端
+        try:
+            cache_backend = "CacheTools缓存"  # 默认是CacheTools（MoviePilot默认内存缓存）
+            config_detected = False  # 标记是否通过配置成功检测
+            
+            # 方法1: 严格按照官方文档，优先检查系统配置 CACHE_BACKEND_TYPE（最准确、最权威）
+            try:
+                # settings已在文件顶部导入，直接使用
+                if hasattr(settings, 'CACHE_BACKEND_TYPE'):
+                    cache_backend_type = str(getattr(settings, 'CACHE_BACKEND_TYPE', '')).strip().lower()
+                    if cache_backend_type == 'redis':
+                        cache_backend = "Redis缓存"
+                        config_detected = True
+                        logger.debug(f"{self.plugin_name} 缓存检测: 系统配置明确指定 CACHE_BACKEND_TYPE=redis")
+                    elif cache_backend_type == 'memory':
+                        cache_backend = "CacheTools缓存"
+                        config_detected = True
+                        logger.debug(f"{self.plugin_name} 缓存检测: 系统配置明确指定 CACHE_BACKEND_TYPE=memory")
+                    else:
+                        logger.debug(f"{self.plugin_name} 缓存检测: 系统配置 CACHE_BACKEND_TYPE={cache_backend_type}，使用默认CacheTools")
+                else:
+                    logger.debug(f"{self.plugin_name} 缓存检测: 系统配置中未找到 CACHE_BACKEND_TYPE，使用默认CacheTools")
+            except Exception as config_e:
+                logger.debug(f"{self.plugin_name} 缓存检测: 读取系统配置异常: {config_e}，使用默认CacheTools")
+            
+            # 方法2: 只有在系统配置无法确定时，才进行启发式检测（作为备选方案）
+            # 注意：启发式检测可能不准确，应优先依赖系统配置
+            if not config_detected:
+                cache_obj = self._pve_status_cache
+                try:
+                    # 检查是否有Redis客户端的实际连接（更严格的检测）
+                    if hasattr(cache_obj, 'backend'):
+                        backend_obj = cache_obj.backend
+                        backend_type_name = type(backend_obj).__name__
+                        backend_module = type(backend_obj).__module__
+                        logger.debug(f"{self.plugin_name} 缓存检测: backend类型={backend_type_name}, 模块={backend_module}")
+                        
+                        # 严格检测：必须是redis模块的类，且不是简单的字符串包含
+                        if 'redis' in backend_module.lower() and ('Redis' in backend_type_name or 'Cache' in backend_type_name):
+                            cache_backend = "Redis缓存"
+                            logger.debug(f"{self.plugin_name} 缓存检测: 通过backend模块检测到Redis")
+                        elif 'cachetools' in backend_module.lower():
+                            cache_backend = "CacheTools缓存"
+                            logger.debug(f"{self.plugin_name} 缓存检测: 通过backend模块检测到CacheTools")
+                except Exception as backend_e:
+                    logger.debug(f"{self.plugin_name} 缓存检测: backend检测异常: {backend_e}")
+            
+            logger.info(f"{self.plugin_name} 已初始化缓存实例（{cache_backend}）")
+        except Exception as e:
+            # 如果检测失败，默认使用CacheTools（MoviePilot标准内存缓存）
+            logger.info(f"{self.plugin_name} 已初始化缓存实例（CacheTools缓存）")
+            logger.debug(f"{self.plugin_name} 缓存后端检测失败，使用默认CacheTools: {e}")
 
         # 加载配置
         saved_config = self.get_config()
@@ -147,7 +204,6 @@ class ProxmoxVEBackup(_PluginBase):
             self._config_loader.apply_config_updates(config)
 
         # 处理清理历史/立即恢复（需要在处理器初始化之后）
-        # 注意：这里需要延迟处理，因为需要访问处理器实例
         # 先初始化所有处理器
         ProxmoxVEBackup._instance = self
         
@@ -195,6 +251,12 @@ class ProxmoxVEBackup(_PluginBase):
         """停止服务"""
         if self._scheduler_manager:
             self._scheduler_manager.stop_scheduler()
+        
+        # 清理缓存
+        if hasattr(self, '_pve_status_cache') and self._pve_status_cache:
+            self._pve_status_cache.clear()
+        if hasattr(self, '_container_status_cache') and self._container_status_cache:
+            self._container_status_cache.clear()
 
     def _should_skip_reinit(self, config: Optional[dict] = None) -> bool:
         """

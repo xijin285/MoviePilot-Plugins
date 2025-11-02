@@ -38,6 +38,8 @@ class APIHandler:
             job = self.plugin._scheduler.get_job(f"{self.plugin_name}定时服务")
             if job and job.next_run_time:
                 next_run_time = job.next_run_time.astimezone(pytz.timezone(settings.TZ)).strftime("%Y-%m-%d %H:%M:%S")
+        # 获取配置中的轮询间隔（单位：毫秒）
+        config = self.plugin.get_config() or {}
         return {
             "enabled": self.plugin._enabled,
             "backup_activity": self.plugin._backup_activity,
@@ -47,7 +49,10 @@ class APIHandler:
             "next_run_time": next_run_time,
             "enable_log_cleanup": getattr(self.plugin, "_enable_log_cleanup", False),
             "cleanup_template_images": self.plugin._cleanup_template_images,
-            "auto_cleanup_tmp": (self.plugin.get_config() or {}).get("auto_cleanup_tmp", True),
+            "auto_cleanup_tmp": config.get("auto_cleanup_tmp", True),
+            # 状态页轮询配置（单位：毫秒）
+            "status_poll_interval": config.get("status_poll_interval", 30000),
+            "container_poll_interval": config.get("container_poll_interval", 30000),
         }
     
     def _save_config(self, data: dict = None):
@@ -118,12 +123,16 @@ class APIHandler:
         }
     
     def _get_pve_status_api(self):
-        # 检查缓存（30秒有效期）
-        if self.plugin._pve_status_cache and self.plugin._pve_status_cache_time:
-            if time.time() - self.plugin._pve_status_cache_time < 30:
-                return self.plugin._pve_status_cache
+        # 生成缓存键
+        cache_key = "pve_status"
+        
+        # 检查缓存（使用Redis缓存，自动处理过期）
+        if hasattr(self.plugin, '_pve_status_cache') and cache_key in self.plugin._pve_status_cache:
+            logger.debug(f"{self.plugin_name} 使用缓存数据: PVE状态")
+            return self.plugin._pve_status_cache[cache_key]
         
         # 获取新数据
+        logger.debug(f"{self.plugin_name} 缓存未命中，从PVE获取新数据")
         status = get_pve_status(
             self.plugin._pve_host,
             self.plugin._ssh_port,
@@ -132,17 +141,22 @@ class APIHandler:
             self.plugin._ssh_key_file
         )
         # 更新缓存
-        self.plugin._pve_status_cache = status
-        self.plugin._pve_status_cache_time = time.time()
+        if hasattr(self.plugin, '_pve_status_cache'):
+            self.plugin._pve_status_cache[cache_key] = status
+            logger.debug(f"{self.plugin_name} 已将PVE状态存入缓存")
         return status
     
     def _get_container_status_api(self):
-        # 检查缓存（60秒有效期）
-        if self.plugin._container_status_cache and self.plugin._container_status_cache_time:
-            if time.time() - self.plugin._container_status_cache_time < 60:
-                return self.plugin._container_status_cache
+        # 生成缓存键
+        cache_key = "container_status"
+        
+        # 检查缓存（使用Redis缓存，自动处理过期）
+        if hasattr(self.plugin, '_container_status_cache') and cache_key in self.plugin._container_status_cache:
+            logger.debug(f"{self.plugin_name} 使用缓存数据: 容器状态")
+            return self.plugin._container_status_cache[cache_key]
         
         # 合并QEMU和LXC
+        logger.debug(f"{self.plugin_name} 缓存未命中，从PVE获取新数据")
         qemu_list = get_qemu_status(
             self.plugin._pve_host,
             self.plugin._ssh_port,
@@ -161,8 +175,9 @@ class APIHandler:
         result = qemu_list + lxc_list
         
         # 更新缓存
-        self.plugin._container_status_cache = result
-        self.plugin._container_status_cache_time = time.time()
+        if hasattr(self.plugin, '_container_status_cache'):
+            self.plugin._container_status_cache[cache_key] = result
+            logger.debug(f"{self.plugin_name} 已将容器状态存入缓存")
         return result
     
     def _get_available_backups_api(self):
