@@ -42,15 +42,15 @@
     }
   },
   "OpenWrtBackup": {
-    "name": "OpenWrt路由备份助手",
-    "description": "为OpenWrt路由提供全自动的配置备份方案",
+    "name": "OpenWrt路由助手",
+    "description": "OpenWrt路由器管理助手，支持配置备份、状态监控和消息交互",
     "labels": "备份,路由器",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.png",
     "author": "xijin285",
     "level": 2,
-    "requirements": ["paramiko>=2.12.0", "requests>=2.31.0", "pytz>=2023.3"],
     "history": {
+      "v1.1.0": "\n✨ 重大更新\n🏗️ 代码重构：代码结构优化\n🎨 界面重构：状态页优化界面\n🏗️ 登入方式：采用Web方式登入\n📊 新增功能：适配仪表盘功能\n🔗新增功能：适配消息渠道交互\n🗑️ 功能调整：移除各种繁琐功能，简化插件\n⚠️重要提示：本次升级采用全新配置体系，升级后需重置配置，旧版配置不兼容",
       "v1.0.1": "增加延时下载+轮询检测,提升兼容性问题",
       "v1.0.0": "首个正式版本：支持SSH密码和密钥认证、本地/WebDAV备份、定时任务、多样通知、历史管理等功能"
     }
@@ -63,7 +63,6 @@
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp",
     "author": "xijin285",
     "level": 2,
-    "requirements": ["paramiko>=2.7.0", "pytz>=2021.1", "apscheduler>=3.9.0", "requests>=2.25.0", "psutil>=5.8.0"],
     "history": {
       "v2.3.3": "优化消息交互系统，发送「/PVE帮助」指令即可查看指令使用方法",
       "v2.3.2": "适配Redis缓存,自动识别缓存类型",
