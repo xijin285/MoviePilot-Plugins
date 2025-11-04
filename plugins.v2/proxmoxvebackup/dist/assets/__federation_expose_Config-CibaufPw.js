@@ -49,10 +49,16 @@ const _hoisted_30 = { class: "cleanup-switch-row" };
 const _hoisted_31 = { class: "feature-list" };
 const _hoisted_32 = { key: 4 };
 const _hoisted_33 = { class: "section-title" };
-const _hoisted_34 = { style: {"font-size":"1.1em","line-height":"1.8","color":"#2196f3","padding":"24px 8px 8px 8px"} };
-const _hoisted_35 = { class: "action-btns" };
-const _hoisted_36 = { class: "left-btns" };
-const _hoisted_37 = { class: "right-btns" };
+const _hoisted_34 = { class: "declaration-section command-section" };
+const _hoisted_35 = { class: "declaration-subtitle" };
+const _hoisted_36 = { class: "command-hint" };
+const _hoisted_37 = { class: "declaration-section warning-section" };
+const _hoisted_38 = { class: "declaration-subtitle" };
+const _hoisted_39 = { class: "declaration-section" };
+const _hoisted_40 = { class: "declaration-subtitle" };
+const _hoisted_41 = { class: "action-btns" };
+const _hoisted_42 = { class: "left-btns" };
+const _hoisted_43 = { class: "right-btns" };
 
 const {ref,reactive,onMounted,computed,watch} = await importShared('vue');
 
@@ -1095,7 +1101,7 @@ return (_ctx, _cache) => {
               innerHTML: getNavAvatarSVG(node.value)
             }, null, 8, _hoisted_11),
             (_openBlock(), _createElementBlock("svg", _hoisted_12, [
-              _cache[56] || (_cache[56] = _createStaticVNode("<defs data-v-b0c4649f><radialGradient id=\"crystal-gradient\" cx=\"50%\" cy=\"50%\" r=\"50%\" data-v-b0c4649f><stop offset=\"0%\" stop-color=\"#fff\" stop-opacity=\"0.95\" data-v-b0c4649f></stop><stop offset=\"60%\" stop-color=\"#b2ebf2\" stop-opacity=\"0.7\" data-v-b0c4649f></stop><stop offset=\"100%\" stop-color=\"#00eaff\" stop-opacity=\"0.45\" data-v-b0c4649f></stop></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"44\" fill=\"url(#crystal-gradient)\" data-v-b0c4649f></circle><ellipse cx=\"38\" cy=\"32\" rx=\"16\" ry=\"7\" fill=\"#fff\" opacity=\"0.35\" data-v-b0c4649f></ellipse>", 3)),
+              _cache[56] || (_cache[56] = _createStaticVNode("<defs data-v-e3be71a9><radialGradient id=\"crystal-gradient\" cx=\"50%\" cy=\"50%\" r=\"50%\" data-v-e3be71a9><stop offset=\"0%\" stop-color=\"#fff\" stop-opacity=\"0.95\" data-v-e3be71a9></stop><stop offset=\"60%\" stop-color=\"#b2ebf2\" stop-opacity=\"0.7\" data-v-e3be71a9></stop><stop offset=\"100%\" stop-color=\"#00eaff\" stop-opacity=\"0.45\" data-v-e3be71a9></stop></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"44\" fill=\"url(#crystal-gradient)\" data-v-e3be71a9></circle><ellipse cx=\"38\" cy=\"32\" rx=\"16\" ry=\"7\" fill=\"#fff\" opacity=\"0.35\" data-v-e3be71a9></ellipse>", 3)),
               _createElementVNode("g", null, [
                 (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(node.particleCount, (n) => {
                   return (_openBlock(), _createElementBlock("circle", {
@@ -1785,85 +1791,108 @@ return (_ctx, _cache) => {
                       }),
                       _cache[70] || (_cache[70] = _createTextVNode(" 插件说明 "))
                     ]),
+                    _cache[82] || (_cache[82] = _createElementVNode("div", { class: "declaration-section" }, [
+                      _createElementVNode("div", { class: "declaration-text" }, [
+                        _createTextVNode(" 欢迎使用 "),
+                        _createElementVNode("b", null, "PVE虚拟机守护神 - 备份插件"),
+                        _createTextVNode("！本插件旨在为你的PVE环境提供便捷、安全的备份与恢复体验。 ")
+                      ])
+                    ], -1)),
                     _createElementVNode("div", _hoisted_34, [
-                      _cache[73] || (_cache[73] = _createTextVNode(" 欢迎使用 ")),
-                      _cache[74] || (_cache[74] = _createElementVNode("b", null, "PVE虚拟机守护神 - 备份插件", -1)),
-                      _cache[75] || (_cache[75] = _createTextVNode("！本插件旨在为你的PVE环境提供便捷、安全的备份与恢复体验。")),
-                      _cache[76] || (_cache[76] = _createElementVNode("br", null, null, -1)),
-                      _cache[77] || (_cache[77] = _createElementVNode("br", null, null, -1)),
-                      _createVNode(_component_v_icon, {
-                        size: "18",
-                        color: "warning",
-                        class: "mr-1",
-                        style: {"vertical-align":"middle"}
-                      }, {
-                        default: _withCtx(() => _cache[71] || (_cache[71] = [
-                          _createTextVNode("mdi-alert-circle-outline")
-                        ])),
-                        _: 1
-                      }),
-                      _cache[78] || (_cache[78] = _createElementVNode("b", null, "重要须知", -1)),
-                      _cache[79] || (_cache[79] = _createElementVNode("br", null, null, -1)),
-                      _cache[80] || (_cache[80] = _createElementVNode("span", { style: {"color":"#1976d2"} }, [
-                        _createTextVNode(" · 数据仅本地存储，远程备份只上传到你指定的服务器，如有顾虑请勿使用本插件。"),
-                        _createElementVNode("br"),
-                        _createTextVNode(" · 插件作者不对因使用本插件造成的任何数据丢失、损坏或其他后果负责。"),
-                        _createElementVNode("br"),
-                        _createTextVNode(" · 使用本插件即表示您已知悉并同意以上说明。 ")
-                      ], -1)),
-                      _cache[81] || (_cache[81] = _createElementVNode("br", null, null, -1)),
-                      _cache[82] || (_cache[82] = _createElementVNode("br", null, null, -1)),
-                      _createVNode(_component_v_icon, {
-                        size: "18",
-                        color: "primary",
-                        class: "mr-1",
-                        style: {"vertical-align":"middle"}
-                      }, {
-                        default: _withCtx(() => _cache[72] || (_cache[72] = [
-                          _createTextVNode("mdi-lightbulb-on-outline")
-                        ])),
-                        _: 1
-                      }),
-                      _cache[83] || (_cache[83] = _createElementVNode("b", null, "使用方法", -1)),
-                      _cache[84] || (_cache[84] = _createElementVNode("br", null, null, -1)),
-                      _cache[85] || (_cache[85] = _createElementVNode("span", { style: {"color":"#1976d2"} }, [
-                        _createTextVNode(" 1. 插件的所有主要操作（如备份、恢复、清理）都在\"状态页\"进行。"),
-                        _createElementVNode("br"),
-                        _createTextVNode(" 2. 各项功能（如自动备份、WebDAV远程备份、恢复、系统设置）需在本页相应分区启用并保存后，"),
-                        _createElementVNode("br"),
-                        _createTextVNode(" 才能在状态页正常使用。"),
-                        _createElementVNode("br"),
-                        _createTextVNode(" 3. 修改配置后请务必点击\"保存\"，否则新设置不会生效。"),
-                        _createElementVNode("br"),
-                        _createTextVNode(" 4. 如遇按钮无法点击或功能不可用，请检查相关功能是否已在本页启用。"),
-                        _createElementVNode("br"),
-                        _createTextVNode(" 5. 欢迎提交Issue和Pull Request来帮助改进插件。 ")
+                      _createElementVNode("div", _hoisted_35, [
+                        _createVNode(_component_v_icon, {
+                          size: "20",
+                          color: "primary",
+                          class: "mr-2"
+                        }, {
+                          default: _withCtx(() => _cache[71] || (_cache[71] = [
+                            _createTextVNode("mdi-message-text")
+                          ])),
+                          _: 1
+                        }),
+                        _cache[72] || (_cache[72] = _createTextVNode(" 消息交互指令 "))
+                      ]),
+                      _cache[75] || (_cache[75] = _createStaticVNode("<div class=\"command-cards\" data-v-e3be71a9><div class=\"command-card\" data-v-e3be71a9><div class=\"command-icon\" data-v-e3be71a9>📊</div><div class=\"command-content\" data-v-e3be71a9><div class=\"command-title\" data-v-e3be71a9>/pve状态</div><div class=\"command-desc\" data-v-e3be71a9>查看PVE主机状态信息，包括CPU、内存、磁盘等实时数据</div></div></div><div class=\"command-card\" data-v-e3be71a9><div class=\"command-icon\" data-v-e3be71a9>📦</div><div class=\"command-content\" data-v-e3be71a9><div class=\"command-title\" data-v-e3be71a9>/pve容器</div><div class=\"command-desc\" data-v-e3be71a9>查看所有容器/虚拟机的运行状态和详细信息</div></div></div><div class=\"command-card\" data-v-e3be71a9><div class=\"command-icon\" data-v-e3be71a9>📚</div><div class=\"command-content\" data-v-e3be71a9><div class=\"command-title\" data-v-e3be71a9>/pve帮助</div><div class=\"command-desc\" data-v-e3be71a9>显示插件帮助信息，查看所有可用指令</div></div></div></div>", 1)),
+                      _createElementVNode("div", _hoisted_36, [
+                        _createVNode(_component_v_icon, {
+                          size: "16",
+                          color: "info",
+                          class: "mr-1"
+                        }, {
+                          default: _withCtx(() => _cache[73] || (_cache[73] = [
+                            _createTextVNode("mdi-information")
+                          ])),
+                          _: 1
+                        }),
+                        _cache[74] || (_cache[74] = _createElementVNode("span", null, "在消息渠道（微信、Telegram等）中发送上述指令即可使用交互功能", -1))
+                      ])
+                    ]),
+                    _createElementVNode("div", _hoisted_37, [
+                      _createElementVNode("div", _hoisted_38, [
+                        _createVNode(_component_v_icon, {
+                          size: "20",
+                          color: "warning",
+                          class: "mr-2"
+                        }, {
+                          default: _withCtx(() => _cache[76] || (_cache[76] = [
+                            _createTextVNode("mdi-alert-circle-outline")
+                          ])),
+                          _: 1
+                        }),
+                        _cache[77] || (_cache[77] = _createTextVNode(" 重要须知 "))
+                      ]),
+                      _cache[78] || (_cache[78] = _createElementVNode("ul", { class: "declaration-list" }, [
+                        _createElementVNode("li", null, "数据仅本地存储，远程备份只上传到你指定的服务器，如有顾虑请勿使用本插件。"),
+                        _createElementVNode("li", null, "插件作者不对因使用本插件造成的任何数据丢失、损坏或其他后果负责。"),
+                        _createElementVNode("li", null, "使用本插件即表示您已知悉并同意以上说明。")
+                      ], -1))
+                    ]),
+                    _createElementVNode("div", _hoisted_39, [
+                      _createElementVNode("div", _hoisted_40, [
+                        _createVNode(_component_v_icon, {
+                          size: "20",
+                          color: "primary",
+                          class: "mr-2"
+                        }, {
+                          default: _withCtx(() => _cache[79] || (_cache[79] = [
+                            _createTextVNode("mdi-lightbulb-on-outline")
+                          ])),
+                          _: 1
+                        }),
+                        _cache[80] || (_cache[80] = _createTextVNode(" 使用方法 "))
+                      ]),
+                      _cache[81] || (_cache[81] = _createElementVNode("ol", { class: "declaration-list ordered" }, [
+                        _createElementVNode("li", null, "插件的所有主要操作（如备份、恢复、清理）都在\"状态页\"进行。"),
+                        _createElementVNode("li", null, "各项功能（如自动备份、WebDAV远程备份、恢复、系统设置）需在本页相应分区启用并保存后，才能在状态页正常使用。"),
+                        _createElementVNode("li", null, "修改配置后请务必点击\"保存\"，否则新设置不会生效。"),
+                        _createElementVNode("li", null, "如遇按钮无法点击或功能不可用，请检查相关功能是否已在本页启用。"),
+                        _createElementVNode("li", null, "欢迎提交Issue和Pull Request来帮助改进插件。")
                       ], -1))
                     ])
                   ]))
                 : _createCommentVNode("", true),
-      _createElementVNode("div", _hoisted_35, [
-        _createElementVNode("div", _hoisted_36, [
+      _createElementVNode("div", _hoisted_41, [
+        _createElementVNode("div", _hoisted_42, [
           _createVNode(_component_v_btn, {
             class: "glow-btn glow-btn-blue",
             size: "small",
             "prepend-icon": "mdi-view-dashboard",
             onClick: _cache[46] || (_cache[46] = $event => (emit('switch')))
           }, {
-            default: _withCtx(() => _cache[86] || (_cache[86] = [
+            default: _withCtx(() => _cache[83] || (_cache[83] = [
               _createTextVNode("状态页")
             ])),
             _: 1
           })
         ]),
-        _createElementVNode("div", _hoisted_37, [
+        _createElementVNode("div", _hoisted_43, [
           _createVNode(_component_v_btn, {
             class: "glow-btn glow-btn-orange",
             size: "small",
             "prepend-icon": "mdi-restore",
             onClick: resetConfig
           }, {
-            default: _withCtx(() => _cache[87] || (_cache[87] = [
+            default: _withCtx(() => _cache[84] || (_cache[84] = [
               _createTextVNode("重置")
             ])),
             _: 1
@@ -1875,7 +1904,7 @@ return (_ctx, _cache) => {
             loading: saving.value,
             onClick: saveConfig
           }, {
-            default: _withCtx(() => _cache[88] || (_cache[88] = [
+            default: _withCtx(() => _cache[85] || (_cache[85] = [
               _createTextVNode("保存")
             ])),
             _: 1
@@ -1886,7 +1915,7 @@ return (_ctx, _cache) => {
             "prepend-icon": "mdi-close",
             onClick: _cache[47] || (_cache[47] = $event => (emit('close')))
           }, {
-            default: _withCtx(() => _cache[89] || (_cache[89] = [
+            default: _withCtx(() => _cache[86] || (_cache[86] = [
               _createTextVNode("关闭")
             ])),
             _: 1
@@ -1894,7 +1923,7 @@ return (_ctx, _cache) => {
         ])
       ])
     ]),
-    _cache[90] || (_cache[90] = _createElementVNode("svg", {
+    _cache[87] || (_cache[87] = _createElementVNode("svg", {
       width: "0",
       height: "0"
     }, [
@@ -1922,6 +1951,6 @@ return (_ctx, _cache) => {
 }
 
 };
-const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-b0c4649f"]]);
+const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-e3be71a9"]]);
 
 export { ConfigComponent as default };

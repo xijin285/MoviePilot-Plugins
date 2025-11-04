@@ -3,7 +3,7 @@
 包含通知和消息处理功能
 """
 from .notifications import NotificationHandler
-from .message import MessageHandler
+from .pve_message_handler import PVEMessageHandler
 
-__all__ = ['NotificationHandler', 'MessageHandler']
+__all__ = ['NotificationHandler', 'PVEMessageHandler']
 

@@ -1,17 +1,44 @@
-"""消息渠道交互处理器模块"""
+"""
+爱快消息处理模块 - 处理微信等消息渠道的命令交互
+完全独立的爱快插件消息处理
+"""
+from datetime import datetime
 from typing import Optional, Dict, Any
-from app.log import logger
+
+# 延迟导入logger，避免循环导入
+ikuai_logger = None
+
+def get_ikuai_logger():
+    """获取logger实例"""
+    global ikuai_logger
+    if ikuai_logger is None:
+        try:
+            from app.log import logger as app_logger
+            ikuai_logger = app_logger
+        except ImportError:
+            import logging
+            ikuai_logger = logging.getLogger(__name__)
+    return ikuai_logger
 
 
-class MessageHandler:
-    """消息渠道交互处理器类"""
+class IkuaiMessageHandler:
+    """爱快消息处理器类 - 完全独立，专属于爱快插件"""
     
-    def __init__(self, plugin_instance):
-        self.plugin = plugin_instance
-        self.plugin_name = plugin_instance.plugin_name
+    def __init__(self, ikuai_plugin_instance):
+        """
+        初始化爱快消息处理器
+        :param ikuai_plugin_instance: IkuaiRouterBackup插件实例
+        """
+        self.ikuai_plugin = ikuai_plugin_instance
+        self.ikuai_plugin_name = ikuai_plugin_instance.plugin_name
     
-    def process_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """处理用户通过消息渠道发送的消息"""
+    def ikuai_process_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        处理用户通过消息渠道发送的消息（爱快专属）
+        
+        :param message: 消息字典，包含 text, title, userid, username 等字段
+        :return: 响应字典，包含 title 和 text 字段，或 None 表示不处理
+        """
         try:
             # 提取消息内容
             text = message.get("text", "").strip()
@@ -19,105 +46,102 @@ class MessageHandler:
             userid = message.get("userid", "")
             username = message.get("username", "")
             
-            logger.info(f"{self.plugin_name} 处理消息: '{text}', userid: {userid}")
+            get_ikuai_logger().info(f"{self.ikuai_plugin_name} 处理爱快消息: '{text}', userid: {userid}")
             
             if not text:
-                logger.debug(f"{self.plugin_name} 消息内容为空，不处理")
+                get_ikuai_logger().debug(f"{self.ikuai_plugin_name} 爱快消息内容为空，不处理")
                 return None
             
-            # 再次严格检查：必须是"/爱快"开头（双重验证）
+            # 严格检查：必须是"/爱快"开头（双重验证）
             if not text.startswith("/爱快"):
-                logger.warning(f"{self.plugin_name} 收到非爱快命令，这不应该发生: {text}")
+                get_ikuai_logger().debug(f"{self.ikuai_plugin_name} 收到非爱快命令，跳过: {text}")
                 return None
             
             # 处理带空格或斜杠变体的命令（如"/ 爱快帮助" -> "/爱快帮助"）
             # 移除命令中的空格，统一格式
             normalized_text = text.replace(" ", "").replace("　", "")  # 移除普通空格和全角空格
             
-            # 严格匹配：只处理已注册的爱快命令，不处理通用关键词
-            # 帮助命令
-            if normalized_text.startswith("/爱快帮助"):
-                logger.info(f"{self.plugin_name} 匹配到帮助命令")
-                return self._get_help_message()
+            # 严格匹配：只处理已注册的爱快命令
+            if normalized_text == "/爱快帮助":
+                get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快帮助命令")
+                return self._ikuai_get_help_message()
             
-            # 状态查询命令
-            if normalized_text.startswith("/爱快状态"):
-                logger.info(f"{self.plugin_name} 匹配到状态命令")
-                return self._get_system_status()
+            if normalized_text == "/爱快状态":
+                get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快状态命令")
+                return self._ikuai_get_system_status()
             
-            # 线路状态命令
-            if normalized_text.startswith("/爱快线路"):
-                logger.info(f"{self.plugin_name} 匹配到线路命令")
-                return self._get_line_status()
+            if normalized_text == "/爱快线路":
+                get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快线路命令")
+                return self._ikuai_get_line_status()
             
-            # 备份列表命令
-            if normalized_text.startswith("/爱快列表"):
-                logger.info(f"{self.plugin_name} 匹配到列表命令")
-                return self._get_backup_list()
+            if normalized_text == "/爱快列表":
+                get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快列表命令")
+                return self._ikuai_get_backup_list()
             
-            # 备份历史命令
-            if normalized_text.startswith("/爱快历史"):
-                logger.info(f"{self.plugin_name} 匹配到历史命令")
-                return self._get_backup_history()
+            if normalized_text == "/爱快历史":
+                get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快历史命令")
+                return self._ikuai_get_backup_history()
             
-            # 立即备份命令
-            if normalized_text.startswith("/爱快备份"):
-                logger.info(f"{self.plugin_name} 匹配到备份命令")
-                return self._trigger_backup()
+            if normalized_text == "/爱快备份":
+                get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快备份命令")
+                return self._ikuai_trigger_backup()
             
             # 如果以"/爱快"开头但不是有效命令，返回帮助信息
-            logger.info(f"{self.plugin_name} 未知的爱快命令: {text}")
+            get_ikuai_logger().info(f"{self.ikuai_plugin_name} 未知的爱快命令: {text}")
             return {
-                "title": f"❓ {self.plugin_name}",
+                "title": f"❓ {self.ikuai_plugin_name}",
                 "text": f"未知命令: {text}\n\n发送 '/爱快帮助' 查看可用命令。"
             }
             
         except Exception as e:
-            logger.error(f"{self.plugin_name} 处理消息时发生错误: {e}")
+            get_ikuai_logger().error(f"{self.ikuai_plugin_name} 处理爱快消息时发生错误: {e}")
             return {
-                "title": f"❌ {self.plugin_name}",
+                "title": f"❌ {self.ikuai_plugin_name}",
                 "text": f"处理消息时发生错误: {str(e)}"
             }
     
-    def _get_help_message(self) -> Dict[str, Any]:
-        """获取帮助信息"""
-        title = f"📚 {self.plugin_name} 帮助"
+    def _ikuai_get_help_message(self) -> Dict[str, Any]:
+        """获取爱快帮助信息 - 优化样式"""
+        title = f"📚 {self.ikuai_plugin_name} 帮助"
         
-        help_text = f"""/爱快状态 - 系统状态
-/爱快线路 - 线路监控
-/爱快列表 - 备份列表
-/爱快历史 - 历史记录
-/爱快备份 - 立即备份
-/爱快帮助 - 显示帮助
+        help_text = f"""━━━━━━━━━━━━━━━
 
-版本: {self.plugin.plugin_version} | 作者: {self.plugin.plugin_author}"""
+🔹 /爱快状态 - 系统状态
+🔹 /爱快线路 - 线路监控
+🔹 /爱快列表 - 备份列表
+🔹 /爱快历史 - 历史记录
+🔹 /爱快备份 - 立即备份
+🔹 /爱快帮助 - 显示帮助
+━━━━━━━━━━━━━━━
+📦 版本: {self.ikuai_plugin.plugin_version}
+👤 作者: {self.ikuai_plugin.plugin_author}"""
         
         return {
             "title": title,
             "text": help_text
         }
     
-    def _get_system_status(self) -> Dict[str, Any]:
+    def _ikuai_get_system_status(self) -> Dict[str, Any]:
         """获取系统状态"""
         try:
             from ..ikuai.client import IkuaiClient
             
-            if not self.plugin._ikuai_url or not self.plugin._ikuai_username or not self.plugin._ikuai_password:
+            if not self.ikuai_plugin._ikuai_url or not self.ikuai_plugin._ikuai_username or not self.ikuai_plugin._ikuai_password:
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 配置不完整：URL、用户名或密码未设置。\n\n请在插件配置页面填写完整的爱快路由器信息。"
                 }
             
             client = IkuaiClient(
-                url=self.plugin._ikuai_url,
-                username=self.plugin._ikuai_username,
-                password=self.plugin._ikuai_password,
-                plugin_name=self.plugin_name
+                url=self.ikuai_plugin._ikuai_url,
+                username=self.ikuai_plugin._ikuai_username,
+                password=self.ikuai_plugin._ikuai_password,
+                plugin_name=self.ikuai_plugin_name
             )
             
             if not client.login():
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 无法连接到爱快路由器\n\n请检查：\n• 路由器地址是否正确\n• 网络连接是否正常\n• 用户名密码是否正确"
                 }
             
@@ -125,7 +149,7 @@ class MessageHandler:
             
             if not system_info:
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 无法获取系统信息"
                 }
             
@@ -158,45 +182,51 @@ class MessageHandler:
             cpu_status = "🟢" if cpu_usage < 50 else "🟡" if cpu_usage < 80 else "🔴"
             mem_status = "🟢" if mem_usage < 50 else "🟡" if mem_usage < 80 else "🔴"
             
-            status_text = f"""🖥️ CPU {cpu_status} {cpu_usage:.1f}%  💾 内存 {mem_status} {mem_usage:.1f}%
-👥 设备 {online_users}台  🔗 连接 {connect_num}个
-⬆️ {format_speed(upload_speed)}  ⬇️ {format_speed(download_speed)}
-⏱️ {uptime_str}
-📌 {version}"""
+            message = "━━━━━━━━━━━━━━━\n"
+            message += "📊 系统状态\n"
+            message += f"🖥️ CPU {cpu_status} {cpu_usage:.1f}%\n"
+            message += f"💾 内存 {mem_status} {mem_usage:.1f}%\n"
+            message += f"👥 设备 {online_users}台\n"
+            message += f"🔗 连接 {connect_num}个\n"
+            message += f"⬆️ {format_speed(upload_speed)}\n"
+            message += f"⬇️ {format_speed(download_speed)}\n"
+            message += f"⏱️ {uptime_str}\n"
+            message += f"📌 {version}\n"
+            message += f"⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             
             return {
-                "title": f"📊 {self.plugin_name} 系统状态",
-                "text": status_text
+                "title": f"📊 {self.ikuai_plugin_name} 系统状态",
+                "text": message
             }
             
         except Exception as e:
-            logger.error(f"{self.plugin_name} 获取系统状态失败: {e}")
+            get_ikuai_logger().error(f"{self.ikuai_plugin_name} 获取系统状态失败: {e}")
             return {
-                "title": f"❌ {self.plugin_name}",
+                "title": f"❌ {self.ikuai_plugin_name}",
                 "text": f"获取系统状态失败: {str(e)}"
             }
     
-    def _get_line_status(self) -> Dict[str, Any]:
+    def _ikuai_get_line_status(self) -> Dict[str, Any]:
         """获取线路状态"""
         try:
             from ..ikuai.client import IkuaiClient
             
-            if not self.plugin._ikuai_url or not self.plugin._ikuai_username or not self.plugin._ikuai_password:
+            if not self.ikuai_plugin._ikuai_url or not self.ikuai_plugin._ikuai_username or not self.ikuai_plugin._ikuai_password:
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 配置不完整：URL、用户名或密码未设置。"
                 }
             
             client = IkuaiClient(
-                url=self.plugin._ikuai_url,
-                username=self.plugin._ikuai_username,
-                password=self.plugin._ikuai_password,
-                plugin_name=self.plugin_name
+                url=self.ikuai_plugin._ikuai_url,
+                username=self.ikuai_plugin._ikuai_username,
+                password=self.ikuai_plugin._ikuai_password,
+                plugin_name=self.ikuai_plugin_name
             )
             
             if not client.login():
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 无法连接到爱快路由器"
                 }
             
@@ -204,7 +234,7 @@ class MessageHandler:
             
             if not interface_info:
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 无法获取线路信息"
                 }
             
@@ -224,6 +254,8 @@ class MessageHandler:
                 else:
                     return f"{bytes_per_sec / (1024 * 1024):.2f} MB/s"
             
+            message = "━━━━━━━━━━━━━━━\n"
+            message += "🌐 线路状态\n"
             lines_text = ""
             
             # WAN线路
@@ -259,39 +291,42 @@ class MessageHandler:
             if lines_text.endswith("\n"):
                 lines_text = lines_text.rstrip("\n")
             
+            message += lines_text
+            message += f"\n⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            
             return {
-                "title": f"🌐 {self.plugin_name} 线路状态",
-                "text": lines_text
+                "title": f"🌐 {self.ikuai_plugin_name} 线路状态",
+                "text": message
             }
             
         except Exception as e:
-            logger.error(f"{self.plugin_name} 获取线路状态失败: {e}")
+            get_ikuai_logger().error(f"{self.ikuai_plugin_name} 获取线路状态失败: {e}")
             return {
-                "title": f"❌ {self.plugin_name}",
+                "title": f"❌ {self.ikuai_plugin_name}",
                 "text": f"获取线路状态失败: {str(e)}"
             }
     
-    def _get_backup_list(self) -> Dict[str, Any]:
+    def _ikuai_get_backup_list(self) -> Dict[str, Any]:
         """获取备份列表"""
         try:
             from ..ikuai.client import IkuaiClient
             
-            if not self.plugin._ikuai_url or not self.plugin._ikuai_username or not self.plugin._ikuai_password:
+            if not self.ikuai_plugin._ikuai_url or not self.ikuai_plugin._ikuai_username or not self.ikuai_plugin._ikuai_password:
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 配置不完整：URL、用户名或密码未设置。"
                 }
             
             client = IkuaiClient(
-                url=self.plugin._ikuai_url,
-                username=self.plugin._ikuai_username,
-                password=self.plugin._ikuai_password,
-                plugin_name=self.plugin_name
+                url=self.ikuai_plugin._ikuai_url,
+                username=self.ikuai_plugin._ikuai_username,
+                password=self.ikuai_plugin._ikuai_password,
+                plugin_name=self.ikuai_plugin_name
             )
             
             if not client.login():
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 无法连接到爱快路由器"
                 }
             
@@ -299,17 +334,19 @@ class MessageHandler:
             
             if backup_list is None:
                 return {
-                    "title": f"❌ {self.plugin_name}",
+                    "title": f"❌ {self.ikuai_plugin_name}",
                     "text": "❌ 无法获取备份列表"
                 }
             
             if not backup_list:
                 return {
-                    "title": f"📁 {self.plugin_name} 备份列表",
+                    "title": f"📁 {self.ikuai_plugin_name} 备份列表",
                     "text": "📭 当前没有备份文件"
                 }
             
             # 格式化备份列表
+            message = "━━━━━━━━━━━━━━━\n"
+            message += "📁 备份列表\n"
             list_text = ""
             
             for idx, backup in enumerate(backup_list[:10], 1):  # 最多显示10条
@@ -325,31 +362,36 @@ class MessageHandler:
             else:
                 list_text = list_text.rstrip()
             
+            message += list_text
+            message += f"\n⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            
             return {
-                "title": f"📁 {self.plugin_name} 备份列表",
-                "text": list_text
+                "title": f"📁 {self.ikuai_plugin_name} 备份列表",
+                "text": message
             }
             
         except Exception as e:
-            logger.error(f"{self.plugin_name} 获取备份列表失败: {e}")
+            get_ikuai_logger().error(f"{self.ikuai_plugin_name} 获取备份列表失败: {e}")
             return {
-                "title": f"❌ {self.plugin_name}",
+                "title": f"❌ {self.ikuai_plugin_name}",
                 "text": f"获取备份列表失败: {str(e)}"
             }
     
-    def _get_backup_history(self) -> Dict[str, Any]:
+    def _ikuai_get_backup_history(self) -> Dict[str, Any]:
         """获取备份历史"""
         try:
-            history = self.plugin._load_backup_history()
+            history = self.ikuai_plugin._load_backup_history()
             
             if not history:
                 return {
-                    "title": f"📜 {self.plugin_name} 备份历史",
+                    "title": f"📜 {self.ikuai_plugin_name} 备份历史",
                     "text": "📭 当前没有备份历史记录"
                 }
             
             # 格式化历史记录
-            history_text = f"📜 备份历史记录\n\n"
+            message = "━━━━━━━━━━━━━━━\n"
+            message += "📜 备份历史记录\n\n"
+            history_text = ""
             
             for idx, entry in enumerate(history[-10:], 1):  # 显示最近10条
                 timestamp = entry.get("timestamp", "未知")
@@ -369,58 +411,61 @@ class MessageHandler:
             else:
                 history_text = history_text.rstrip()
             
+            message += history_text
+            message += f"\n⏱️ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            
             return {
-                "title": f"📜 {self.plugin_name} 备份历史",
-                "text": history_text
+                "title": f"📜 {self.ikuai_plugin_name} 备份历史",
+                "text": message
             }
             
         except Exception as e:
-            logger.error(f"{self.plugin_name} 获取备份历史失败: {e}")
+            get_ikuai_logger().error(f"{self.ikuai_plugin_name} 获取备份历史失败: {e}")
             return {
-                "title": f"❌ {self.plugin_name}",
+                "title": f"❌ {self.ikuai_plugin_name}",
                 "text": f"获取备份历史失败: {str(e)}"
             }
     
-    def _trigger_backup(self) -> Dict[str, Any]:
+    def _ikuai_trigger_backup(self) -> Dict[str, Any]:
         """触发立即备份"""
         try:
             # 检查是否已启用
-            if not self.plugin._enabled:
+            if not self.ikuai_plugin._enabled:
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 插件未启用\n\n请在插件配置页面启用插件。"
                 }
             
             # 检查配置
-            if not self.plugin._ikuai_url or not self.plugin._ikuai_username or not self.plugin._ikuai_password:
+            if not self.ikuai_plugin._ikuai_url or not self.ikuai_plugin._ikuai_username or not self.ikuai_plugin._ikuai_password:
                 return {
-                    "title": f"⚠️ {self.plugin_name}",
+                    "title": f"⚠️ {self.ikuai_plugin_name}",
                     "text": "❌ 配置不完整：URL、用户名或密码未设置。"
                 }
             
             # 检查是否有任务正在运行
-            if self.plugin._lock and self.plugin._lock.locked():
+            if self.ikuai_plugin._lock and self.ikuai_plugin._lock.locked():
                 return {
-                    "title": f"⏳ {self.plugin_name}",
+                    "title": f"⏳ {self.ikuai_plugin_name}",
                     "text": "⏳ 备份任务正在进行中，请稍候...\n\n完成后会自动通知您。"
                 }
             
             # 触发备份任务
             # 这里需要异步执行，避免阻塞消息回复
             import threading
-            backup_thread = threading.Thread(target=self.plugin.run_backup_job)
+            backup_thread = threading.Thread(target=self.ikuai_plugin.run_backup_job)
             backup_thread.daemon = True
             backup_thread.start()
             
             return {
-                "title": f"🚀 {self.plugin_name}",
-                "text": "✅ 备份任务已启动\n\n备份完成后会自动通知您结果。\n\n💡 提示：可以发送 'history' 查看备份历史记录。"
+                "title": f"🚀 {self.ikuai_plugin_name}",
+                "text": "✅ 备份任务已启动\n\n备份完成后会自动通知您结果。\n\n💡 提示：可以发送 '/爱快历史' 查看备份历史记录。"
             }
             
         except Exception as e:
-            logger.error(f"{self.plugin_name} 触发备份失败: {e}")
+            get_ikuai_logger().error(f"{self.ikuai_plugin_name} 触发备份失败: {e}")
             return {
-                "title": f"❌ {self.plugin_name}",
+                "title": f"❌ {self.ikuai_plugin_name}",
                 "text": f"触发备份失败: {str(e)}"
             }
 

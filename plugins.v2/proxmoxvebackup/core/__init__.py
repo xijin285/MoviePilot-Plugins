@@ -5,8 +5,8 @@
 from .config_manager import ConfigManager
 from .config_loader import ConfigLoader
 from .history import HistoryHandler
-from .event_handler import EventHandler
+from .pve_event_handler import PVEEventHandler
 from .scheduler_manager import SchedulerManager
 
-__all__ = ['ConfigManager', 'ConfigLoader', 'HistoryHandler', 'EventHandler', 'SchedulerManager']
+__all__ = ['ConfigManager', 'ConfigLoader', 'HistoryHandler', 'PVEEventHandler', 'SchedulerManager']
 

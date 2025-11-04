@@ -200,7 +200,12 @@ class BackupManager:
                 webdav_backups = self.get_webdav_backups()
                 backups.extend(webdav_backups)
             except Exception as e:
-                logger.error(f"{self.plugin_name} 获取WebDAV备份文件列表失败: {e}")
+                # 429错误是速率限制，属于临时性错误，不影响备份功能，降级为WARNING
+                error_str = str(e)
+                if "429" in error_str or "Too Many Requests" in error_str:
+                    logger.warning(f"{self.plugin_name} 获取WebDAV备份文件列表时遇到速率限制（429），将跳过本次列表获取: {e}")
+                else:
+                    logger.error(f"{self.plugin_name} 获取WebDAV备份文件列表失败: {e}")
         
         # 按时间排序（最新的在前）
         backups.sort(key=lambda x: datetime.strptime(x['time_str'], '%Y-%m-%d %H:%M:%S'), reverse=True)
@@ -229,7 +234,11 @@ class BackupManager:
             files, error = client.list_files()
             
             if error:
-                logger.error(f"{self.plugin_name} 获取WebDAV文件列表失败: {error}")
+                # 429错误是速率限制，属于临时性错误，不影响备份功能，降级为WARNING
+                if "429" in str(error) or "Too Many Requests" in str(error):
+                    logger.warning(f"{self.plugin_name} 获取WebDAV文件列表时遇到速率限制（429），将跳过本次列表获取: {error}")
+                else:
+                    logger.error(f"{self.plugin_name} 获取WebDAV文件列表失败: {error}")
                 client.close()
                 return backups
 

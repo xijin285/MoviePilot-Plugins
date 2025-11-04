@@ -2,7 +2,7 @@
 核心模块
 包含事件处理等功能
 """
-from .event_handler import EventHandler
+from .ikuai_event_handler import IkuaiEventHandler
 
-__all__ = ['EventHandler']
+__all__ = ['IkuaiEventHandler']
 

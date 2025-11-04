@@ -109,7 +109,11 @@ class WebDAVClient:
                     return session
             
             if self.logger:
-                self.logger.error(f"{self.plugin_name} WebDAV认证失败，状态码: {response.status_code}")
+                # 429错误是速率限制，属于临时性错误，降级为WARNING
+                if response.status_code == 429:
+                    self.logger.warning(f"{self.plugin_name} WebDAV认证遇到速率限制（429），请稍后再试: {response.status_code}")
+                else:
+                    self.logger.error(f"{self.plugin_name} WebDAV认证失败，状态码: {response.status_code}")
             return None
             
         except Exception as e:

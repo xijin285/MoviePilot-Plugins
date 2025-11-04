@@ -21,7 +21,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             "desc": "查看爱快插件命令帮助",
             "category": "爱快路由",
             "data": {
-                "action": "help"
+                "action": "ikuai_help"
             }
         },
         {
@@ -30,7 +30,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             "desc": "查看爱快路由器系统状态",
             "category": "爱快路由",
             "data": {
-                "action": "status"
+                "action": "ikuai_status"
             }
         },
         {
@@ -39,7 +39,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             "desc": "查看爱快路由器线路监控状态",
             "category": "爱快路由",
             "data": {
-                "action": "line"
+                "action": "ikuai_line"
             }
         },
         {
@@ -48,7 +48,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             "desc": "查看备份文件列表",
             "category": "爱快路由",
             "data": {
-                "action": "list"
+                "action": "ikuai_list"
             }
         },
         {
@@ -57,7 +57,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             "desc": "查看备份历史记录",
             "category": "爱快路由",
             "data": {
-                "action": "history"
+                "action": "ikuai_history"
             }
         },
         {
@@ -66,7 +66,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             "desc": "立即执行备份任务",
             "category": "爱快路由",
             "data": {
-                "action": "backup"
+                "action": "ikuai_backup"
             }
         }
     ]

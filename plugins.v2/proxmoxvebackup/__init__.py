@@ -16,10 +16,12 @@ from app.core.event import eventmanager, Event
 from app.schemas.types import EventType
 from app.core.cache import TTLCache
 from .pve.client import get_pve_status, get_container_status, get_qemu_status, clean_pve_tmp_files, clean_pve_logs, list_template_images, download_template_image, delete_template_image, upload_template_image, download_template_image_from_url
-from .core import ConfigManager, ConfigLoader, HistoryHandler, EventHandler, SchedulerManager
+from .core import ConfigManager, ConfigLoader, HistoryHandler, SchedulerManager
+from .core.pve_event_handler import PVEEventHandler
 from .backup import BackupManager, BackupExecutor
 from .restore import RestoreManager, RestoreExecutor
-from .notification import NotificationHandler, MessageHandler
+from .notification import NotificationHandler
+from .notification.pve_message_handler import PVEMessageHandler
 from .api.routes import get_api_routes
 from .api.commands import get_plugin_commands
 
@@ -32,7 +34,7 @@ class ProxmoxVEBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "2.3.2"
+    plugin_version = "2.3.3"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -102,7 +104,7 @@ class ProxmoxVEBackup(_PluginBase):
     _restore_now: bool = False # 立即恢复开关
     _stopped: bool = False  # 增加已停止标志
     _instance = None  # 单例实例
-    _message_handler: Optional[MessageHandler] = None  # 消息处理器实例
+    _pve_message_handler: Optional[PVEMessageHandler] = None  # PVE消息处理器实例
     _notification_handler: Optional[NotificationHandler] = None  # 通知处理器实例
     _history_handler: Optional[HistoryHandler] = None  # 历史记录处理器实例
     _restore_manager: Optional[RestoreManager] = None  # 恢复管理器实例
@@ -110,7 +112,7 @@ class ProxmoxVEBackup(_PluginBase):
     _backup_executor: Optional[BackupExecutor] = None  # 备份执行器实例
     _restore_executor: Optional[RestoreExecutor] = None  # 恢复执行器实例
     _scheduler_manager: Optional[SchedulerManager] = None  # 调度器管理器实例
-    _event_handler: Optional[EventHandler] = None  # 事件处理器实例
+    _pve_event_handler: Optional[PVEEventHandler] = None  # PVE事件处理器实例
     _config_loader: Optional[ConfigLoader] = None  # 配置加载器实例
 
     # 新增：系统日志清理配置
@@ -207,8 +209,8 @@ class ProxmoxVEBackup(_PluginBase):
         # 先初始化所有处理器
         ProxmoxVEBackup._instance = self
         
-        # 初始化消息处理器
-        self._message_handler = MessageHandler(self)
+        # 初始化PVE消息处理器
+        self._pve_message_handler = PVEMessageHandler(self)
 
         # 初始化通知处理器
         self._notification_handler = NotificationHandler(self)
@@ -237,8 +239,8 @@ class ProxmoxVEBackup(_PluginBase):
         # 初始化调度器管理器
         self._scheduler_manager = SchedulerManager(self)
         
-        # 初始化事件处理器
-        self._event_handler = EventHandler(self)
+        # 初始化PVE事件处理器
+        self._pve_event_handler = PVEEventHandler(self)
         
         # 初始化API处理器
         from .api.handlers import APIHandler
@@ -291,9 +293,10 @@ class ProxmoxVEBackup(_PluginBase):
     def handle_pve_command(self, event: Event = None):
         """
         处理PVE相关命令（通过事件系统）
+        完全独立的PVE插件命令处理
         """
-        if self._event_handler:
-            self._event_handler.handle_pve_command(event)
+        if self._pve_event_handler:
+            self._pve_event_handler.handle_pve_command(event)
 
     def get_form(self):
         """

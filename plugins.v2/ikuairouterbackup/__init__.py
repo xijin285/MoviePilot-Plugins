@@ -12,7 +12,7 @@ from app.schemas import NotificationType
 from .ip_group.manager import IPGroupManager
 from .ui.form_builder import FormBuilder
 from .notification.service import NotificationManager
-from .notification.message_handler import MessageHandler
+from .notification.ikuai_message_handler import IkuaiMessageHandler
 from .ui.history_manager import HistoryManager
 from .ui.page_builder import PageBuilder
 from .ui.dashboard_builder import DashboardBuilder
@@ -25,7 +25,7 @@ from .restore.restore_executor import RestoreExecutor
 from .api.handlers import APIHandler
 from .api.routes import get_api_routes
 from .api.commands import get_plugin_commands
-from .core.event_handler import EventHandler
+from .core.ikuai_event_handler import IkuaiEventHandler
 from app.core.event import eventmanager, Event
 from app.schemas.types import EventType
 
@@ -37,7 +37,7 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "1.3.2"
+    plugin_version = "1.3.3"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -107,14 +107,10 @@ class IkuaiRouterBackup(_PluginBase):
 
     def init_plugin(self, config: Optional[dict] = None):
         self._lock = threading.Lock()
-        # 初始化事件处理去重状态（实例变量）
-        self._processed_events = set()
-        self._event_cache_time = 0.0
-        self._event_cache_ttl = 1  # 1秒内的重复事件将被忽略
         # 初始化管理器
         self._form_builder = FormBuilder(self)  # 初始化表单构建器
         self._notification_manager = NotificationManager(self)  # 初始化通知管理器
-        self._message_handler = MessageHandler(self)  # 初始化消息处理器（用于事件处理）
+        self._ikuai_message_handler = IkuaiMessageHandler(self)  # 初始化爱快消息处理器
         self._history_manager = HistoryManager(self, self._max_history_entries, self._max_restore_history_entries)  # 初始化历史管理器
         self._page_builder = PageBuilder(self)  # 初始化页面构建器
         self._dashboard_builder = DashboardBuilder(self)  # 初始化仪表盘构建器
@@ -125,7 +121,7 @@ class IkuaiRouterBackup(_PluginBase):
         self._backup_executor = BackupExecutor(self)  # 初始化备份执行器
         self._restore_executor = RestoreExecutor(self)  # 初始化恢复执行器
         self._api_handler = APIHandler(self)  # 初始化API处理器
-        self._event_handler = EventHandler(self)  # 初始化事件处理器
+        self._ikuai_event_handler = IkuaiEventHandler(self)  # 初始化爱快事件处理器
         self.stop_service()
         
         if config:
@@ -205,58 +201,8 @@ class IkuaiRouterBackup(_PluginBase):
     @eventmanager.register(EventType.PluginAction)
     def handle_ikuai_command(self, event: Event = None):
         """处理爱快相关命令"""
-        if event:
-            event_data = event.event_data
-            if not event_data:
-                return
-            action = event_data.get("action")
-            if not action:
-                data = event_data.get("data", {})
-                if isinstance(data, dict):
-                    action = data.get("action")
-            
-            if not action or action not in ["help", "status", "line", "list", "history", "backup"]:
-                return
-            
-            # 在主插件层面添加去重检查
-            import time
-            
-            # 生成事件的唯一标识 - 使用命令+用户+动作的hash，不依赖event_id（因为框架会生成不同的event_id）
-            cmd = event_data.get("cmd", "")
-            userid = event_data.get("user", "")
-            event_key = f"{cmd}|{userid}|{action}"
-            dedup_id = hash(event_key)
-            
-            # 记录event_id用于日志
-            event_id = None
-            if hasattr(event, 'event_id'):
-                event_id = event.event_id
-            elif hasattr(event, 'id'):
-                event_id = event.id
-            
-            # 检查是否已处理过
-            if dedup_id in self._processed_events:
-                logger.debug(f"{self.plugin_name} 主插件检测到重复事件，跳过: dedup_id={dedup_id}, event_id={event_id}")
-                return
-            
-            # 记录已处理的事件
-            current_time = time.time()
-            
-            # 清理过期的缓存
-            if current_time - self._event_cache_time > self._event_cache_ttl:
-                self._processed_events.clear()
-                self._event_cache_time = current_time
-            
-            self._processed_events.add(dedup_id)
-            
-            # 确认是我们的命令
-            logger.info(f"{self.plugin_name} 收到命令: action={action}, cmd={event_data.get('cmd', '')}, dedup_id={dedup_id}, event_id={event_id}")
-            
-            # 使用事件处理器处理命令
-            if self._event_handler:
-                self._event_handler.handle_ikuai_command(event)
-            else:
-                logger.warning(f"{self.plugin_name} 事件处理器未初始化")
+        if self._ikuai_event_handler:
+            self._ikuai_event_handler.handle_ikuai_command(event)
 
     def stop_service(self):
         """委托给SchedulerManager停止服务"""

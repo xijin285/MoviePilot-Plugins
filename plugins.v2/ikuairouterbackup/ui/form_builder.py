@@ -607,8 +607,8 @@ class FormBuilder:
                                     'style': 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px 12px 0 0;'
                                 },
                                 'content': [
-                                    {'component': 'VIcon', 'props': {'class': 'mr-3', 'size': '28'}, 'text': 'mdi-information'},
-                                    {'component': 'span', 'props': {'style': 'font-size: 18px; font-weight: 600; letter-spacing: 0.5px;'}, 'text': '使用说明'}
+                                    {'component': 'VIcon', 'props': {'class': 'mr-3', 'size': '28'}, 'text': 'mdi-message-text'},
+                                    {'component': 'span', 'props': {'style': 'font-size: 18px; font-weight: 600; letter-spacing: 0.5px;'}, 'text': '消息交互指令'}
                                 ]
                             },
                             {
@@ -616,52 +616,128 @@ class FormBuilder:
                                 'props': {'class': 'pa-5'},
                                 'content': [
                                     {
-                                        'component': 'div',
-                                        'props': {'class': 'mb-4'},
+                                        'component': 'VRow',
+                                        'props': {'class': 'mb-3'},
                                         'content': [
                                             {
-                                                'component': 'div',
-                                                'props': {'class': 'd-flex align-center mb-2'},
+                                                'component': 'VCol',
+                                                'props': {'cols': 12, 'sm': 6, 'md': 4},
                                                 'content': [
-                                                    {'component': 'VIcon', 'props': {'class': 'mr-2', 'color': 'primary'}, 'text': 'mdi-chat'},
-                                                    {'component': 'span', 'props': {'class': 'text-h6', 'style': 'color: #667eea;'}, 'text': '交互指令'}
+                                                    {
+                                                        'component': 'div',
+                                                        'props': {
+                                                            'class': 'pa-3',
+                                                            'style': 'background: rgba(102, 126, 234, 0.08); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); transition: all 0.3s ease; cursor: pointer;'
+                                                        },
+                                                        'content': [
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📊'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快状态'},
+                                                            {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看爱快路由器系统状态，包括CPU、内存、在线设备等实时数据'}
+                                                        ]
+                                                    }
                                                 ]
                                             },
                                             {
-                                                'component': 'div',
-                                                'props': {'class': 'ml-8 mb-3'},
-                                                'text': '在消息渠道中发送以下命令来操作插件：'
+                                                'component': 'VCol',
+                                                'props': {'cols': 12, 'sm': 6, 'md': 4},
+                                                'content': [
+                                                    {
+                                                        'component': 'div',
+                                                        'props': {
+                                                            'class': 'pa-3',
+                                                            'style': 'background: rgba(102, 126, 234, 0.08); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); transition: all 0.3s ease; cursor: pointer;'
+                                                        },
+                                                        'content': [
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '🌐'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快线路'},
+                                                            {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看所有线路的监控状态，包括WAN、LAN、ADSL等接口信息'}
+                                                        ]
+                                                    }
+                                                ]
                                             },
                                             {
-                                                'component': 'div',
-                                                'props': {'class': 'ml-8 mb-2'},
-                                                'text': '• /爱快状态 - 查看系统状态'
+                                                'component': 'VCol',
+                                                'props': {'cols': 12, 'sm': 6, 'md': 4},
+                                                'content': [
+                                                    {
+                                                        'component': 'div',
+                                                        'props': {
+                                                            'class': 'pa-3',
+                                                            'style': 'background: rgba(102, 126, 234, 0.08); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); transition: all 0.3s ease; cursor: pointer;'
+                                                        },
+                                                        'content': [
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📦'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快列表'},
+                                                            {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看所有备份文件列表，包括本地和WebDAV备份'}
+                                                        ]
+                                                    }
+                                                ]
                                             },
                                             {
-                                                'component': 'div',
-                                                'props': {'class': 'ml-8 mb-2'},
-                                                'text': '• /爱快线路 - 查看线路监控状态'
+                                                'component': 'VCol',
+                                                'props': {'cols': 12, 'sm': 6, 'md': 4},
+                                                'content': [
+                                                    {
+                                                        'component': 'div',
+                                                        'props': {
+                                                            'class': 'pa-3',
+                                                            'style': 'background: rgba(102, 126, 234, 0.08); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); transition: all 0.3s ease; cursor: pointer;'
+                                                        },
+                                                        'content': [
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📜'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快历史'},
+                                                            {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看备份历史记录，包括备份时间、状态和文件大小'}
+                                                        ]
+                                                    }
+                                                ]
                                             },
                                             {
-                                                'component': 'div',
-                                                'props': {'class': 'ml-8 mb-2'},
-                                                'text': '• /爱快列表 - 查看备份文件列表'
+                                                'component': 'VCol',
+                                                'props': {'cols': 12, 'sm': 6, 'md': 4},
+                                                'content': [
+                                                    {
+                                                        'component': 'div',
+                                                        'props': {
+                                                            'class': 'pa-3',
+                                                            'style': 'background: rgba(102, 126, 234, 0.08); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); transition: all 0.3s ease; cursor: pointer;'
+                                                        },
+                                                        'content': [
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '🚀'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快备份'},
+                                                            {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '立即执行备份任务，备份完成后会自动通知结果'}
+                                                        ]
+                                                    }
+                                                ]
                                             },
                                             {
-                                                'component': 'div',
-                                                'props': {'class': 'ml-8 mb-2'},
-                                                'text': '• /爱快历史 - 查看备份历史记录'
-                                            },
-                                            {
-                                                'component': 'div',
-                                                'props': {'class': 'ml-8 mb-2'},
-                                                'text': '• /爱快备份 - 立即执行备份任务'
-                                            },
-                                            {
-                                                'component': 'div',
-                                                'props': {'class': 'ml-8'},
-                                                'text': '• /爱快帮助 - 显示帮助信息'
+                                                'component': 'VCol',
+                                                'props': {'cols': 12, 'sm': 6, 'md': 4},
+                                                'content': [
+                                                    {
+                                                        'component': 'div',
+                                                        'props': {
+                                                            'class': 'pa-3',
+                                                            'style': 'background: rgba(102, 126, 234, 0.08); border-radius: 10px; border: 1px solid rgba(102, 126, 234, 0.2); transition: all 0.3s ease; cursor: pointer;'
+                                                        },
+                                                        'content': [
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📚'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快帮助'},
+                                                            {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '显示插件帮助信息，查看所有可用指令'}
+                                                        ]
+                                                    }
+                                                ]
                                             }
+                                        ]
+                                    },
+                                    {
+                                        'component': 'div',
+                                        'props': {
+                                            'class': 'd-flex align-center pa-3 mt-3',
+                                            'style': 'background: rgba(102, 126, 234, 0.1); border-radius: 8px; border-left: 3px solid #667eea;'
+                                        },
+                                        'content': [
+                                            {'component': 'VIcon', 'props': {'class': 'mr-2', 'size': '16', 'color': 'info'}, 'text': 'mdi-information'},
+                                            {'component': 'span', 'props': {'class': 'text-caption', 'style': 'color: #616161;'}, 'text': '在消息渠道（微信、Telegram等）中发送上述指令即可使用交互功能'}
                                         ]
                                     }
                                 ]
