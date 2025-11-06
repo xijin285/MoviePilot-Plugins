@@ -17,7 +17,7 @@ class FormBuilder:
     
     def build_form(self) -> Tuple[List[dict], Dict[str, Any]]:
         """构建配置表单"""
-        default_backup_location_desc = "插件数据目录下的 actual_backups 子目录"
+        default_backup_location_desc = "插件数据目录"
         return [
             {
                 'component': 'VForm',

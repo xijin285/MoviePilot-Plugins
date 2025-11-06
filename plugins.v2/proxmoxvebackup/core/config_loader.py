@@ -52,7 +52,7 @@ class ConfigLoader:
         # 备份路径配置
         configured_backup_path = str(saved_config.get("backup_path", "")).strip()
         if not configured_backup_path:
-            self.plugin._backup_path = str(self.plugin.get_data_path() / "actual_backups")
+            self.plugin._backup_path = str(self.plugin.get_data_path())
             logger.info(f"{self.plugin_name} 备份文件存储路径未配置，使用默认: {self.plugin._backup_path}")
         else:
             self.plugin._backup_path = configured_backup_path
@@ -158,9 +158,13 @@ class ConfigLoader:
                     self.plugin._config_manager.update_config()
     
     def ensure_backup_directory(self):
-        """确保备份目录存在"""
+        """确保备份目录存在（包括容器和虚拟机子目录）"""
         try:
-            Path(self.plugin._backup_path).mkdir(parents=True, exist_ok=True)
+            base_dir = Path(self.plugin._backup_path)
+            base_dir.mkdir(parents=True, exist_ok=True)
+            # 创建容器和虚拟机子目录
+            (base_dir / "containers").mkdir(parents=True, exist_ok=True)
+            (base_dir / "virtualmachines").mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            logger.error(f"{self.plugin_name} 创建实际备份目录 {self.plugin._backup_path} 失败: {e}")
+            logger.error(f"{self.plugin_name} 创建备份目录 {self.plugin._backup_path} 失败: {e}")
 

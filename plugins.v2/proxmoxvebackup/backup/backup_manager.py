@@ -24,7 +24,7 @@ class BackupManager:
         self.plugin_name = plugin_instance.plugin_name
     
     def cleanup_old_backups(self):
-        """清理本地旧备份文件"""
+        """清理本地旧备份文件（分别清理容器和虚拟机目录）"""
         if not self.plugin._backup_path:
             return
         # 如果保留数量为0，表示保留全部备份，不进行清理
@@ -33,53 +33,59 @@ class BackupManager:
             return
         try:
             logger.info(f"{self.plugin_name} 开始清理本地备份目录: {self.plugin._backup_path}")
-            backup_dir = Path(self.plugin._backup_path)
-            if not backup_dir.is_dir():
+            base_backup_dir = Path(self.plugin._backup_path)
+            if not base_backup_dir.is_dir():
                 logger.warning(f"{self.plugin_name} 本地备份目录 {self.plugin._backup_path} 不存在，无需清理。")
                 return
 
-            files = []
-            for f_path_obj in backup_dir.iterdir():
-                if f_path_obj.is_file() and (
-                    f_path_obj.name.endswith('.tar.gz') or 
-                    f_path_obj.name.endswith('.tar.lzo') or 
-                    f_path_obj.name.endswith('.tar.zst') or
-                    f_path_obj.name.endswith('.vma.gz') or 
-                    f_path_obj.name.endswith('.vma.lzo') or 
-                    f_path_obj.name.endswith('.vma.zst')
-                ):
-                    try:
-                        match = re.search(r'(\d{4}\d{2}\d{2}[_]?\d{2}\d{2}\d{2})', f_path_obj.stem)
-                        file_time = None
-                        if match:
-                            time_str = match.group(1).replace('_','')
-                            try:
-                                file_time = datetime.strptime(time_str, '%Y%m%d%H%M%S').timestamp()
-                            except ValueError:
-                                pass 
-                        if file_time is None:
-                           file_time = f_path_obj.stat().st_mtime
-                        files.append({'path': f_path_obj, 'name': f_path_obj.name, 'time': file_time})
-                    except Exception as e:
-                        logger.error(f"{self.plugin_name} 处理文件 {f_path_obj.name} 时出错: {e}")
+            # 分别清理容器和虚拟机目录
+            for sub_dir_name in ["containers", "virtualmachines"]:
+                backup_dir = base_backup_dir / sub_dir_name
+                if not backup_dir.is_dir():
+                    continue
+                
+                files = []
+                for f_path_obj in backup_dir.iterdir():
+                    if f_path_obj.is_file() and (
+                        f_path_obj.name.endswith('.tar.gz') or 
+                        f_path_obj.name.endswith('.tar.lzo') or 
+                        f_path_obj.name.endswith('.tar.zst') or
+                        f_path_obj.name.endswith('.vma.gz') or 
+                        f_path_obj.name.endswith('.vma.lzo') or 
+                        f_path_obj.name.endswith('.vma.zst')
+                    ):
                         try:
-                            files.append({'path': f_path_obj, 'name': f_path_obj.name, 'time': f_path_obj.stat().st_mtime})
-                        except Exception as stat_e:
-                            logger.error(f"{self.plugin_name} 无法获取文件状态 {f_path_obj.name}: {stat_e}")
+                            match = re.search(r'(\d{4}\d{2}\d{2}[_]?\d{2}\d{2}\d{2})', f_path_obj.stem)
+                            file_time = None
+                            if match:
+                                time_str = match.group(1).replace('_','')
+                                try:
+                                    file_time = datetime.strptime(time_str, '%Y%m%d%H%M%S').timestamp()
+                                except ValueError:
+                                    pass 
+                            if file_time is None:
+                               file_time = f_path_obj.stat().st_mtime
+                            files.append({'path': f_path_obj, 'name': f_path_obj.name, 'time': file_time})
+                        except Exception as e:
+                            logger.error(f"{self.plugin_name} 处理文件 {f_path_obj.name} 时出错: {e}")
+                            try:
+                                files.append({'path': f_path_obj, 'name': f_path_obj.name, 'time': f_path_obj.stat().st_mtime})
+                            except Exception as stat_e:
+                                logger.error(f"{self.plugin_name} 无法获取文件状态 {f_path_obj.name}: {stat_e}")
 
-            files.sort(key=lambda x: x['time'], reverse=True)
-            
-            if len(files) > self.plugin._keep_backup_num:
-                files_to_delete = files[self.plugin._keep_backup_num:]
-                logger.info(f"{self.plugin_name} 找到 {len(files_to_delete)} 个旧 Proxmox 备份文件需要删除。")
-                for f_info in files_to_delete:
-                    try:
-                        f_info['path'].unlink()
-                        logger.info(f"{self.plugin_name} 已删除旧备份文件: {f_info['name']}")
-                    except OSError as e:
-                        logger.error(f"{self.plugin_name} 删除旧备份文件 {f_info['name']} 失败: {e}")
-            else:
-                logger.info(f"{self.plugin_name} 当前 Proxmox 备份文件数量 ({len(files)}) 未超过保留限制 ({self.plugin._keep_backup_num})，无需清理。")
+                files.sort(key=lambda x: x['time'], reverse=True)
+                
+                if len(files) > self.plugin._keep_backup_num:
+                    files_to_delete = files[self.plugin._keep_backup_num:]
+                    logger.info(f"{self.plugin_name} 在 {sub_dir_name} 目录中找到 {len(files_to_delete)} 个旧备份文件需要删除。")
+                    for f_info in files_to_delete:
+                        try:
+                            f_info['path'].unlink()
+                            logger.info(f"{self.plugin_name} 已删除旧备份文件: {f_info['name']}")
+                        except OSError as e:
+                            logger.error(f"{self.plugin_name} 删除旧备份文件 {f_info['name']} 失败: {e}")
+                else:
+                    logger.info(f"{self.plugin_name} {sub_dir_name} 目录当前备份文件数量 ({len(files)}) 未超过保留限制 ({self.plugin._keep_backup_num})，无需清理。")
         except Exception as e:
             logger.error(f"{self.plugin_name} 清理旧备份文件时发生错误: {e}")
 
@@ -166,31 +172,35 @@ class BackupManager:
         if self.plugin._enable_local_backup:
             try:
                 # 如果_backup_path为空，使用默认路径
-                backup_dir = Path(self.plugin._backup_path) if self.plugin._backup_path else Path(self.plugin.get_data_path()) / "actual_backups"
-                if backup_dir.is_dir():
-                    for file_path in backup_dir.iterdir():
-                        if file_path.is_file() and (
-                            file_path.name.endswith('.tar.gz') or 
-                            file_path.name.endswith('.tar.lzo') or 
-                            file_path.name.endswith('.tar.zst') or
-                            file_path.name.endswith('.vma.gz') or 
-                            file_path.name.endswith('.vma.lzo') or 
-                            file_path.name.endswith('.vma.zst')
-                        ):
-                            try:
-                                stat = file_path.stat()
-                                size_mb = stat.st_size / (1024 * 1024)
-                                time_str = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-                                
-                                backups.append({
-                                    'filename': file_path.name,
-                                    'path': str(file_path),
-                                    'size_mb': size_mb,
-                                    'time_str': time_str,
-                                    'source': '本地备份'
-                                })
-                            except Exception as e:
-                                logger.error(f"{self.plugin_name} 处理本地备份文件 {file_path.name} 时出错: {e}")
+                base_backup_dir = Path(self.plugin._backup_path) if self.plugin._backup_path else Path(self.plugin.get_data_path())
+                if base_backup_dir.is_dir():
+                    # 从 containers 和 virtualmachines 两个目录中查找
+                    for sub_dir_name in ["containers", "virtualmachines"]:
+                        backup_dir = base_backup_dir / sub_dir_name
+                        if backup_dir.is_dir():
+                            for file_path in backup_dir.iterdir():
+                                if file_path.is_file() and (
+                                    file_path.name.endswith('.tar.gz') or 
+                                    file_path.name.endswith('.tar.lzo') or 
+                                    file_path.name.endswith('.tar.zst') or
+                                    file_path.name.endswith('.vma.gz') or 
+                                    file_path.name.endswith('.vma.lzo') or 
+                                    file_path.name.endswith('.vma.zst')
+                                ):
+                                    try:
+                                        stat = file_path.stat()
+                                        size_mb = stat.st_size / (1024 * 1024)
+                                        time_str = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
+                                        
+                                        backups.append({
+                                            'filename': file_path.name,
+                                            'path': str(file_path),
+                                            'size_mb': size_mb,
+                                            'time_str': time_str,
+                                            'source': '本地备份'
+                                        })
+                                    except Exception as e:
+                                        logger.error(f"{self.plugin_name} 处理本地备份文件 {file_path.name} 时出错: {e}")
             except Exception as e:
                 logger.error(f"{self.plugin_name} 获取本地备份文件列表失败: {e}")
         
@@ -280,6 +290,10 @@ class BackupManager:
         :return: (是否成功, 错误消息, 备份文件名, 备份详情)
         """
         try:
+            # 根据文件类型确定存储目录：.tar.* 为容器，.vma.* 为虚拟机
+            is_container = any(backup_filename.lower().endswith(ext) for ext in ('.tar.gz', '.tar.lzo', '.tar.zst'))
+            sub_dir = "containers" if is_container else "virtualmachines"
+            
             # 构建备份详情
             backup_details = {
                 "local_backup": {
@@ -303,8 +317,8 @@ class BackupManager:
             # 如果启用了本地备份，先下载到本地
             if self.plugin._enable_local_backup:
                 try:
-                    # 确保备份目录存在
-                    backup_dir = Path(self.plugin._backup_path)
+                    # 确保备份目录和子目录存在
+                    backup_dir = Path(self.plugin._backup_path) / sub_dir
                     backup_dir.mkdir(parents=True, exist_ok=True)
                     local_path = str(backup_dir / backup_filename)
                     

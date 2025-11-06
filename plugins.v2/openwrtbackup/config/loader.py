@@ -40,7 +40,7 @@ class ConfigLoader:
         self.plugin._enable_local_backup = bool(saved_config.get("enable_local_backup", True))
         configured_backup_path = str(saved_config.get("backup_path", "")).strip()
         if not configured_backup_path:
-            self.plugin._backup_path = str(self.plugin.get_data_path() / "actual_backups")
+            self.plugin._backup_path = str(self.plugin.get_data_path())
             logger.info(f"{self.plugin_name} 备份文件存储路径未配置，使用默认: {self.plugin._backup_path}")
         else:
             self.plugin._backup_path = configured_backup_path
