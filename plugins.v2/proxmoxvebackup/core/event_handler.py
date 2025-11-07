@@ -279,7 +279,7 @@ class EventHandler:
                 cmd = event_data.get("cmd", "")
                 result = {
                     "title": f"❓ {self.plugin_name}",
-                    "text": f"未知命令: {cmd}\n\n发送 '/pve帮助' 查看可用命令。"
+                    "text": f"未知命令: {cmd}\n\n发送 '/pve_help' 查看可用命令。"
                 }
             
             # 发送回复消息

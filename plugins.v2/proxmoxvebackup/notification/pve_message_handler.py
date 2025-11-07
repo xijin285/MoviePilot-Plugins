@@ -58,23 +58,23 @@ class PVEMessageHandler:
                 get_pve_logger().debug(f"{self.pve_plugin_name} 收到非PVE命令，跳过: {text}")
                 return None
             
-            # 处理带空格或斜杠变体的命令（如"/ pve帮助" -> "/pve帮助"）
+            # 处理带空格或斜杠变体的命令（如"/ pve_help" -> "/pve_help"）
             # 移除命令中的空格，统一格式
             normalized_text = text.replace(" ", "").replace("　", "")  # 移除普通空格和全角空格
             
             # 严格匹配：只处理已注册的PVE命令（只支持三个命令）
             # 帮助命令
-            if normalized_text == "/pve帮助" or normalized_text == "/pvehelp":
+            if normalized_text == "/pve_help" or normalized_text == "/pvehelp":
                 get_pve_logger().info(f"{self.pve_plugin_name} 匹配到PVE帮助命令")
                 return self._pve_get_help_message()
             
             # 状态查询命令
-            if normalized_text == "/pve状态":
+            if normalized_text == "/pve_status" or normalized_text == "/pve":
                 get_pve_logger().info(f"{self.pve_plugin_name} 匹配到PVE状态命令")
                 return self._pve_get_pve_status()
             
             # 容器状态命令
-            if normalized_text == "/pve容器":
+            if normalized_text == "/pve_containers" or normalized_text == "/containers":
                 get_pve_logger().info(f"{self.pve_plugin_name} 匹配到PVE容器命令")
                 return self._pve_get_container_status()
             
@@ -82,7 +82,7 @@ class PVEMessageHandler:
             get_pve_logger().info(f"{self.pve_plugin_name} 未知的PVE命令: {text}")
             return {
                 "title": f"❓ {self.pve_plugin_name}",
-                "text": f"未知命令: {text}\n\n发送 '/pve帮助' 查看可用命令。"
+                "text": f"未知命令: {text}\n\n发送 '/pve_help' 查看可用命令。"
             }
             
         except Exception as e:
@@ -98,9 +98,9 @@ class PVEMessageHandler:
         
         help_text = f"""━━━━━━━━━━━━━━━
 
-🔹 /pve状态 - 查看PVE主机状态信息
-🔹 /pve容器 - 查看容器/虚拟机状态
-🔹 /pve帮助 - 显示帮助信息
+🔹 /pve_status - 查看PVE主机状态信息
+🔹 /pve_containers - 查看容器/虚拟机状态
+🔹 /pve_help - 显示帮助信息
 ━━━━━━━━━━━━━━━
 📦 版本: {self.pve_plugin.plugin_version}
 👤 作者: {self.pve_plugin.plugin_author}"""

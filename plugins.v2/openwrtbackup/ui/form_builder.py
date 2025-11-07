@@ -167,7 +167,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📊'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/op状态'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/openwrt_status'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看OpenWrt路由器系统状态，包括CPU、内存、温度等实时数据'}
                                                         ]
                                                     }
@@ -185,7 +185,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📈'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/op流量'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/openwrt_traffic'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看OpenWrt路由器网络流量统计，包括各接口的上下行流量和包数'}
                                                         ]
                                                     }
@@ -203,7 +203,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '🚀'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/op备份'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/openwrt_backup'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '立即执行备份任务，备份完成后会自动通知结果'}
                                                         ]
                                                     }
@@ -221,7 +221,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📚'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/op帮助'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/openwrt_help'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '显示插件帮助信息，查看所有可用指令'}
                                                         ]
                                                     }

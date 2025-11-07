@@ -16,7 +16,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
     """
     commands = [
         {
-            "cmd": "/爱快帮助",
+            "cmd": "/ikuai_help",
             "event": EventType.PluginAction,
             "desc": "查看爱快插件命令帮助",
             "category": "爱快路由",
@@ -25,7 +25,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/爱快状态",
+            "cmd": "/ikuai_status",
             "event": EventType.PluginAction,
             "desc": "查看爱快路由器系统状态",
             "category": "爱快路由",
@@ -34,7 +34,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/爱快线路",
+            "cmd": "/ikuai_line",
             "event": EventType.PluginAction,
             "desc": "查看爱快路由器线路监控状态",
             "category": "爱快路由",
@@ -43,7 +43,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/爱快列表",
+            "cmd": "/ikuai_list",
             "event": EventType.PluginAction,
             "desc": "查看备份文件列表",
             "category": "爱快路由",
@@ -52,7 +52,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/爱快历史",
+            "cmd": "/ikuai_history",
             "event": EventType.PluginAction,
             "desc": "查看备份历史记录",
             "category": "爱快路由",
@@ -61,7 +61,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/爱快备份",
+            "cmd": "/ikuai_backup",
             "event": EventType.PluginAction,
             "desc": "立即执行备份任务",
             "category": "爱快路由",

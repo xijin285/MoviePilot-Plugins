@@ -9,14 +9,14 @@ from app.schemas.types import EventType
 def get_plugin_commands() -> List[Dict[str, Any]]:
     """
     获取所有插件命令配置
-    只保留三个核心命令：/pve状态、/pve容器、/pve帮助
+    只保留三个核心命令：/pve_status、/pve_containers、/pve_help
     
     Returns:
         命令配置列表
     """
     return [
         {
-            "cmd": "/pve状态",
+            "cmd": "/pve_status",
             "event": EventType.PluginAction,
             "desc": "查看PVE主机状态信息",
             "category": "PVE",
@@ -25,7 +25,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/pve容器",
+            "cmd": "/pve_containers",
             "event": EventType.PluginAction,
             "desc": "查看所有容器/虚拟机状态",
             "category": "PVE",
@@ -34,7 +34,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/pve帮助",
+            "cmd": "/pve_help",
             "event": EventType.PluginAction,
             "desc": "查看PVE插件命令帮助",
             "category": "PVE",

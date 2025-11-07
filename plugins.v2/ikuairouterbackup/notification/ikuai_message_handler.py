@@ -52,45 +52,45 @@ class IkuaiMessageHandler:
                 get_ikuai_logger().debug(f"{self.ikuai_plugin_name} 爱快消息内容为空，不处理")
                 return None
             
-            # 严格检查：必须是"/爱快"开头（双重验证）
-            if not text.startswith("/爱快"):
+            # 严格检查：必须是"/ikuai"开头（双重验证）
+            if not text.startswith("/ikuai"):
                 get_ikuai_logger().debug(f"{self.ikuai_plugin_name} 收到非爱快命令，跳过: {text}")
                 return None
             
-            # 处理带空格或斜杠变体的命令（如"/ 爱快帮助" -> "/爱快帮助"）
+            # 处理带空格或斜杠变体的命令（如"/ ikuai_help" -> "/ikuai_help"）
             # 移除命令中的空格，统一格式
             normalized_text = text.replace(" ", "").replace("　", "")  # 移除普通空格和全角空格
             
             # 严格匹配：只处理已注册的爱快命令
-            if normalized_text == "/爱快帮助":
+            if normalized_text == "/ikuai_help":
                 get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快帮助命令")
                 return self._ikuai_get_help_message()
             
-            if normalized_text == "/爱快状态":
+            if normalized_text == "/ikuai_status":
                 get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快状态命令")
                 return self._ikuai_get_system_status()
             
-            if normalized_text == "/爱快线路":
+            if normalized_text == "/ikuai_line":
                 get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快线路命令")
                 return self._ikuai_get_line_status()
             
-            if normalized_text == "/爱快列表":
+            if normalized_text == "/ikuai_list":
                 get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快列表命令")
                 return self._ikuai_get_backup_list()
             
-            if normalized_text == "/爱快历史":
+            if normalized_text == "/ikuai_history":
                 get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快历史命令")
                 return self._ikuai_get_backup_history()
             
-            if normalized_text == "/爱快备份":
+            if normalized_text == "/ikuai_backup":
                 get_ikuai_logger().info(f"{self.ikuai_plugin_name} 匹配到爱快备份命令")
                 return self._ikuai_trigger_backup()
             
-            # 如果以"/爱快"开头但不是有效命令，返回帮助信息
+            # 如果以"/ikuai"开头但不是有效命令，返回帮助信息
             get_ikuai_logger().info(f"{self.ikuai_plugin_name} 未知的爱快命令: {text}")
             return {
                 "title": f"❓ {self.ikuai_plugin_name}",
-                "text": f"未知命令: {text}\n\n发送 '/爱快帮助' 查看可用命令。"
+                "text": f"未知命令: {text}\n\n发送 '/ikuai_help' 查看可用命令。"
             }
             
         except Exception as e:
@@ -106,12 +106,12 @@ class IkuaiMessageHandler:
         
         help_text = f"""━━━━━━━━━━━━━━━
 
-🔹 /爱快状态 - 系统状态
-🔹 /爱快线路 - 线路监控
-🔹 /爱快列表 - 备份列表
-🔹 /爱快历史 - 历史记录
-🔹 /爱快备份 - 立即备份
-🔹 /爱快帮助 - 显示帮助
+🔹 /ikuai_status - 系统状态
+🔹 /ikuai_line - 线路监控
+🔹 /ikuai_list - 备份列表
+🔹 /ikuai_history - 历史记录
+🔹 /ikuai_backup - 立即备份
+🔹 /ikuai_help - 显示帮助
 ━━━━━━━━━━━━━━━
 📦 版本: {self.ikuai_plugin.plugin_version}
 👤 作者: {self.ikuai_plugin.plugin_author}"""
@@ -459,7 +459,7 @@ class IkuaiMessageHandler:
             
             return {
                 "title": f"🚀 {self.ikuai_plugin_name}",
-                "text": "✅ 备份任务已启动\n\n备份完成后会自动通知您结果。\n\n💡 提示：可以发送 '/爱快历史' 查看备份历史记录。"
+                "text": "✅ 备份任务已启动\n\n备份完成后会自动通知您结果。\n\n💡 提示：可以发送 '/ikuai_history' 查看备份历史记录。"
             }
             
         except Exception as e:

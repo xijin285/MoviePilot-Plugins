@@ -71,8 +71,8 @@ class OpenWrtEventHandler:
                 logger.debug(f"{self.openwrt_plugin_name} 没有category且cmd为空，且action不是OpenWrt独有的，拒绝处理: action={action}")
                 return False
             
-            if not cmd.startswith("/op"):
-                logger.debug(f"{self.openwrt_plugin_name} cmd不匹配（必须以'/op'开头）: cmd={cmd}")
+            if not cmd.startswith("/openwrt"):
+                logger.debug(f"{self.openwrt_plugin_name} cmd不匹配（必须以'/openwrt'开头）: cmd={cmd}")
                 return False
         
         logger.debug(f"{self.openwrt_plugin_name} 通过cmd确认是我们的命令: cmd={cmd}")
@@ -239,7 +239,7 @@ class OpenWrtEventHandler:
                 cmd = event_data.get("cmd", "")
                 result = {
                     "title": f"❓ {self.openwrt_plugin_name}",
-                    "text": f"未知命令: {cmd}\n\n发送 '/op帮助' 查看可用命令。"
+                    "text": f"未知命令: {cmd}\n\n发送 '/openwrt_help' 查看可用命令。"
                 }
             
             # 发送回复消息

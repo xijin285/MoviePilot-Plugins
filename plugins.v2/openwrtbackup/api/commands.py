@@ -16,7 +16,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
     """
     commands = [
         {
-            "cmd": "/op帮助",
+            "cmd": "/openwrt_help",
             "event": EventType.PluginAction,
             "desc": "查看OpenWrt插件命令帮助",
             "category": "OpenWrt路由",
@@ -25,7 +25,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/op状态",
+            "cmd": "/openwrt_status",
             "event": EventType.PluginAction,
             "desc": "查看OpenWrt路由器系统状态",
             "category": "OpenWrt路由",
@@ -34,7 +34,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/op流量",
+            "cmd": "/openwrt_traffic",
             "event": EventType.PluginAction,
             "desc": "查看OpenWrt路由器网络流量",
             "category": "OpenWrt路由",
@@ -43,7 +43,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
             }
         },
         {
-            "cmd": "/op备份",
+            "cmd": "/openwrt_backup",
             "event": EventType.PluginAction,
             "desc": "立即执行备份任务",
             "category": "OpenWrt路由",

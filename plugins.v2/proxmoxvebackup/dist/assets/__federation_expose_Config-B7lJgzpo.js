@@ -1101,7 +1101,7 @@ return (_ctx, _cache) => {
               innerHTML: getNavAvatarSVG(node.value)
             }, null, 8, _hoisted_11),
             (_openBlock(), _createElementBlock("svg", _hoisted_12, [
-              _cache[56] || (_cache[56] = _createStaticVNode("<defs data-v-bc3b3f0d><radialGradient id=\"crystal-gradient\" cx=\"50%\" cy=\"50%\" r=\"50%\" data-v-bc3b3f0d><stop offset=\"0%\" stop-color=\"#fff\" stop-opacity=\"0.95\" data-v-bc3b3f0d></stop><stop offset=\"60%\" stop-color=\"#b2ebf2\" stop-opacity=\"0.7\" data-v-bc3b3f0d></stop><stop offset=\"100%\" stop-color=\"#00eaff\" stop-opacity=\"0.45\" data-v-bc3b3f0d></stop></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"44\" fill=\"url(#crystal-gradient)\" data-v-bc3b3f0d></circle><ellipse cx=\"38\" cy=\"32\" rx=\"16\" ry=\"7\" fill=\"#fff\" opacity=\"0.35\" data-v-bc3b3f0d></ellipse>", 3)),
+              _cache[56] || (_cache[56] = _createStaticVNode("<defs data-v-2723b3cb><radialGradient id=\"crystal-gradient\" cx=\"50%\" cy=\"50%\" r=\"50%\" data-v-2723b3cb><stop offset=\"0%\" stop-color=\"#fff\" stop-opacity=\"0.95\" data-v-2723b3cb></stop><stop offset=\"60%\" stop-color=\"#b2ebf2\" stop-opacity=\"0.7\" data-v-2723b3cb></stop><stop offset=\"100%\" stop-color=\"#00eaff\" stop-opacity=\"0.45\" data-v-2723b3cb></stop></radialGradient></defs><circle cx=\"50\" cy=\"50\" r=\"44\" fill=\"url(#crystal-gradient)\" data-v-2723b3cb></circle><ellipse cx=\"38\" cy=\"32\" rx=\"16\" ry=\"7\" fill=\"#fff\" opacity=\"0.35\" data-v-2723b3cb></ellipse>", 3)),
               _createElementVNode("g", null, [
                 (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(node.particleCount, (n) => {
                   return (_openBlock(), _createElementBlock("circle", {
@@ -1812,7 +1812,7 @@ return (_ctx, _cache) => {
                         }),
                         _cache[72] || (_cache[72] = _createTextVNode(" 消息交互指令 "))
                       ]),
-                      _cache[75] || (_cache[75] = _createStaticVNode("<div class=\"command-cards\" data-v-bc3b3f0d><div class=\"command-card\" data-v-bc3b3f0d><div class=\"command-icon\" data-v-bc3b3f0d>📊</div><div class=\"command-content\" data-v-bc3b3f0d><div class=\"command-title\" data-v-bc3b3f0d>/pve状态</div><div class=\"command-desc\" data-v-bc3b3f0d>查看PVE主机状态信息，包括CPU、内存、磁盘等实时数据</div></div></div><div class=\"command-card\" data-v-bc3b3f0d><div class=\"command-icon\" data-v-bc3b3f0d>📦</div><div class=\"command-content\" data-v-bc3b3f0d><div class=\"command-title\" data-v-bc3b3f0d>/pve容器</div><div class=\"command-desc\" data-v-bc3b3f0d>查看所有容器/虚拟机的运行状态和详细信息</div></div></div><div class=\"command-card\" data-v-bc3b3f0d><div class=\"command-icon\" data-v-bc3b3f0d>📚</div><div class=\"command-content\" data-v-bc3b3f0d><div class=\"command-title\" data-v-bc3b3f0d>/pve帮助</div><div class=\"command-desc\" data-v-bc3b3f0d>显示插件帮助信息，查看所有可用指令</div></div></div></div>", 1)),
+                      _cache[75] || (_cache[75] = _createStaticVNode("<div class=\"command-cards\" data-v-2723b3cb><div class=\"command-card\" data-v-2723b3cb><div class=\"command-icon\" data-v-2723b3cb>📊</div><div class=\"command-content\" data-v-2723b3cb><div class=\"command-title\" data-v-2723b3cb>/pve_status</div><div class=\"command-desc\" data-v-2723b3cb>查看PVE主机状态信息，包括CPU、内存、磁盘等实时数据</div></div></div><div class=\"command-card\" data-v-2723b3cb><div class=\"command-icon\" data-v-2723b3cb>📦</div><div class=\"command-content\" data-v-2723b3cb><div class=\"command-title\" data-v-2723b3cb>/pve_containers</div><div class=\"command-desc\" data-v-2723b3cb>查看所有容器/虚拟机的运行状态和详细信息</div></div></div><div class=\"command-card\" data-v-2723b3cb><div class=\"command-icon\" data-v-2723b3cb>📚</div><div class=\"command-content\" data-v-2723b3cb><div class=\"command-title\" data-v-2723b3cb>/pve_help</div><div class=\"command-desc\" data-v-2723b3cb>显示插件帮助信息，查看所有可用指令</div></div></div></div>", 1)),
                       _createElementVNode("div", _hoisted_36, [
                         _createVNode(_component_v_icon, {
                           size: "16",
@@ -1951,6 +1951,6 @@ return (_ctx, _cache) => {
 }
 
 };
-const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-bc3b3f0d"]]);
+const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-2723b3cb"]]);
 
 export { ConfigComponent as default };

@@ -57,23 +57,23 @@ class MessageHandler:
                 get_logger().warning(f"{self.plugin_name} 收到非PVE命令，这不应该发生: {text}")
                 return None
             
-            # 处理带空格或斜杠变体的命令（如"/ pve帮助" -> "/pve帮助"）
+            # 处理带空格或斜杠变体的命令（如"/ pve_help" -> "/pve_help"）
             # 移除命令中的空格，统一格式
             normalized_text = text.replace(" ", "").replace("　", "")  # 移除普通空格和全角空格
             
             # 严格匹配：只处理已注册的PVE命令
             # 帮助命令
-            if normalized_text.startswith("/pve帮助") or normalized_text.startswith("/pvehelp"):
+            if normalized_text.startswith("/pve_help") or normalized_text.startswith("/pvehelp"):
                 get_logger().info(f"{self.plugin_name} 匹配到帮助命令")
                 return self._get_help_message()
             
             # 状态查询命令
-            if normalized_text.startswith("/pve状态") or (normalized_text.startswith("/pve") and len(normalized_text) <= 5):
+            if normalized_text.startswith("/pve_status") or (normalized_text.startswith("/pve") and len(normalized_text) <= 4):
                 get_logger().info(f"{self.plugin_name} 匹配到状态命令")
                 return self._get_pve_status()
             
             # 容器状态命令
-            if normalized_text.startswith("/pve容器") or normalized_text.startswith("/容器"):
+            if normalized_text.startswith("/pve_containers") or normalized_text.startswith("/containers"):
                 get_logger().info(f"{self.plugin_name} 匹配到容器命令")
                 return self._get_container_status()
             
@@ -81,7 +81,7 @@ class MessageHandler:
             get_logger().info(f"{self.plugin_name} 未知的PVE命令: {text}")
             return {
                 "title": f"❓ {self.plugin_name}",
-                "text": f"未知命令: {text}\n\n发送 '/pve帮助' 查看可用命令。"
+                "text": f"未知命令: {text}\n\n发送 '/pve_help' 查看可用命令。"
             }
             
         except Exception as e:
@@ -133,9 +133,9 @@ class MessageHandler:
         """获取帮助信息"""
         title = f"📚 {self.plugin_name} 帮助"
         
-        help_text = f"""/pve 或 /pve状态 - PVE主机状态
-/pve容器 或 /容器 - 容器/虚拟机状态
-/pve帮助 - 显示帮助
+        help_text = f"""/pve 或 /pve_status - PVE主机状态
+/pve_containers 或 /containers - 容器/虚拟机状态
+/pve_help - 显示帮助
 
 版本: {self.plugin.plugin_version} | 作者: {self.plugin.plugin_author}"""
         

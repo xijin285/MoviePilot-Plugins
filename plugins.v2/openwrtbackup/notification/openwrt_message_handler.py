@@ -38,10 +38,10 @@ class OpenWrtMessageHandler:
         
         help_text = f"""━━━━━━━━━━━━━━━
 
-🔹 /op状态 - 系统状态
-🔹 /op流量 - 网络流量
-🔹 /op备份 - 立即备份
-🔹 /op帮助 - 显示帮助
+🔹 /openwrt_status - 系统状态
+🔹 /openwrt_traffic - 网络流量
+🔹 /openwrt_backup - 立即备份
+🔹 /openwrt_help - 显示帮助
 ━━━━━━━━━━━━━━━
 📦 版本: {self.openwrt_plugin.plugin_version}
 👤 作者: {self.openwrt_plugin.plugin_author}"""

@@ -631,7 +631,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📊'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快状态'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/ikuai_status'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看爱快路由器系统状态，包括CPU、内存、在线设备等实时数据'}
                                                         ]
                                                     }
@@ -649,7 +649,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '🌐'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快线路'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/ikuai_line'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看所有线路的监控状态，包括WAN、LAN、ADSL等接口信息'}
                                                         ]
                                                     }
@@ -667,7 +667,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📦'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快列表'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/ikuai_list'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看所有备份文件列表，包括本地和WebDAV备份'}
                                                         ]
                                                     }
@@ -685,7 +685,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📜'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快历史'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/ikuai_history'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '查看备份历史记录，包括备份时间、状态和文件大小'}
                                                         ]
                                                     }
@@ -703,7 +703,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '🚀'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快备份'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/ikuai_backup'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '立即执行备份任务，备份完成后会自动通知结果'}
                                                         ]
                                                     }
@@ -721,7 +721,7 @@ class FormBuilder:
                                                         },
                                                         'content': [
                                                             {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-size: 2rem;'}, 'text': '📚'},
-                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/爱快帮助'},
+                                                            {'component': 'div', 'props': {'class': 'text-center mb-2', 'style': 'font-family: "Courier New", monospace; font-size: 1.1em; font-weight: 600; color: #667eea; letter-spacing: 0.5px;'}, 'text': '/ikuai_help'},
                                                             {'component': 'div', 'props': {'class': 'text-center text-caption', 'style': 'color: #616161; line-height: 1.6;'}, 'text': '显示插件帮助信息，查看所有可用指令'}
                                                         ]
                                                     }
