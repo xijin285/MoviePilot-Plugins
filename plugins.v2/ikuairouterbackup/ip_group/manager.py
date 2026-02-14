@@ -745,66 +745,73 @@ class IPGroupManager:
                 "阿里云", "腾讯云", "华为云", "百度云", "亚马逊云", "微软云"
             ]
     
-    def create_ip_group(self, group_name: str, ip_list: List[str], address_pool: bool = False) -> Tuple[bool, Optional[str]]:
-        """在爱快路由器上创建IP分组"""
+    def create_ip_group(self, group_name: str, ip_list: List[str], address_pool: bool = False, use_new_api: bool = True) -> Tuple[bool, Optional[str]]:
+        """在爱快路由器上创建IP分组，兼容新旧接口"""
         try:
             session = self._create_session()
             token = self._login_ikuai(session)
             if not token:
                 return False, "登录失败"
-            
-            # 使用与ikuai-bypass相同的API格式
             create_url = f"{self.ikuai_url}/Action/call"
-            
-            # 构建IP分组数据 - 使用正确的参数格式
-            ip_group_data = {
-                "func_name": "ipgroup",  # 注意：不是 "ip_group"
-                "action": "add", 
-                "param": {
-                    "group_name": group_name,
-                    "addr_pool": ",".join(ip_list) if ip_list else "",  # IP列表使用逗号分隔
-                    "newRow": True,  # 添加新行标识
-                    "type": 0  # 添加类型
-                }
+            request_headers = {
+                'Content-Type': 'application/json',
+                'Accept': '*/*',
+                'Origin': self.ikuai_url.rstrip('/'),
+                'Referer': self.ikuai_url.rstrip('/') + '/'
             }
-            
-            # 如果有IP列表，添加到参数中
-            if ip_list:
-                ip_group_data["param"]["addr_pool"] = ",".join(ip_list)
-            
+            # 新版接口参数
+            if use_new_api:
+                ip_group_data = {
+                    "func_name": "route_object_ip",
+                    "action": "add",
+                    "param": {
+                        "name": group_name,
+                        "ip_list": ip_list,
+                        "type": 0
+                    }
+                }
+            else:
+                ip_group_data = {
+                    "func_name": "ipgroup",
+                    "action": "add",
+                    "param": {
+                        "group_name": group_name,
+                        "addr_pool": ",".join(ip_list) if ip_list else "",
+                        "newRow": True,
+                        "type": 0
+                    }
+                }
             try:
                 logger.info(f"正在创建IP分组: {group_name}，包含 {len(ip_list)} 个IP范围")
-                request_headers = {
-                    'Content-Type': 'application/json',
-                    'Accept': '*/*',
-                    'Origin': self.ikuai_url.rstrip('/'),
-                    'Referer': self.ikuai_url.rstrip('/') + '/'
-                }
-                
                 response = session.post(create_url, data=json.dumps(ip_group_data), headers=request_headers, timeout=30)
                 response.raise_for_status()
-                response_text = response.text.strip().lower()
-                
-                if "success" in response_text or response_text == '"success"':
-                    logger.info(f"IP分组 {group_name} 创建成功")
-                    return True, None
-                
                 try:
                     res_json = response.json()
-                    if res_json.get("result") == 30000 and res_json.get("errmsg", "").lower() == "success":
-                        logger.info(f"IP分组 {group_name} 创建成功")
+                except Exception:
+                    res_json = None
+                # 新版接口判断
+                if use_new_api and res_json:
+                    if res_json.get("code") == 0 and res_json.get("message", "").lower() == "success":
+                        logger.info(f"IP分组 {group_name} 创建成功 (新版)")
                         return True, None
-                    
-                    err_msg = res_json.get("errmsg")
-                    if not err_msg:
-                        err_msg = res_json.get("ErrMsg", "创建IP分组API未返回成功或指定错误信息")
-
-                    logger.error(f"IP分组 {group_name} 创建失败 (JSON)。响应: {res_json}, 错误: {err_msg}")
+                    err_msg = res_json.get("message", "创建IP分组API未返回成功或指定错误信息")
+                    logger.error(f"IP分组 {group_name} 创建失败 (新版)。响应: {res_json}, 错误: {err_msg}")
                     return False, f"路由器返回错误: {err_msg}"
-                except json.JSONDecodeError:
-                    logger.error(f"IP分组 {group_name} 创建失败，非JSON响应且不含 'success'。响应: {response_text}")
-                    return False, f"路由器返回非预期响应: {response_text[:100]}"
-                    
+                # 旧版接口判断
+                if not use_new_api and res_json:
+                    if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
+                        logger.info(f"IP分组 {group_name} 创建成功 (旧版)")
+                        return True, None
+                    err_msg = res_json.get("ErrMsg") or res_json.get("errmsg", "创建IP分组API未返回成功或指定错误信息")
+                    logger.error(f"IP分组 {group_name} 创建失败 (旧版)。响应: {res_json}, 错误: {err_msg}")
+                    return False, f"路由器返回错误: {err_msg}"
+                # 兜底
+                response_text = response.text.strip().lower()
+                if "success" in response_text or response_text == '"success"':
+                    logger.info(f"IP分组 {group_name} 创建成功 (文本)")
+                    return True, None
+                logger.error(f"IP分组 {group_name} 创建失败，响应: {response.text[:200]}")
+                return False, f"路由器返回非预期响应: {response_text[:100]}"
             except requests.exceptions.Timeout:
                 logger.warning(f"创建IP分组 {group_name} 请求超时。")
                 return True, "请求超时，但IP分组可能已开始创建"
@@ -814,120 +821,137 @@ class IPGroupManager:
             except Exception as e:
                 logger.error(f"创建IP分组 {group_name} 过程中发生未知错误: {e}")
                 return False, str(e)
-                
         except Exception as e:
             logger.error(f"创建IP分组异常: {str(e)}")
             return False, str(e)
     
-    def get_existing_ip_groups(self) -> List[Dict[str, Any]]:
-        """获取现有的IP分组列表"""
+    def get_existing_ip_groups(self, use_new_api: bool = True) -> List[Dict[str, Any]]:
+        """获取现有的IP分组列表，兼容新旧接口"""
         try:
             session = self._create_session()
             token = self._login_ikuai(session)
             if not token:
                 return []
-            
-            # 使用与ikuai-bypass相同的JSON格式
             list_url = f"{self.ikuai_url}/Action/call"
-            list_data = {
-                "func_name": "ipgroup",  # 注意：不是 "ip_group"
-                "action": "show", 
-                "param": {
-                    "ORDER": "desc", 
-                    "ORDER_BY": "time", 
-                    "LIMIT": "0,50"
-                }
+            request_headers = {
+                'Content-Type': 'application/json',
+                'Accept': '*/*',
+                'Origin': self.ikuai_url.rstrip('/'),
+                'Referer': self.ikuai_url.rstrip('/') + '/'
             }
-            
+            if use_new_api:
+                list_data = {
+                    "func_name": "route_object_ip",
+                    "action": "show",
+                    "param": {}
+                }
+            else:
+                list_data = {
+                    "func_name": "ipgroup",
+                    "action": "show",
+                    "param": {
+                        "ORDER": "desc",
+                        "ORDER_BY": "time",
+                        "LIMIT": "0,50"
+                    }
+                }
             try:
                 logger.info(f"尝试从 {self.ikuai_url} 获取IP分组列表...")
-                request_headers = {
-                    'Content-Type': 'application/json',
-                    'Accept': '*/*',
-                    'Origin': self.ikuai_url.rstrip('/'),
-                    'Referer': self.ikuai_url.rstrip('/') + '/'
-                }
-                
                 response = session.post(list_url, data=json.dumps(list_data), headers=request_headers, timeout=15)
                 response.raise_for_status()
-                res_json = response.json()
-                
-                if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
-                    data = res_json.get("Data", {})
-                    ip_group_items = data.get("data", [])
-                    if isinstance(ip_group_items, list) and ip_group_items:
-                        logger.info(f"成功获取到 {len(ip_group_items)} 条IP分组记录。")
+                try:
+                    res_json = response.json()
+                except Exception:
+                    res_json = None
+                if use_new_api and res_json:
+                    if res_json.get("code") == 0 and res_json.get("message", "").lower() == "success":
+                        ip_group_items = res_json.get("results", [])
+                        logger.info(f"成功获取到 {len(ip_group_items)} 条IP分组记录 (新版)")
                         return ip_group_items
                     else:
-                        logger.warning(f"获取IP分组列表成功，但列表为空或格式不正确。Data content: {data}")
+                        err_msg = res_json.get("message", "获取IP分组列表API未返回成功或指定错误信息")
+                        logger.error(f"获取IP分组列表失败 (新版)。响应: {res_json}, 错误: {err_msg}")
                         return []
-                else:
-                    err_msg = res_json.get("ErrMsg") or res_json.get("errmsg", "获取IP分组列表API未返回成功或指定错误信息")
-                    logger.error(f"获取IP分组列表失败。响应: {res_json}, 错误: {err_msg}")
-                    return []
-                    
+                if not use_new_api and res_json:
+                    if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
+                        data = res_json.get("Data", {})
+                        ip_group_items = data.get("data", [])
+                        logger.info(f"成功获取到 {len(ip_group_items)} 条IP分组记录 (旧版)")
+                        return ip_group_items
+                    else:
+                        err_msg = res_json.get("ErrMsg") or res_json.get("errmsg", "获取IP分组列表API未返回成功或指定错误信息")
+                        logger.error(f"获取IP分组列表失败 (旧版)。响应: {res_json}, 错误: {err_msg}")
+                        return []
+                logger.error(f"获取IP分组列表失败，响应: {response.text[:200]}")
+                return []
             except requests.exceptions.RequestException as e:
                 logger.error(f"获取IP分组列表请求失败: {e}")
                 return []
             except Exception as e:
                 logger.error(f"获取IP分组列表过程中发生未知错误: {e}")
                 return []
-                
         except Exception as e:
             logger.error(f"获取IP分组列表异常: {str(e)}")
             return []
     
-    def delete_ip_group(self, group_name: str) -> Tuple[bool, Optional[str]]:
-        """删除IP分组"""
+    def delete_ip_group(self, group_name: str, use_new_api: bool = True) -> Tuple[bool, Optional[str]]:
+        """删除IP分组，兼容新旧接口"""
         try:
             session = self._create_session()
             token = self._login_ikuai(session)
             if not token:
                 return False, "登录失败"
-            
-            # 使用与ikuai-bypass相同的JSON格式
             delete_url = f"{self.ikuai_url}/Action/call"
-            delete_data = {
-                "func_name": "ipgroup",  # 注意：不是 "ip_group"
-                "action": "del", 
-                "param": {
-                    "group_name": group_name
-                }
+            request_headers = {
+                'Content-Type': 'application/json',
+                'Accept': '*/*',
+                'Origin': self.ikuai_url.rstrip('/'),
+                'Referer': self.ikuai_url.rstrip('/') + '/'
             }
-            
+            if use_new_api:
+                delete_data = {
+                    "func_name": "route_object_ip",
+                    "action": "del",
+                    "param": {
+                        "name": group_name
+                    }
+                }
+            else:
+                delete_data = {
+                    "func_name": "ipgroup",
+                    "action": "del",
+                    "param": {
+                        "group_name": group_name
+                    }
+                }
             try:
                 logger.info(f"尝试删除IP分组: {group_name}")
-                request_headers = {
-                    'Content-Type': 'application/json',
-                    'Accept': '*/*',
-                    'Origin': self.ikuai_url.rstrip('/'),
-                    'Referer': self.ikuai_url.rstrip('/') + '/'
-                }
-                
                 response = session.post(delete_url, data=json.dumps(delete_data), headers=request_headers, timeout=30)
                 response.raise_for_status()
+                try:
+                    res_json = response.json()
+                except Exception:
+                    res_json = None
+                if use_new_api and res_json:
+                    if res_json.get("code") == 0 and res_json.get("message", "").lower() == "success":
+                        logger.info(f"IP分组删除请求成功 (新版)。响应: {res_json}")
+                        return True, None
+                    err_msg = res_json.get("message", "删除IP分组API未返回成功或指定错误信息")
+                    logger.error(f"IP分组删除失败 (新版)。响应: {res_json}, 错误: {err_msg}")
+                    return False, f"路由器返回错误: {err_msg}"
+                if not use_new_api and res_json:
+                    if res_json.get("result") == 30000 and res_json.get("errmsg", "").lower() == "success":
+                        logger.info(f"IP分组删除请求成功 (旧版)。响应: {res_json}")
+                        return True, None
+                    err_msg = res_json.get("errmsg") or res_json.get("ErrMsg", "删除IP分组API未返回成功或指定错误信息")
+                    logger.error(f"IP分组删除失败 (旧版)。响应: {res_json}, 错误: {err_msg}")
+                    return False, f"路由器返回错误: {err_msg}"
                 response_text = response.text.strip().lower()
-                
                 if "success" in response_text or response_text == '"success"':
                     logger.info(f"IP分组删除请求发送成功。响应: {response_text}")
                     return True, None
-                
-                try:
-                    res_json = response.json()
-                    if res_json.get("result") == 30000 and res_json.get("errmsg", "").lower() == "success":
-                        logger.info(f"IP分组删除请求成功 (JSON)。响应: {res_json}")
-                        return True, None
-                    
-                    err_msg = res_json.get("errmsg")
-                    if not err_msg:
-                        err_msg = res_json.get("ErrMsg", "删除IP分组API未返回成功或指定错误信息")
-
-                    logger.error(f"IP分组删除失败 (JSON)。响应: {res_json}, 错误: {err_msg}")
-                    return False, f"路由器返回错误: {err_msg}"
-                except json.JSONDecodeError:
-                    logger.error(f"IP分组删除失败，非JSON响应且不含 'success'。响应: {response_text}")
-                    return False, f"路由器返回非预期响应: {response_text[:100]}"
-                    
+                logger.error(f"IP分组删除失败，响应: {response.text[:200]}")
+                return False, f"路由器返回非预期响应: {response_text[:100]}"
             except requests.exceptions.Timeout:
                 logger.warning(f"删除IP分组请求超时。")
                 return True, "请求超时，但IP分组可能已开始删除"
@@ -937,7 +961,6 @@ class IPGroupManager:
             except Exception as e:
                 logger.error(f"删除IP分组过程中发生未知错误: {e}")
                 return False, str(e)
-                
         except Exception as e:
             logger.error(f"删除IP分组异常: {str(e)}")
             return False, str(e)

@@ -142,17 +142,22 @@ class BackupExecutor:
         if not backup_list:
             return False, "路由器上没有找到任何备份文件 (在下载前获取列表为空)", None
         
-        latest_backup = backup_list[0]
-        actual_router_filename_from_api = latest_backup.get("name")
+        # 兼容新老版本，按 date 字段降序排序，优先取 filename，没有则取 name
+        def get_date(x):
+            # 兼容各种字段名
+            return x.get("date") or x.get("backup_time") or ""
+        sorted_backups = sorted(backup_list, key=get_date, reverse=True)
+        latest_backup = sorted_backups[0] if sorted_backups else None
+        actual_router_filename_from_api = None
+        if latest_backup:
+            actual_router_filename_from_api = latest_backup.get("filename") or latest_backup.get("name")
         if not actual_router_filename_from_api:
             return False, "无法从备份列表中获取最新备份的文件名", None
-        
         # 确定文件名
         filename_for_download_url = actual_router_filename_from_api
         base_name_for_local_file = os.path.splitext(actual_router_filename_from_api)[0]
         local_display_and_saved_filename = base_name_for_local_file + ".bak"
         local_filepath_to_save = Path(self.plugin._backup_path) / local_display_and_saved_filename
-        
         logger.info(f"{self.plugin_name} API列表最新备份名: {actual_router_filename_from_api}. 将尝试以此名下载.")
         logger.info(f"{self.plugin_name} 最终本地保存文件名将为: {local_display_and_saved_filename}")
         

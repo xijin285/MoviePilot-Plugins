@@ -142,49 +142,87 @@ class IkuaiClient:
     
     def get_backup_list(self) -> Optional[List[Dict]]:
         """
-        获取备份文件列表
-        
+        获取备份文件列表，自动兼容4.x及老版本API
         :return: 备份列表或None
         """
         list_url = urljoin(self.url, "/Action/call")
-        list_data = {"func_name": "backup", "action": "show", 
-                    "param": {"ORDER": "desc", "ORDER_BY": "time", "LIMIT": "0,50"}}
-        
+        # 新版优先用 TYPE=backup_info 获取 filename
+        list_data_new = {"func_name": "backup", "action": "show", "param": {"TYPE": "backup_info"}}
+        list_data_old = {"func_name": "backup", "action": "show", "param": {}}  # 老版本无TYPE参数
+        request_headers = {
+            'Content-Type': 'application/json',
+            'Accept': '*/*',
+            'Origin': self.url.rstrip('/'),
+            'Referer': self.url.rstrip('/') + '/'
+        }
         try:
             logger.info(f"{self.plugin_name} 尝试从 {self.url} 获取备份列表...")
-            request_headers = {
-                'Content-Type': 'application/json',
-                'Accept': '*/*',
-                'Origin': self.url.rstrip('/'),
-                'Referer': self.url.rstrip('/') + '/'
-            }
-            response = self.session.post(list_url, data=json.dumps(list_data), 
-                                       headers=request_headers, timeout=15)
+            response = self.session.post(list_url, data=json.dumps(list_data_new), headers=request_headers, timeout=15)
             response.raise_for_status()
-            
             res_json = response.json()
-            if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
-                data = res_json.get("Data", {})
-                backup_items = data.get("data", [])
-                if isinstance(backup_items, list) and backup_items:
-                    logger.info(f"{self.plugin_name} 成功获取到 {len(backup_items)} 条备份记录。")
-                    # 调试：打印第一条记录的结构
-                    if backup_items:
-                        logger.debug(f"{self.plugin_name} 备份记录示例: {backup_items[0]}")
-                    return backup_items
+            # 新版API成功
+            if res_json.get("code") == 0 and str(res_json.get("message", "")).lower() in ["success", "ok", "成功"]:
+                results = res_json.get("results", {})
+                backup_info = results.get("backup_info", [])
+                if isinstance(backup_info, list) and backup_info:
+                    logger.info(f"{self.plugin_name} 成功获取到 {len(backup_info)} 条备份记录。")
+                    logger.debug(f"{self.plugin_name} 备份记录示例: {backup_info[0]}")
+                    return backup_info
                 else:
-                    logger.warning(f"{self.plugin_name} 获取备份列表成功，但列表为空或格式不正确。Data content: {data}")
+                    logger.warning(f"{self.plugin_name} 获取备份列表成功，但 backup_info 为空或格式不正确。results content: {results}")
                     return []
-            else:
-                err_msg = res_json.get("ErrMsg") or res_json.get("errmsg", "获取列表API未返回成功或指定错误信息")
-                logger.error(f"{self.plugin_name} 获取备份列表失败。响应: {res_json}, 错误: {err_msg}")
-                return None
-                
+            # 新版API失败，且Result=30006或unknown TYPE，自动切换老版本
+            if (
+                (res_json.get("Result") == 30006 and "unknown TYPE" in res_json.get("ErrMsg", "")) or
+                ("unknown TYPE" in str(res_json))
+            ):
+                logger.warning(f"{self.plugin_name} 检测到老版本API（unknown TYPE），尝试兼容老版本参数...")
+                response_old = self.session.post(list_url, data=json.dumps(list_data_old), headers=request_headers, timeout=15)
+                response_old.raise_for_status()
+                res_json_old = response_old.json()
+                # 老版本格式1
+                if res_json_old.get("Result") == 30000 and res_json_old.get("ErrMsg", "").lower() == "success":
+                    data = res_json_old.get("Data", [])
+                    # 兼容Data为dict且含data键的情况
+                    if isinstance(data, list) and data:
+                        logger.info(f"{self.plugin_name} (老版本) 成功获取到 {len(data)} 条备份记录。")
+                        logger.debug(f"{self.plugin_name} (老版本) 备份记录示例: {data[0]}")
+                        return data
+                    elif isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
+                        logger.info(f"{self.plugin_name} (老版本) 成功获取到 {len(data['data'])} 条备份记录。")
+                        # 自动补全 filename 字段，兼容后续处理
+                        for item in data["data"]:
+                            if isinstance(item, dict) and "name" in item and "filename" not in item:
+                                item["filename"] = item["name"]
+                        if data['data']:
+                            logger.debug(f"{self.plugin_name} (老版本) 备份记录示例: {data['data'][0]}")
+                        return data["data"]
+                    else:
+                        logger.warning(f"{self.plugin_name} (老版本) 获取备份列表成功，但Data格式不正确。Data: {data}")
+                        return []
+                # 老版本格式2
+                elif res_json_old.get("code") == 0 and str(res_json_old.get("message", "")).lower() in ["success", "ok", "成功"]:
+                    results = res_json_old.get("results", {})
+                    if isinstance(results, list) and results:
+                        logger.info(f"{self.plugin_name} (老版本) 成功获取到 {len(results)} 条备份记录。")
+                        logger.debug(f"{self.plugin_name} (老版本) 备份记录示例: {results[0]}")
+                        return results
+                    else:
+                        logger.warning(f"{self.plugin_name} (老版本) 获取备份列表成功，但results为空或格式不正确。results: {results}")
+                        return []
+                else:
+                    err_msg = res_json_old.get("ErrMsg") or res_json_old.get("message") or "老版本获取列表API未返回成功或指定错误信息"
+                    logger.error(f"{self.plugin_name} (老版本) 获取备份列表失败。响应: {res_json_old}, 错误: {err_msg}")
+                    return None
+            # 其它失败
+            err_msg = res_json.get("message") or res_json.get("ErrMsg") or "获取列表API未返回成功或指定错误信息"
+            logger.error(f"{self.plugin_name} 获取备份列表失败。响应: {res_json}, 错误: {err_msg}")
+            return None
         except requests.exceptions.RequestException as e:
             logger.error(f"{self.plugin_name} 获取备份列表请求失败: {e}")
             return None
         except json.JSONDecodeError:
-            logger.error(f"{self.plugin_name} 获取备份列表响应非JSON格式: {response.text[:200]}")
+            logger.error(f"{self.plugin_name} 获取备份列表响应非JSON格式: {getattr(e, 'response', None) or ''}")
             return None
         except Exception as e:
             logger.error(f"{self.plugin_name} 获取备份列表过程中发生未知错误: {e}")
@@ -332,7 +370,6 @@ class IkuaiClient:
         :return: 系统信息字典或None
         """
         info_url = urljoin(self.url, "/Action/call")
-        
         try:
             logger.debug(f"{self.plugin_name} 尝试从 {self.url} 获取系统信息...")
             request_headers = {
@@ -341,63 +378,50 @@ class IkuaiClient:
                 'Origin': self.url.rstrip('/'),
                 'Referer': self.url.rstrip('/') + '/'
             }
-            
-            # 使用sysstat - all一次性获取所有系统信息
             all_data = {"func_name": "sysstat", "action": "show", "param": {"TYPE": "all"}}
-            response = self.session.post(info_url, data=json.dumps(all_data), 
-                                       headers=request_headers, timeout=10)
+            response = self.session.post(info_url, data=json.dumps(all_data), headers=request_headers, timeout=10)
             response.raise_for_status()
             res_json = response.json()
-            
-            if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
+            # 新版优先
+            data = None
+            if res_json.get("code") == 0 and str(res_json.get("message", "")).lower() in ["success", "ok", "成功"]:
+                data = res_json.get("results", {})
+            elif res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
                 data = res_json.get("Data", {})
+            if data is not None:
                 system_info = {}
-                
-                # 提取CPU信息
                 cpu_list = data.get("cpu", [])
                 if cpu_list:
                     latest_cpu = cpu_list[-1] if cpu_list else "0%"
                     cpu_value = float(latest_cpu.replace("%", ""))
                     system_info["cpu_usage"] = cpu_value
-                
-                # 提取内存信息
                 memory = data.get("memory", {})
                 if memory:
                     mem_used = memory.get("used", "0%")
                     mem_value = float(mem_used.replace("%", ""))
                     system_info["mem_usage"] = mem_value
-                
-                # 提取运行时间
                 uptime = data.get("uptime", 0)
                 if uptime:
                     system_info["uptime"] = uptime
-                
-                # 提取在线用户信息
                 online_user = data.get("online_user", {})
                 if online_user:
                     system_info["online_users"] = online_user.get("count", 0)
                     system_info["online_wired"] = online_user.get("count_wired", 0)
                     system_info["online_wireless"] = online_user.get("count_wireless", 0)
-                
-                # 提取流量信息
                 stream = data.get("stream", {})
                 if stream:
                     system_info["connect_num"] = stream.get("connect_num", 0)
                     system_info["upload_speed"] = stream.get("upload", 0)
                     system_info["download_speed"] = stream.get("download", 0)
-                
-                # 提取版本信息
                 verinfo = data.get("verinfo", {})
                 if verinfo:
                     system_info["version"] = verinfo.get("verstring", "")
                     system_info["hostname"] = data.get("hostname", "")
-                
                 logger.debug(f"{self.plugin_name} 成功获取系统信息")
                 return system_info
             else:
                 logger.error(f"{self.plugin_name} 获取系统信息失败")
                 return None
-                
         except requests.exceptions.RequestException as e:
             logger.error(f"{self.plugin_name} 获取系统信息请求失败: {e}")
             return None
@@ -450,12 +474,10 @@ class IkuaiClient:
     
     def get_interface_info(self) -> Optional[Dict]:
         """
-        获取爱快路由器接口信息（WAN/LAN及详细状态）
-        
+        获取爱快路由器接口信息（兼容4.x及3.x/2.x老版本）
         :return: 接口信息字典或None
         """
         call_url = urljoin(self.url, "/Action/call")
-        
         try:
             logger.debug(f"{self.plugin_name} 尝试从 {self.url} 获取接口信息...")
             request_headers = {
@@ -464,68 +486,71 @@ class IkuaiClient:
                 'Origin': self.url.rstrip('/'),
                 'Referer': self.url.rstrip('/') + '/'
             }
-            
-            # 获取WAN、LAN、Snapshoot和详细线路监控信息
+            # 4.x优先，老版本降级
+            lan_data = {"func_name": "lan", "action": "show", "param": {"TYPE": "ether_info,snapshoot,wan_vlan_fail,stream"}}
+            monitor_data = {"func_name": "monitor_iface", "action": "show", "param": {"TYPE": "iface_check,iface_stream"}}
             wan_data = {"func_name": "wan", "action": "show"}
-            lan_data = {"func_name": "lan", "action": "show"}
-            homepage_all_data = {"func_name": "homepage", "action": "show", "param": {"TYPE": "all"}}
-            monitor_iface_data = {"func_name": "monitor_iface", "action": "show", "param": {"TYPE": "iface_check,iface_stream"}}
-            
-            wan_response = self.session.post(call_url, data=json.dumps(wan_data), 
-                                            headers=request_headers, timeout=10)
-            lan_response = self.session.post(call_url, data=json.dumps(lan_data), 
-                                            headers=request_headers, timeout=10)
-            homepage_response = self.session.post(call_url, data=json.dumps(homepage_all_data), 
-                                                 headers=request_headers, timeout=10)
-            monitor_response = self.session.post(call_url, data=json.dumps(monitor_iface_data), 
-                                                headers=request_headers, timeout=10)
-            
-            wan_response.raise_for_status()
+            # 先请求新版接口
+            lan_response = self.session.post(call_url, data=json.dumps(lan_data), headers=request_headers, timeout=10)
+            monitor_response = self.session.post(call_url, data=json.dumps(monitor_data), headers=request_headers, timeout=10)
             lan_response.raise_for_status()
-            homepage_response.raise_for_status()
             monitor_response.raise_for_status()
-            
-            wan_json = wan_response.json()
             lan_json = lan_response.json()
-            homepage_json = homepage_response.json()
             monitor_json = monitor_response.json()
-            
             interface_info = {}
-            
-            if wan_json.get("Result") == 30000 and wan_json.get("ErrMsg", "").lower() == "success":
+            # 4.x新版字段优先
+            snapshoot_lan = None
+            iface_check = None
+            iface_stream = None
+            if lan_json.get("code") == 0 and str(lan_json.get("message", "")).lower() in ["success", "ok", "成功"]:
+                lan_data_obj = lan_json.get("results", {})
+                snapshoot_lan = lan_data_obj.get("snapshoot_lan")
+            elif lan_json.get("Result") == 30000 and lan_json.get("ErrMsg", "").lower() == "success":
+                lan_data_obj = lan_json.get("Data", {})
+                snapshoot_lan = lan_data_obj.get("snapshoot_lan")
+            if monitor_json.get("code") == 0 and str(monitor_json.get("message", "")).lower() in ["success", "ok", "成功"]:
+                monitor_data_obj = monitor_json.get("results", {})
+                iface_check = monitor_data_obj.get("iface_check")
+                iface_stream = monitor_data_obj.get("iface_stream")
+            elif monitor_json.get("Result") == 30000 and monitor_json.get("ErrMsg", "").lower() == "success":
+                monitor_data_obj = monitor_json.get("Data", {})
+                iface_check = monitor_data_obj.get("iface_check")
+                iface_stream = monitor_data_obj.get("iface_stream")
+            # 如果新版字段都存在，直接返回
+            if snapshoot_lan or iface_check or iface_stream:
+                if snapshoot_lan:
+                    interface_info["snapshoot_lan"] = snapshoot_lan
+                if iface_check:
+                    interface_info["iface_check"] = iface_check
+                if iface_stream:
+                    interface_info["iface_stream"] = iface_stream
+                logger.debug(f"{self.plugin_name} 4.x线路状态接口数据已获取")
+                return interface_info
+            # 否则降级兼容老版本（3.x/2.x）
+            logger.debug(f"{self.plugin_name} 未获取到4.x线路状态字段，尝试兼容老版本接口...")
+            # 老版本只请求WAN/LAN基本信息
+            wan_response = self.session.post(call_url, data=json.dumps(wan_data), headers=request_headers, timeout=10)
+            wan_response.raise_for_status()
+            wan_json = wan_response.json()
+            # WAN
+            if wan_json.get("code") == 0 and str(wan_json.get("message", "")).lower() in ["success", "ok", "成功"]:
+                interface_info["wan"] = wan_json.get("results", {})
+                logger.debug(f"{self.plugin_name} 成功获取WAN接口信息(老版本)")
+            elif wan_json.get("Result") == 30000 and wan_json.get("ErrMsg", "").lower() == "success":
                 interface_info["wan"] = wan_json.get("Data", {})
-                logger.debug(f"{self.plugin_name} 成功获取WAN接口信息")
-            
-            if lan_json.get("Result") == 30000 and lan_json.get("ErrMsg", "").lower() == "success":
+                logger.debug(f"{self.plugin_name} 成功获取WAN接口信息(老版本)")
+            # LAN
+            if lan_json.get("code") == 0 and str(lan_json.get("message", "")).lower() in ["success", "ok", "成功"]:
+                interface_info["lan"] = lan_json.get("results", {})
+                logger.debug(f"{self.plugin_name} 成功获取LAN接口信息(老版本)")
+            elif lan_json.get("Result") == 30000 and lan_json.get("ErrMsg", "").lower() == "success":
                 interface_info["lan"] = lan_json.get("Data", {})
-                logger.debug(f"{self.plugin_name} 成功获取LAN接口信息")
-            
-            # 获取Snapshoot信息用于详细状态
-            if homepage_json.get("Result") == 30000 and homepage_json.get("ErrMsg", "").lower() == "success":
-                homepage_data = homepage_json.get("Data", {})
-                if "snapshoot_wan" in homepage_data:
-                    interface_info["snapshoot_wan"] = homepage_data["snapshoot_wan"]
-                    logger.debug(f"{self.plugin_name} 成功获取WAN Snapshoot信息")
-                if "snapshoot_lan" in homepage_data:
-                    interface_info["snapshoot_lan"] = homepage_data["snapshoot_lan"]
-                    logger.debug(f"{self.plugin_name} 成功获取LAN Snapshoot信息")
-            
-            # 获取详细线路监控信息（包含adsl等子接口）
-            if monitor_json.get("Result") == 30000 and monitor_json.get("ErrMsg", "").lower() == "success":
-                monitor_data = monitor_json.get("Data", {})
-                if "iface_check" in monitor_data:
-                    interface_info["iface_check"] = monitor_data["iface_check"]
-                    logger.debug(f"{self.plugin_name} 成功获取线路检测信息（包含子接口）")
-                if "iface_stream" in monitor_data:
-                    interface_info["iface_stream"] = monitor_data["iface_stream"]
-                    logger.debug(f"{self.plugin_name} 成功获取线路流量统计")
-            
+                logger.debug(f"{self.plugin_name} 成功获取LAN接口信息(老版本)")
             if interface_info:
                 return interface_info
             else:
                 logger.error(f"{self.plugin_name} 获取接口信息失败")
                 return None
-                
         except requests.exceptions.RequestException as e:
             logger.error(f"{self.plugin_name} 获取接口信息请求失败: {e}")
             return None

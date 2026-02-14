@@ -313,154 +313,168 @@ class PageBuilder:
             iface_check = interface_info.get("iface_check", [])
             iface_stream = interface_info.get("iface_stream", [])
             snapshoot_lan = interface_info.get("snapshoot_lan", [])
-            
             # 创建流量映射
             stream_map = {line.get("interface"): line for line in iface_stream}
-            
-            if iface_check or snapshoot_lan:
-                interface_rows = []
-                
-                # WAN接口（包含adsl等子接口）
-                for line in iface_check:
-                    line_name = line.get("interface", "")
-                    line_ip = line.get("ip_addr", "未配置")
-                    line_gateway = line.get("gateway", "")
-                    line_status = line.get("errmsg", "")
-                    line_result = line.get("result", "")
-                    parent = line.get("parent_interface", "")
-                    
-                    # 判断连接状态
-                    if line_result == "success":
-                        status_color = "success"
-                        status_text = "已连接"
-                    else:
-                        status_color = "error"
-                        status_text = "未连接"
-                    
-                    # 获取流量统计
-                    stream_info = stream_map.get(line_name, {})
-                    upload_speed = stream_info.get("upload", 0)
-                    download_speed = stream_info.get("download", 0)
-                    connect_count = stream_info.get("connect_num", "--")
-                    
-                    # 确定接口类型显示
-                    if line_name.startswith("adsl") or line_name.startswith("pppoe"):
-                        iface_type = "子线路"
-                        # 根据子线路名称分配不同颜色
-                        sub_line_colors = {
-                            "adsl1": "purple",
-                            "adsl2": "success",
-                            "adsl3": "warning",
-                            "adsl4": "error",
-                            "adsl5": "info",
-                            "pppoe1": "purple",
-                            "pppoe2": "success",
-                            "pppoe3": "warning",
-                            "pppoe4": "error",
-                            "pppoe5": "info"
-                        }
-                        chip_color = sub_line_colors.get(line_name.lower(), "secondary")
-                    elif line_name.startswith("wan"):
-                        iface_type = "WAN"
-                        chip_color = "primary"
-                    else:
-                        iface_type = "其他"
-                        chip_color = "default"
-                    
-                    interface_rows.append({
-                        'component': 'tr',
-                        'content': [
-                            {'component': 'td', 'content': [
-                                {'component': 'VChip', 'props': {'color': chip_color, 'size': 'small', 'variant': 'outlined'}, 'text': line_name}
-                            ]},
-                            {'component': 'td', 'text': iface_type},
-                            {'component': 'td', 'text': line_ip if line_ip != "未配置" else "--"},
-                            {'component': 'td', 'text': line_gateway if line_gateway else "--"},
-                            {'component': 'td', 'content': [
-                                {'component': 'VChip', 'props': {'color': status_color, 'size': 'small'}, 'text': status_text}
-                            ]},
-                            {'component': 'td', 'text': line_status if line_result == "success" else ""},
-                            {'component': 'td', 'text': str(connect_count)},
-                            {'component': 'td', 'text': format_speed(upload_speed)},
-                            {'component': 'td', 'text': format_speed(download_speed)},
-                        ]
-                    })
-                
-                # LAN接口
-                for lan in snapshoot_lan:
-                    lan_name = lan.get("interface", "")
-                    lan_ip = lan.get("ip_addr", "未配置")
-                    stream_info = stream_map.get(lan_name, {})
-                    upload_speed = stream_info.get("upload", 0)
-                    download_speed = stream_info.get("download", 0)
-                    # LAN连接数显示总连接数
-                    connect_count = connect_num if connect_num > 0 else "--"
-                    
-                    interface_rows.append({
-                        'component': 'tr',
-                        'content': [
-                            {'component': 'td', 'content': [
-                                {'component': 'VChip', 'props': {'color': 'info', 'size': 'small', 'variant': 'outlined'}, 'text': lan_name}
-                            ]},
-                            {'component': 'td', 'text': 'LAN'},
-                            {'component': 'td', 'text': lan_ip if lan_ip != "未配置" else "--"},
-                            {'component': 'td', 'text': lan_ip if lan_ip != "未配置" else "--"},
-                            {'component': 'td', 'content': [
-                                {'component': 'VChip', 'props': {'color': 'success', 'size': 'small'}, 'text': '已启用'}
-                            ]},
-                            {'component': 'td', 'text': '线路检测成功'},
-                            {'component': 'td', 'text': str(connect_count)},
-                            {'component': 'td', 'text': format_speed(upload_speed)},
-                            {'component': 'td', 'text': format_speed(download_speed)},
-                        ]
-                    })
-                
-                if interface_rows:
-                    interface_card = {
-                        'component': 'VCard',
-                        'props': {'variant': 'outlined', 'class': 'mb-4'},
-                        'content': [
-                            {
-                                'component': 'VCardTitle',
-                                'props': {'class': 'text-h6'},
-                                'text': '🌐 线路监控'
-                            },
-                            {
-                                'component': 'VCardText',
-                                'content': [
-                                    {
-                                        'component': 'VTable',
-                                        'props': {'hover': True, 'density': 'compact'},
-                                        'content': [
-                                            {
-                                                'component': 'thead',
-                                                'content': [
-                                                    {
-                                                        'component': 'tr',
-                                                        'content': [
-                                                            {'component': 'th', 'text': '线路'},
-                                                    {'component': 'th', 'text': '类型'},
-                                                            {'component': 'th', 'text': 'IP地址'},
-                                                            {'component': 'th', 'text': '网关'},
-                                                            {'component': 'th', 'text': '连接状态'},
-                                                            {'component': 'th', 'text': '线路状态'},
-                                                            {'component': 'th', 'text': '连接数'},
-                                                            {'component': 'th', 'text': '上传'},
-                                                            {'component': 'th', 'text': '下载'}
-                                                ]
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        'component': 'tbody',
-                                                'content': interface_rows
-                                    }
-                                ]
-                            }
-                        ]
+            interface_rows = []
+            # WAN接口（包含adsl等子接口）
+            for line in iface_check:
+                line_name = line.get("interface", "")
+                line_ip = line.get("ip_addr", "未配置")
+                line_gateway = line.get("gateway", "")
+                line_status = line.get("errmsg", "")
+                line_result = line.get("result", "")
+                parent = line.get("parent_interface", "")
+                # 判断连接状态
+                if line_result == "success":
+                    status_color = "success"
+                    status_text = "已连接"
+                else:
+                    status_color = "error"
+                    status_text = "未连接"
+                # 获取流量统计
+                stream_info = stream_map.get(line_name, {})
+                upload_speed = stream_info.get("upload", 0)
+                download_speed = stream_info.get("download", 0)
+                connect_count = stream_info.get("connect_num", "--")
+                # 确定接口类型显示
+                if line_name.startswith("adsl") or line_name.startswith("pppoe"):
+                    iface_type = "子线路"
+                    sub_line_colors = {
+                        "adsl1": "purple",
+                        "adsl2": "success",
+                        "adsl3": "warning",
+                        "adsl4": "error",
+                        "adsl5": "info",
+                        "pppoe1": "purple",
+                        "pppoe2": "success",
+                        "pppoe3": "warning",
+                        "pppoe4": "error",
+                        "pppoe5": "info"
                     }
-                ]
-            }
+                    chip_color = sub_line_colors.get(line_name.lower(), "secondary")
+                elif line_name.startswith("wan"):
+                    iface_type = "WAN"
+                    chip_color = "primary"
+                else:
+                    iface_type = "其他"
+                    chip_color = "default"
+                interface_rows.append({
+                    'component': 'tr',
+                    'content': [
+                        {'component': 'td', 'content': [
+                            {'component': 'VChip', 'props': {'color': chip_color, 'size': 'small', 'variant': 'outlined'}, 'text': line_name}
+                        ]},
+                        {'component': 'td', 'text': iface_type},
+                        {'component': 'td', 'text': line_ip if line_ip != "未配置" else "--"},
+                        {'component': 'td', 'text': line_gateway if line_gateway else "--"},
+                        {'component': 'td', 'content': [
+                            {'component': 'VChip', 'props': {'color': status_color, 'size': 'small'}, 'text': status_text}
+                        ]},
+                        {'component': 'td', 'text': line_status if line_result == "success" else ""},
+                        {'component': 'td', 'text': str(connect_count)},
+                        {'component': 'td', 'text': format_speed(upload_speed)},
+                        {'component': 'td', 'text': format_speed(download_speed)},
+                    ]
+                })
+            # LAN接口
+            for lan in snapshoot_lan:
+                lan_name = lan.get("interface", "")
+                lan_ip = lan.get("ip_addr", "未配置")
+                stream_info = stream_map.get(lan_name, {})
+                upload_speed = stream_info.get("upload", 0)
+                download_speed = stream_info.get("download", 0)
+                connect_count = connect_num if connect_num > 0 else "--"
+                interface_rows.append({
+                    'component': 'tr',
+                    'content': [
+                        {'component': 'td', 'content': [
+                            {'component': 'VChip', 'props': {'color': 'info', 'size': 'small', 'variant': 'outlined'}, 'text': lan_name}
+                        ]},
+                        {'component': 'td', 'text': 'LAN'},
+                        {'component': 'td', 'text': lan_ip if lan_ip != "未配置" else "--"},
+                        {'component': 'td', 'text': lan_ip if lan_ip != "未配置" else "--"},
+                        {'component': 'td', 'content': [
+                            {'component': 'VChip', 'props': {'color': 'success', 'size': 'small'}, 'text': '已启用'}
+                        ]},
+                        {'component': 'td', 'text': '线路检测成功'},
+                        {'component': 'td', 'text': str(connect_count)},
+                        {'component': 'td', 'text': format_speed(upload_speed)},
+                        {'component': 'td', 'text': format_speed(download_speed)},
+                    ]
+                })
+            # 友好提示：无详细线路数据时，显示兼容提示卡片
+            if not (iface_check or snapshoot_lan):
+                interface_card = {
+                    'component': 'VCard',
+                    'props': {'variant': 'outlined', 'class': 'mb-4'},
+                    'content': [
+                        {
+                            'component': 'VCardTitle',
+                            'props': {'class': 'text-h6'},
+                            'text': '🌐 线路监控'
+                        },
+                        {
+                            'component': 'VCardText',
+                            'content': [
+                                {
+                                    'component': 'VAlert',
+                                    'props': {
+                                        'type': 'info',
+                                        'variant': 'tonal',
+                                        'text': '当前路由器版本不支持详细线路状态监控，仅可显示基础接口信息。',
+                                        'class': 'mb-2'
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            elif interface_rows:
+                interface_card = {
+                    'component': 'VCard',
+                    'props': {'variant': 'outlined', 'class': 'mb-4'},
+                    'content': [
+                        {
+                            'component': 'VCardTitle',
+                            'props': {'class': 'text-h6'},
+                            'text': '🌐 线路监控'
+                        },
+                        {
+                            'component': 'VCardText',
+                            'content': [
+                                {
+                                    'component': 'VTable',
+                                    'props': {'hover': True, 'density': 'compact'},
+                                    'content': [
+                                        {
+                                            'component': 'thead',
+                                            'content': [
+                                                {
+                                                    'component': 'tr',
+                                                    'content': [
+                                                        {'component': 'th', 'text': '线路'},
+                                                        {'component': 'th', 'text': '类型'},
+                                                        {'component': 'th', 'text': 'IP地址'},
+                                                        {'component': 'th', 'text': '网关'},
+                                                        {'component': 'th', 'text': '连接状态'},
+                                                        {'component': 'th', 'text': '线路状态'},
+                                                        {'component': 'th', 'text': '连接数'},
+                                                        {'component': 'th', 'text': '上传'},
+                                                        {'component': 'th', 'text': '下载'}
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            'component': 'tbody',
+                                            'content': interface_rows
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
 
         # 构建返回列表
         result = []
