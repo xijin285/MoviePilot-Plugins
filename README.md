@@ -9,7 +9,7 @@ MoviePilot第三方插件库，提供了一系列实用的插件来增强MoviePi
 | 序号 | 插件名称 | 版本 | 功能描述 | 标签 |
 |------|----------|------|----------|------|
 | 1 | [🖼️ 随机图库 (RandomPic)](#随机图库-randompic) | v2.0.0 | 智能横竖屏分类的图片API服务 | API/工具 |
-| 2 | [☁️ 夸克网盘 (QuarkDisk)](#夸克网盘-quarkdisk) | v1.0.0 | 夸克网盘存储系统集成 | 存储/工具 |
+| 2 | [☁️ 夸克网盘 (QuarkDisk)](#夸克网盘-quarkdisk) | v1.1.0 | 夸克网盘存储系统集成，支持浏览、整理、下载、上传与刮削保存 | 存储/工具 |
 | 3 | [🖥️ PVE虚拟机守护神 (ProxmoxVEBackup)](#pve虚拟机守护神-proxmoxvebackup) | v2.3.4 | 全面的PVE虚拟化管理与备份方案 | 虚拟化/备份 |
 | 4 | [🔧 OpenWrt路由备份助手 (OpenWrtBackup)](#openwrt路由备份助手-openwrtbackup) | v1.1.4 | 全自动的OpenWrt配置备份方案 | 网络/备份 |
 | 5 | [🌐 爱快路由备份助手 (IkuaiRouterBackup)](#爱快路由备份助手-ikuairouterbackup) | v1.4.0 | 轻松配置您的爱快路由，让路由管理更简单 | 网络/备份 |
