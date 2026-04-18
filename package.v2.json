@@ -93,11 +93,12 @@
     "name": "夸克网盘存储",
     "description": "为存储系统集成夸克网盘支持",
     "labels": "存储,网盘",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/quark.ico",
     "author": "xijin285",
     "level": 2,
     "history": {
+      "v1.1.0": "✨ 重大更新：全面完善夸克网盘适配\n📁 文件管理：修复文件/目录识别、文件点击空目录、下载与图片预览问题\n🔄 整理链路：补齐 get_folder、is_support_transtype 等兼容接口，修复移动、重命名、目标回查与整理误判失败问题\n☁️ 存储能力：修复容量显示、列表读取、目录创建、缓存清理与状态展示\n📝 刮削支持：适配图片上传、NFO 保存等刮削落盘流程\n🎨 页面优化：重构设置页与数据页显示，增强状态与说明展示",
       "v1.0.0": "首个正式版本：支持夸克网盘基础操作"
     }
   },
