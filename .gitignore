@@ -160,7 +160,13 @@ cython_debug/
 
 .idea/
 .vscode/
+.workbuddy/
 
 # MacBook
 .DS_Store
 **/.DS_Store
+
+# Vue 联邦插件本地编译
+dist/
+node_modules/
+*.zip

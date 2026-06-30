@@ -6,7 +6,7 @@
     "version": "1.4.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
     "author": "xijin285",
-    "level": 2,
+    "level": 1,
     "history": {
       "v1.4.0": "适配爱快OS 4.0版本架构",
       "v1.3.4": "修复tg交互命令无法识别问题",
@@ -50,7 +50,7 @@
     "version": "1.1.4",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/openwrt.png",
     "author": "xijin285",
-    "level": 2,
+    "level": 1,
     "history": {
       "v1.1.4": "修复tg交互命令无法识别问题",
       "v1.1.0": "\n✨ 重大更新\n🏗️ 代码重构：代码结构优化\n🎨 界面重构：状态页优化界面\n🏗️ 登入方式：采用Web方式登入\n📊 新增功能：适配仪表盘功能\n🔗新增功能：适配消息渠道交互\n🗑️ 功能调整：移除各种繁琐功能，简化插件\n⚠️重要提示：本次升级采用全新配置体系，升级后需重置配置，旧版配置不兼容",
@@ -66,7 +66,7 @@
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp",
     "author": "xijin285",
     "requirements": ["redis>=5.0.1"],
-    "level": 2,
+    "level": 1,
     "history": {
       "v2.3.4": "修复tg交互命令无法识别问题",
       "v2.3.3": "优化消息交互系统，发送「/PVE帮助」指令即可查看指令使用方法",
@@ -96,7 +96,7 @@
     "version": "1.1.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/quark.ico",
     "author": "xijin285",
-    "level": 2,
+    "level": 1,
     "history": {
       "v1.1.0": "✨ 重大更新：全面完善夸克网盘适配\n📁 文件管理：修复文件/目录识别、文件点击空目录、下载与图片预览问题\n🔄 整理链路：补齐 get_folder、is_support_transtype 等兼容接口，修复移动、重命名、目标回查与整理误判失败问题\n☁️ 存储能力：修复容量显示、列表读取、目录创建、缓存清理与状态展示\n📝 刮削支持：适配图片上传、NFO 保存等刮削落盘流程\n🎨 页面优化：重构设置页与数据页显示，增强状态与说明展示",
       "v1.0.0": "首个正式版本：支持夸克网盘基础操作"
@@ -109,7 +109,7 @@
     "version": "2.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png",
     "author": "xijin285",
-    "level": 2,
+    "level": 1,
     "requirements": ["pytz>=2023.3", "apscheduler>=3.10.1", "requests>=2.31.0"],
     "history": {
       "v2.1": "优化联邦UI界面，；提前为“外部消息转发”接入封面接口",
@@ -152,6 +152,19 @@
       "v1.0.2": "版本回退",
       "v1.0.1": "优化通知逻辑",
       "v1.0": "首个自用版本"
+    }
+  },
+  "VueQuarkDisk": {
+    "name": "Vue-夸克网盘存储",
+    "description": "使存储支持夸克网盘",
+    "labels": "存储,网盘",
+    "version": "1.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/vuequarkdisk.png",
+    "author": "xijin285,KoWming",
+    "level": 1,
+    "release": true,
+    "history": {
+      "v1.0": "初始版本，支持扫码登录"
     }
   }
 }
