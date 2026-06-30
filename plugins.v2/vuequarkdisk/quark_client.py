@@ -610,6 +610,13 @@ class QuarkClient:
         }
         return self._request("POST", "file/recycle/remove", json_data=data)
 
+    def rename_file(self, fid: str, new_name: str) -> Dict[str, Any]:
+        """
+        重命名文件/文件夹。
+        """
+        data = {"fid": fid, "file_name": new_name}
+        return self._request("POST", "file/rename", json_data=data)
+
     def move_files(
         self, file_ids: List[str], target_folder_id: str
     ) -> Dict[str, Any]:
