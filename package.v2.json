@@ -158,12 +158,13 @@
     "name": "Vue-夸克网盘存储",
     "description": "使存储支持夸克网盘",
     "labels": "存储,网盘",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/vuequarkdisk.png",
     "author": "xijin285,KoWming",
     "level": 1,
     "release": true,
     "history": {
+      "v1.0.1": "修复插件API接口路径不正确的问题",
       "v1.0": "初始版本，支持扫码登录"
     }
   }

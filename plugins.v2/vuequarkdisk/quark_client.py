@@ -609,6 +609,8 @@ class QuarkClient:
             "record_list": record_ids,
         }
         return self._request("POST", "file/recycle/remove", json_data=data)
+
+    def rename_file(self, fid: str, new_name: str) -> Dict[str, Any]:
         """
         重命名文件/文件夹。
         """

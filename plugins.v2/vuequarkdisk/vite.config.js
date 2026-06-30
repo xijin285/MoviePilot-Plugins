@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     vue(),
     federation({
-      name: 'QuarkDisk',
+      name: 'VueQuarkDisk',
       filename: 'remoteEntry.js',
       exposes: {
         './Page': './src/components/Page.vue',

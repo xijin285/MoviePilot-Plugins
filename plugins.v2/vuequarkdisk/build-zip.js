@@ -5,7 +5,7 @@ import archiver from 'archiver'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const pluginName = 'quarkdisk'
+const pluginName = 'vuequarkdisk'
 
 const outputFilePath = path.join(__dirname, `${pluginName}.zip`)
 const output = fs.createWriteStream(outputFilePath)
