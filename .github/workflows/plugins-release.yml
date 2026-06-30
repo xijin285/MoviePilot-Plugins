@@ -1,0 +1,292 @@
+name: Build and Release Plugins
+
+# 当手动触发时，可以自定义运行名称，方便识别
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('Manual Release for {0}', github.event.inputs.plugin_id) || format('Auto Release triggered by {0}', github.triggering_actor) }}
+
+on:
+  # 1. 手动触发器
+  workflow_dispatch:
+    inputs:
+      # 让用户选择插件的源目录
+      source_directory:
+        description: '请选择插件源码所在的根目录'
+        required: true
+        type: choice
+        options:
+          - plugins
+          - plugins.v2
+          - plugins.v3
+        default: 'plugins.v2'
+      # 手动输入要打包的插件ID
+      plugin_id:
+        description: '请输入 package.json 中的插件 ID (例如: AutoSignIn)'
+        required: true
+        type: string
+      # 是否为预发布版本
+      prerelease:
+        description: '是否为预发布版本？'
+        required: false
+        type: boolean
+        default: false
+
+  # 2. 自动触发器：当 main 分支的指定文件发生 push 时
+  push:
+    branches:
+      - main
+    paths:
+      - 'package*.json'
+
+jobs:
+  # 检测需要发布的插件
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.detector.outputs.plugins }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # 使用Python脚本检测要发布的插件
+      - name: Detect plugins to release using Python script
+        id: detector
+        # 将所有需要的信息作为环境变量传递给 Python 脚本
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+          INPUT_PLUGIN_ID: ${{ inputs.plugin_id }}
+          INPUT_SOURCE_DIRECTORY: ${{ inputs.source_directory }}
+          INPUT_PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          # 调用主处理脚本，并将其标准输出设置为 Job 的输出
+          # Python 脚本的所有日志都会自动打印到 stderr
+          PLUGINS_JSON=$(python3 .github/scripts/get_plugin_meta.py)
+          
+          # 检查脚本是否成功执行并返回了有效的 JSON
+          if ! echo "$PLUGINS_JSON" | jq .; then
+            echo "[error] Python 脚本返回的不是有效的 JSON。请检查日志。"
+            exit 1
+          fi
+          
+          echo "plugins=$PLUGINS_JSON" >> $GITHUB_OUTPUT
+
+  # 准备发布任务
+  start-release-jobs:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.matrix != '[]' }}
+    steps:
+      - name: Log detected plugins
+        run: |
+          echo "检测到需要发布的插件，将启动构建和发布任务..."
+          echo '插件列表: ${{ needs.detect-changes.outputs.matrix }}'
+
+  # 开始构建和发布
+  build-and-release:
+    needs: [start-release-jobs, detect-changes]
+    name: Release ${{ matrix.plugin.name }} v${{ matrix.plugin.version }} ${{ (github.event_name == 'workflow_dispatch' && inputs.prerelease) && ' (Prerelease)' || '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    # 使用 strategy: matrix 来为每个需要发布的插件创建一个并行的任务
+    strategy:
+      matrix:
+        # fromJson 函数会将 Job 1 输出的 JSON 字符串转换回 JSON 对象
+        plugin: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # 探测 plugins.v2 插件是否包含前端源码（package.json）
+      # 有 package.json → 需要编译（新方式）；否则视为已有构建产物（旧方式）
+      - name: Detect frontend source type for plugins.v2
+        id: detect_frontend
+        if: ${{ matrix.plugin.backend_worker_path == 'plugins.v2' }}
+        run: |
+          FULL_SOURCE_PATH="${{ matrix.plugin.backend_worker_path }}/${{ matrix.plugin.backend_path }}"
+          if [ -f "$FULL_SOURCE_PATH/package.json" ]; then
+            echo "has_frontend_src=true" >> $GITHUB_OUTPUT
+            echo "[Info] 检测到前端源码 (package.json)，将执行构建流程。"
+          else
+            echo "has_frontend_src=false" >> $GITHUB_OUTPUT
+            echo "[Info] 未检测到前端源码，将按旧方式使用已有的构建产物。"
+          fi
+
+      - name: Setup Node.js for plugins.v2 build
+        if: ${{ matrix.plugin.backend_worker_path == 'plugins.v2' && steps.detect_frontend.outputs.has_frontend_src == 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ${{ matrix.plugin.backend_worker_path }}/${{ matrix.plugin.backend_path }}/package-lock.json
+
+      - name: Build frontend assets for plugins.v2
+        if: ${{ matrix.plugin.backend_worker_path == 'plugins.v2' && steps.detect_frontend.outputs.has_frontend_src == 'true' }}
+        run: |
+          FULL_SOURCE_PATH="${{ matrix.plugin.backend_worker_path }}/${{ matrix.plugin.backend_path }}"
+
+          echo "[Info] 检测到 plugins.v2 插件，开始构建前端产物..."
+          cd "$FULL_SOURCE_PATH"
+
+          if [ -f "package-lock.json" ]; then
+            npm install --no-fund --no-audit
+          else
+            npm install --no-fund --no-audit
+          fi
+
+          npm run build:web
+
+          if [ ! -d "dist" ]; then
+            echo "[Error] 前端构建完成后未找到 dist 目录"
+            exit 1
+          fi
+
+      - name: Package plugin source code
+        run: |
+          # {
+          #   "id": "AutoSignIn",
+          #   "version": "1.0.0",
+          #   "name": "签到",
+          #   "notes": "这里是 v1.0.0 版本的更新内容",
+          #   "tag_name": "AutoSignIn_v1.0.0",
+          #   "archive_base": "autosignin_v1.0.0",
+          #   "backend_worker_path": "plugins.v2",
+          #   "backend_path": "autosignin",
+          # }
+
+          # 1. 检查插件后端源码是否存在
+          # 通过拼接 backend_worker_path 和 backend_path 来构造完整的源码路径
+          FULL_SOURCE_PATH="${{ matrix.plugin.backend_worker_path }}/${{ matrix.plugin.backend_path }}"
+          STAGING_ROOT="$RUNNER_TEMP/release-package"
+          STAGING_PLUGIN_PATH="$STAGING_ROOT/${{ matrix.plugin.backend_path }}"
+
+          if [ ! -d "$FULL_SOURCE_PATH" ]; then
+            echo "[Error] 未找到源目录: $FULL_SOURCE_PATH"
+            exit 1
+          fi
+
+          echo "打包工作将在 '${{ matrix.plugin.backend_worker_path }}' 目录下进行..."
+          echo "目标插件目录是 '${{ matrix.plugin.backend_path }}'..."
+
+          rm -rf "$STAGING_ROOT"
+          mkdir -p "$STAGING_PLUGIN_PATH"
+
+          # 2. 根据插件类型选择打包策略
+          if [ "${{ matrix.plugin.backend_worker_path }}" = "plugins.v2" ]; then
+            if [ "${{ steps.detect_frontend.outputs.has_frontend_src }}" = "true" ]; then
+              # 新方式：插件含前端源码，打包后端以及编译后的 dist 目录（排除前端源码）
+              echo "[Info] plugins.v2（含源码）：打包后端所有组件及前端编译产物..."
+
+              if [ ! -f "$FULL_SOURCE_PATH/__init__.py" ]; then
+                echo "[Error] 缺少必要文件: $FULL_SOURCE_PATH/__init__.py"
+                exit 1
+              fi
+
+              if [ ! -d "$FULL_SOURCE_PATH/dist" ]; then
+                echo "[Error] 缺少前端构建产物目录: $FULL_SOURCE_PATH/dist"
+                exit 1
+              fi
+
+              # 1. 完整拷贝整个插件源目录
+              cp -R "$FULL_SOURCE_PATH/." "$STAGING_PLUGIN_PATH/"
+
+              # 2. 清理不需要随发布包分发的前端源代码、依赖和配置文件
+              echo "[Info] 正在清理无用的前端源码及开发环境文件..."
+              rm -rf "$STAGING_PLUGIN_PATH/node_modules"
+              rm -rf "$STAGING_PLUGIN_PATH/src"
+              rm -rf "$STAGING_PLUGIN_PATH/public"
+              rm -f "$STAGING_PLUGIN_PATH"/package*.json
+              rm -f "$STAGING_PLUGIN_PATH"/vite.config.*
+              rm -f "$STAGING_PLUGIN_PATH"/tsconfig.*
+              rm -f "$STAGING_PLUGIN_PATH"/index.html
+              rm -f "$STAGING_PLUGIN_PATH"/build*.js
+              rm -f "$STAGING_PLUGIN_PATH"/.env*
+              rm -f "$STAGING_PLUGIN_PATH"/.gitignore
+              rm -f "$STAGING_PLUGIN_PATH"/.eslintrc*
+              rm -f "$STAGING_PLUGIN_PATH"/.prettier*
+            else
+              # 旧方式：插件已含构建产物，整目录打包
+              echo "[Info] plugins.v2（已有产物）：整目录打包..."
+              cp -R "$FULL_SOURCE_PATH/." "$STAGING_PLUGIN_PATH/"
+            fi
+          else
+            echo "[Info] 非 plugins.v2 插件，保持原有整目录打包逻辑..."
+            cp -R "$FULL_SOURCE_PATH/." "$STAGING_PLUGIN_PATH/"
+          fi
+
+          # 3. 从暂存目录生成归档文件
+          tar -czvf "${{ matrix.plugin.archive_base }}.tar.gz" -C "$STAGING_ROOT" "${{ matrix.plugin.backend_path }}"
+          (cd "$STAGING_ROOT" && zip -r "$GITHUB_WORKSPACE/${{ matrix.plugin.archive_base }}.zip" "${{ matrix.plugin.backend_path }}")
+
+          # 4. 生成校验和文件
+          sha256sum "${{ matrix.plugin.archive_base }}.zip" > "${{ matrix.plugin.archive_base }}.zip.sha256"
+          sha256sum "${{ matrix.plugin.archive_base }}.tar.gz" > "${{ matrix.plugin.archive_base }}.tar.gz.sha256"
+
+      # 检查并删除同名的 tag 和 release
+      - name: Check and delete existing tag and release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG_NAME="${{ matrix.plugin.tag_name }}"
+
+          # 手动模式：允许覆盖
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "[Info] 手动模式：允许覆盖已存在的发布。"
+            # 检查并处理 GitHub Release
+            if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+              echo "[Warn] 发现已存在的 Release: $TAG_NAME。将被覆盖，正在删除..."
+              gh release delete "$TAG_NAME" --yes
+            else
+              echo "[Info] 未发现已存在的 Release，将直接创建。"
+            fi
+
+            # 检查并处理远程 Git Tag
+            if [ -n "$(git ls-remote --tags origin "$TAG_NAME")" ]; then
+              echo "[Warn] 发现已存在的远程 Git Tag: $TAG_NAME。将被覆盖，正在删除..."
+              git push origin --delete "$TAG_NAME"
+            else
+              echo "[Info] 未发现已存在的远程 Git Tag，将直接创建。"
+            fi
+
+          # 自动模式：禁止覆盖
+          else
+            echo "[Info] 自动模式：检查是否存在冲突的发布。"
+
+            # 检查 Release 是否存在，如果存在则报错退出
+            if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+              echo "[Fatal] 自动模式失败：Release with tag '$TAG_NAME' 已存在。请手动删除或更新版本号。"
+              exit 1
+            fi
+
+            # 检查 Git Tag 是否存在，如果存在则报错退出
+            if [ -n "$(git ls-remote --tags origin "$TAG_NAME")" ]; then
+              echo "[Fatal] 自动模式失败：Git Tag '$TAG_NAME' 已存在。请手动删除或更新版本号。"
+              exit 1
+            fi
+
+            echo "[Info] 检查通过，不存在同名 Release 或 Tag，可以安全发布。"
+          fi
+
+      # 创建 GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Release 的标签名
+          tag_name: ${{ matrix.plugin.tag_name }}
+          # Release 的标题
+          name: ${{ matrix.plugin.name }} v${{ matrix.plugin.version }} ${{ (github.event_name == 'workflow_dispatch' && inputs.prerelease) && ' (Prerelease)' || '' }}
+          # Release 的内容
+          body: ${{ matrix.plugin.notes }}
+          # 将打包好的文件作为附件
+          files: |
+            ${{ matrix.plugin.archive_base }}.zip
+            ${{ matrix.plugin.archive_base }}.tar.gz
+            ${{ matrix.plugin.archive_base }}.zip.sha256
+            ${{ matrix.plugin.archive_base }}.tar.gz.sha256
+          prerelease: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
