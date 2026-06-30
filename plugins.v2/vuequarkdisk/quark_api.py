@@ -289,7 +289,7 @@ class QuarkApi:
         fid = item.get("fid") or item.get("file_id")
         obj_category = item.get("obj_category", "")
         if fid and obj_category in ("video",):
-            return f"/api/v1/plugin/QuarkDisk/thumb?fid={fid}"
+            return f"/api/v1/plugin/VueQuarkDisk/thumb?fid={fid}"
         return item.get("thumbnail") or item.get("thumb") or item.get("cover") or None
 
     # ==================== 路径解析 ====================
@@ -1391,7 +1391,6 @@ class QuarkApi:
             target_name = new_name or fileitem.name or Path(fileitem.path).name
 
             target_id = self._path_to_id(target_parent.as_posix())
-            file_id = fileitem.fileid or self._path_to_id(fileitem.path)
 
             # 夸克网盘没有直接的复制 API，使用移动 + 保留源的方式
             # 实际实现：下载文件到临时目录，再上传到目标目录

@@ -60,11 +60,11 @@ function pushMessage(text, type = 'info') {
 }
 
 function pluginUrl(path) {
-  return `/api/v1/plugin/QuarkDisk${path}`
+  return `/api/v1/plugin/VueQuarkDisk${path}`
 }
 
 async function request(path, options = {}) {
-  const apiPath = `plugin/QuarkDisk${path}`
+  const apiPath = `plugin/VueQuarkDisk${path}`
   if (options.method === 'POST') {
     if (props.api?.post) {
       return props.api.post(apiPath, options.body ? JSON.parse(options.body) : {}, options)
