@@ -307,7 +307,7 @@ class RandomPic(_PluginBase):
 
     def get_api(self) -> List[Dict[str, Any]]:
         """注册插件API"""
-        return [
+        apis = [
             {
                 "path": "/config",
                 "endpoint": self._get_config,
@@ -330,6 +330,12 @@ class RandomPic(_PluginBase):
                 "summary": "获取状态"
             }
         ]
+        # v3 兼容：保持插件自定义响应格式（纯 dict），
+        # 绕过宿主 ResponseAPIRoute 的统一 envelope 自动包装
+        for _api in apis:
+            if isinstance(_api, dict) and "openapi_extra" not in _api:
+                _api["openapi_extra"] = {"x-moviepilot-raw-response": True}
+        return apis
 
     def _get_config(self) -> Dict[str, Any]:
         """API处理函数：返回插件配置"""
