@@ -9,6 +9,8 @@ import re
 import threading
 import socket
 import requests
+from fastapi import HTTPException, Query, Request
+from fastapi.responses import Response
 
 import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -16,6 +18,24 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from app.core.config import settings
 from app.log import logger
 from app.plugins import _PluginBase
+import app.plugins as plugin_runtime
+
+_RUNTIME_REGISTRY_KEY = "RandomPic"
+_RUNTIME_REGISTRY_NAME = "_randompic_runtime_registry"
+_RUNTIME_LOCK_NAME = "_randompic_runtime_lock"
+if not hasattr(plugin_runtime, _RUNTIME_REGISTRY_NAME):
+    setattr(plugin_runtime, _RUNTIME_REGISTRY_NAME, {})
+if not hasattr(plugin_runtime, _RUNTIME_LOCK_NAME):
+    setattr(plugin_runtime, _RUNTIME_LOCK_NAME, threading.RLock())
+
+
+def _get_runtime_registry() -> Dict[str, Any]:
+    return getattr(plugin_runtime, _RUNTIME_REGISTRY_NAME)
+
+
+def _get_runtime_lock():
+    return getattr(plugin_runtime, _RUNTIME_LOCK_NAME)
+
 
 # 集成网络图片自动识别
 from .network_image_provider import get_network_image_url, count_network_images
@@ -242,7 +262,7 @@ class RandomPic(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png"
     # 插件版本
-    plugin_version = "2.1"
+    plugin_version = "2.2.0"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -267,7 +287,17 @@ class RandomPic(_PluginBase):
     _network_image_url_mobile = None
     _network_image_url = None  # 兼容老配置
 
+    def __init__(self):
+        super().__init__()
+        self._runtime_owner = object()
+        self._scheduler = None
+        self._server = None
+        self._server_thread = None
+
     def init_plugin(self, config: dict = None):
+        self._stop_registered_runtime()
+        self.stop_service()
+
         if config:
             self._enable = config.get("enable")
             self._port = config.get("port")
@@ -277,9 +307,13 @@ class RandomPic(_PluginBase):
             self._network_image_url_mobile = config.get("network_image_url_mobile")
             self._network_image_url = config.get("network_image_url")  # 兼容老配置
 
-        self.stop_service()
-
         if self._enable:
+            with _get_runtime_lock():
+                _get_runtime_registry()[_RUNTIME_REGISTRY_KEY] = {
+                    "owner": self._runtime_owner,
+                    "server": None,
+                    "thread": None,
+                }
             self._scheduler = BackgroundScheduler(timezone=settings.TZ)
             # logger.info("随机图库服务启动中...")
             self._scheduler.add_job(
@@ -328,6 +362,27 @@ class RandomPic(_PluginBase):
                 "methods": ["GET"],
                 "auth": "bear",
                 "summary": "获取状态"
+            },
+            {
+                "path": "/preview",
+                "endpoint": self._get_preview,
+                "methods": ["GET"],
+                "auth": "bear",
+                "summary": "获取图片预览"
+            },
+            {
+                "path": "/random",
+                "endpoint": self._get_random,
+                "methods": ["GET"],
+                "allow_anonymous": True,
+                "summary": "获取随机图片"
+            },
+            {
+                "path": "/stats",
+                "endpoint": self._get_stats,
+                "methods": ["GET"],
+                "allow_anonymous": True,
+                "summary": "获取随机图库统计"
             }
         ]
 
@@ -364,12 +419,18 @@ class RandomPic(_PluginBase):
                 if port_num < 1 or port_num > 65535:
                     return {"success": False, "msg": "端口号必须在1-65535范围内"}
                 
-                # 检查端口是否被占用
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                result = sock.connect_ex(('127.0.0.1', port_num))
-                sock.close()
-                if result == 0:
-                    return {"success": False, "msg": f"端口 {port_num} 已被占用，请选择其他端口"}
+                owns_current_port = (
+                    self._server is not None
+                    and self._server_thread is not None
+                    and self._server_thread.is_alive()
+                    and self._port is not None
+                    and int(self._port) == port_num
+                )
+                if not owns_current_port:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                        result = sock.connect_ex(('127.0.0.1', port_num))
+                    if result == 0:
+                        return {"success": False, "msg": f"端口 {port_num} 已被占用，请选择其他端口"}
             except ValueError:
                 return {"success": False, "msg": "端口号必须是数字"}
             except Exception as e:
@@ -411,6 +472,75 @@ class RandomPic(_PluginBase):
         except Exception as e:
             logger.error(f"保存配置失败: {str(e)}")
             return {"success": False, "msg": f"保存配置失败: {str(e)}"}
+
+    def _proxy_service_response(
+        self,
+        endpoint: str,
+        request: Request,
+        params: Optional[Dict[str, str]] = None,
+        follow_redirects: bool = False,
+    ) -> Response:
+        """代理内部随机图库服务，可按场景保留或跟随图片源重定向。"""
+        if not self._port:
+            raise HTTPException(status_code=503, detail="随机图库服务端口未配置")
+
+        try:
+            response = requests.get(
+                f"http://127.0.0.1:{int(self._port)}{endpoint}",
+                params=params,
+                headers={"User-Agent": request.headers.get("user-agent", "")},
+                timeout=15,
+                allow_redirects=follow_redirects,
+            )
+            if response.is_redirect:
+                location = response.headers.get("Location")
+                if not location:
+                    raise HTTPException(status_code=502, detail="随机图库服务返回无效重定向")
+                return Response(
+                    status_code=response.status_code,
+                    headers={
+                        "Location": location,
+                        "Cache-Control": "no-store",
+                    },
+                )
+            response.raise_for_status()
+            return Response(
+                content=response.content,
+                media_type=response.headers.get("Content-Type", "application/octet-stream"),
+                headers={"Cache-Control": "no-store"},
+            )
+        except HTTPException:
+            raise
+        except (requests.RequestException, TypeError, ValueError) as err:
+            logger.error(f"代理随机图库服务失败: {str(err)}")
+            raise HTTPException(status_code=502, detail="随机图库服务访问失败") from err
+
+    def _get_random(
+        self,
+        request: Request,
+        type: Optional[str] = Query(default=None, pattern="^(pc|mobile)$"),
+    ) -> Response:
+        params = {"type": type} if type else None
+        return self._proxy_service_response("/random", request, params)
+
+    def _get_stats(self, request: Request) -> Response:
+        return self._proxy_service_response("/stats", request)
+
+    def _get_preview(self, request: Request, type: Optional[str] = None) -> Response:
+        """在服务端解析图片源重定向后返回真实图片内容。"""
+        if type not in (None, "pc", "mobile"):
+            raise HTTPException(status_code=400, detail="不支持的图片类型")
+        params = {"type": type} if type else None
+        response = self._proxy_service_response(
+            "/random",
+            request,
+            params,
+            follow_redirects=True,
+        )
+        content_type = response.headers.get("content-type", "")
+        if not content_type.startswith("image/"):
+            raise HTTPException(status_code=502, detail="随机图库服务未返回图片")
+        return response
 
     def _get_status(self) -> Dict[str, Any]:
         """API处理函数：返回插件状态"""
@@ -527,6 +657,12 @@ class RandomPic(_PluginBase):
         """
         运行服务
         """
+        with _get_runtime_lock():
+            runtime = _get_runtime_registry().get(_RUNTIME_REGISTRY_KEY)
+            if not runtime or runtime.get("owner") is not self._runtime_owner:
+                logger.info("随机图库启动任务已失效，跳过旧实例启动")
+                return
+
         if not self._port:
             logger.error("未配置端口，无法启动服务")
             return
@@ -555,31 +691,38 @@ class RandomPic(_PluginBase):
 
         try:
             port = int(self._port)
-            # logger.info(f"尝试启动HTTP服务器在端口: {port}")
-            
-            # 检查端口是否被占用
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            result = sock.connect_ex(('127.0.0.1', port))
-            if result == 0:
-                logger.error(f"端口 {port} 已被占用")
-                return
-            sock.close()
-            
-            # 创建HTTP服务器
             listen_ip = '0.0.0.0'
+
             class CustomHTTPServer(HTTPServer):
-                pass
-            self._server = CustomHTTPServer((listen_ip, port), ImageHandler)
-            self._server.pc_path = self._pc_path
-            self._server.mobile_path = self._mobile_path
-            self._server.network_image_url_pc = self._network_image_url_pc
-            self._server.network_image_url_mobile = self._network_image_url_mobile
-            self._server.network_image_url = self._network_image_url  # 兼容老配置
-            
-            # 在新线程中启动服务器
-            self._server_thread = threading.Thread(target=self._server.serve_forever)
-            self._server_thread.daemon = True
-            self._server_thread.start()
+                allow_reuse_address = True
+
+            with _get_runtime_lock():
+                runtime = _get_runtime_registry().get(_RUNTIME_REGISTRY_KEY)
+                if not runtime or runtime.get("owner") is not self._runtime_owner:
+                    logger.info("随机图库启动任务已失效，跳过旧实例绑定端口")
+                    return
+
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                    result = sock.connect_ex(('127.0.0.1', port))
+                if result == 0:
+                    self._last_error = f"端口 {port} 已被其他程序占用"
+                    logger.error(self._last_error)
+                    return
+
+                self._server = CustomHTTPServer((listen_ip, port), ImageHandler)
+                self._server.pc_path = self._pc_path
+                self._server.mobile_path = self._mobile_path
+                self._server.network_image_url_pc = self._network_image_url_pc
+                self._server.network_image_url_mobile = self._network_image_url_mobile
+                self._server.network_image_url = self._network_image_url  # 兼容老配置
+
+                self._server_thread = threading.Thread(target=self._server.serve_forever)
+                self._server_thread.daemon = True
+                self._server_thread.start()
+                runtime["server"] = self._server
+                runtime["thread"] = self._server_thread
+
+            self._last_error = ""
             
             # 获取本机IP
             ip = self._get_host_ip()
@@ -587,27 +730,66 @@ class RandomPic(_PluginBase):
             # 启动服务器
             logger.info(f"随机图库服务启动成功! 访问地址: http://{ip}:{port}/random")
         except Exception as e:
+            server = self._server
+            server_thread = self._server_thread
+            self._server = None
+            self._server_thread = None
+            self._close_http_runtime(server, server_thread)
             logger.error(f"启动服务失败: {str(e)}")
             logger.error(f"请检查端口 {port} 是否被占用")
+
+    @staticmethod
+    def _close_http_runtime(server, server_thread):
+        if server and server_thread and server_thread.is_alive():
+            try:
+                server.shutdown()
+            except Exception as err:
+                logger.error(f"停止随机图库请求循环失败: {str(err)}")
+        if server_thread and server_thread is not threading.current_thread():
+            try:
+                server_thread.join(timeout=5)
+                if server_thread.is_alive():
+                    logger.warning("随机图库服务线程未在超时时间内退出")
+            except Exception as err:
+                logger.error(f"等待随机图库服务线程退出失败: {str(err)}")
+        if server:
+            try:
+                server.server_close()
+            except Exception as err:
+                logger.error(f"释放随机图库服务端口失败: {str(err)}")
+
+    def _stop_registered_runtime(self):
+        with _get_runtime_lock():
+            runtime = _get_runtime_registry().pop(_RUNTIME_REGISTRY_KEY, None)
+        if not runtime or runtime.get("owner") is self._runtime_owner:
+            return
+        logger.info("检测到随机图库旧运行实例，正在释放已启用端口")
+        self._close_http_runtime(runtime.get("server"), runtime.get("thread"))
 
     def stop_service(self):
         """
         停止服务
         """
-        try:
-            if self._scheduler:
-                self._scheduler.remove_all_jobs()
-                if self._scheduler.running:
-                    self._scheduler.shutdown()
-                self._scheduler = None
-            if self._server:
-                self._server.shutdown()
-                self._server = None
-            if self._server_thread:
-                self._server_thread.join()
-                self._server_thread = None
-        except Exception as e:
-            logger.error(f"停止服务失败: {str(e)}") 
+        scheduler = self._scheduler
+        self._scheduler = None
+        if scheduler:
+            try:
+                scheduler.remove_all_jobs()
+                if scheduler.running:
+                    scheduler.shutdown(wait=True)
+            except Exception as err:
+                logger.error(f"停止随机图库调度器失败: {str(err)}")
+
+        server = self._server
+        server_thread = self._server_thread
+        self._server = None
+        self._server_thread = None
+        self._close_http_runtime(server, server_thread)
+
+        with _get_runtime_lock():
+            runtime = _get_runtime_registry().get(_RUNTIME_REGISTRY_KEY)
+            if runtime and runtime.get("owner") is self._runtime_owner:
+                _get_runtime_registry().pop(_RUNTIME_REGISTRY_KEY, None)
 
     def _get_host_ip(self) -> str:
         """
