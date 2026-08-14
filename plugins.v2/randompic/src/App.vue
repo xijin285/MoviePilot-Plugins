@@ -26,22 +26,20 @@ const currentView = ref('page');
 
 const mockDatabase = reactive({
   config: {
-    enabled: false,
-    port: "8002",
+    enable: false,
     pc_path: "",
     mobile_path: "",
   },
   status: {
-    enabled: false,
-    port: "8002",
+    enable: true,
+    api_status: "available",
+    access_mode: "moviepilot",
     pc_path: "",
     mobile_path: "",
     pc_count: 156,
     mobile_count: 89,
     total_count: 245,
     today_visits: 42,
-    server_status: "running",
-    last_error: "",
   },
 });
 

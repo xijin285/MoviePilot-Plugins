@@ -1,13 +1,14 @@
 import random
-import requests
 import re
+from typing import Optional
 
-# 支持的图片后缀
+from app.utils.http import RequestUtils
+
 IMG_EXTS = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
 
 
-def is_url(s):
-    return isinstance(s, str) and s.strip().startswith(('http://', 'https://'))
+def is_url(value):
+    return isinstance(value, str) and value.strip().startswith(('http://', 'https://'))
 
 
 def is_image_url(url):
@@ -15,101 +16,120 @@ def is_image_url(url):
 
 
 def get_urls_from_text(text):
-    """从文本中提取所有图片URL"""
+    """从文本中提取所有图片 URL。"""
     urls = re.findall(r'https?://[^\s,\"]+', text)
-    return [u for u in urls if is_image_url(u)]
+    return [url for url in urls if is_image_url(url)]
+
+
+def _request(method: str, url: str, allow_redirects: bool = True):
+    return RequestUtils(timeout=5).request(
+        method=method,
+        url=url,
+        allow_redirects=allow_redirects,
+    )
 
 
 def get_network_image_url(config_value):
-    """
-    根据配置值自动识别并返回一个可用的图片URL。
-    支持：
-    - 单个图片直链
-    - 多个图片直链（逗号分隔）
-    - 直接返回图片的API
-    - 返回json/txt的API（自动提取图片URL）
-    """
+    """识别配置内容并返回一个可用的网络图片地址。"""
     if not config_value:
         return None
-    # 逗号分隔多个URL
+
     if ',' in config_value:
-        candidates = [u.strip() for u in config_value.split(',') if u.strip()]
-        candidates = [u for u in candidates if is_url(u)]
+        candidates = [
+            value.strip()
+            for value in config_value.split(',')
+            if is_url(value.strip())
+        ]
         if candidates:
             return random.choice(candidates)
-    # 单个URL
+
     url = config_value.strip()
     if not is_url(url):
         return None
-    # 1. 直链图片
     if is_image_url(url):
         return url
-    # 2. 直接返回图片内容或302跳转的API，直接用作图片src
+
+    response = None
     try:
-        resp = requests.head(url, allow_redirects=True, timeout=5)
-        ct = resp.headers.get('Content-Type', '')
-        if ct.startswith('image/'):
-            return resp.url  # 直链或跳转后的图片
-    except Exception:
-        pass
-    # 3. 尝试GET请求，解析json/txt
+        response = _request('head', url)
+        if response and response.headers.get('Content-Type', '').startswith('image/'):
+            return response.url
+    finally:
+        if response is not None:
+            response.close()
+
     try:
-        resp = requests.get(url, timeout=5)
-        ct = resp.headers.get('Content-Type', '')
-        if ct.startswith('image/'):
-            return resp.url
-        # json格式
-        if 'json' in ct:
-            data = resp.json()
-            # 常见格式：{"url": "..."} 或 list
+        response = RequestUtils(timeout=5).get_res(url)
+        if not response:
+            return url
+        content_type = response.headers.get('Content-Type', '')
+        if content_type.startswith('image/'):
+            return response.url
+        if 'json' in content_type:
+            data = response.json()
             if isinstance(data, dict):
-                for k in ['url', 'image', 'img', 'src']:
-                    if k in data and is_image_url(data[k]):
-                        return data[k]
+                for key in ('url', 'image', 'img', 'src'):
+                    value = data.get(key)
+                    if isinstance(value, str) and is_image_url(value):
+                        return value
             elif isinstance(data, list):
-                imgs = [x for x in data if isinstance(x, str) and is_image_url(x)]
-                if imgs:
-                    return random.choice(imgs)
-        # txt格式
-        if 'text' in ct:
-            urls = get_urls_from_text(resp.text)
+                images = [
+                    value
+                    for value in data
+                    if isinstance(value, str) and is_image_url(value)
+                ]
+                if images:
+                    return random.choice(images)
+        if 'text' in content_type:
+            urls = get_urls_from_text(response.text)
             if urls:
                 return random.choice(urls)
-    except Exception:
-        pass
-    # 兜底：直接返回原始url（如API每次都返回图片）
+    finally:
+        if response is not None:
+            response.close()
+
     return url
 
 
 def count_network_images(config_value):
-    """
-    统计网络图片数量（全部显示未知）
-    """
+    """网络图片源数量无法可靠预知。"""
     if not config_value:
         return 0
     return None
 
-def _count_from_url(url):
+
+def _count_from_url(url) -> Optional[int]:
+    response = None
     try:
-        resp = requests.get(url, timeout=5)
-        ct = resp.headers.get('Content-Type', '')
-        if ct.startswith('image/'):
+        response = RequestUtils(timeout=5).get_res(url)
+        if not response:
+            return None
+        content_type = response.headers.get('Content-Type', '')
+        if content_type.startswith('image/'):
             return 1
-        if 'json' in ct:
-            data = resp.json()
+        if 'json' in content_type:
+            data = response.json()
             if isinstance(data, dict):
-                for k in ['url', 'image', 'img', 'src', 'images', 'imgs']:
-                    v = data.get(k)
-                    if isinstance(v, str) and is_image_url(v):
+                for key in ('url', 'image', 'img', 'src', 'images', 'imgs'):
+                    value = data.get(key)
+                    if isinstance(value, str) and is_image_url(value):
                         return 1
-                    if isinstance(v, list):
-                        return len([x for x in v if isinstance(x, str) and is_image_url(x)])
+                    if isinstance(value, list):
+                        return len([
+                            item
+                            for item in value
+                            if isinstance(item, str) and is_image_url(item)
+                        ])
                 return len(get_urls_from_text(str(data)))
-            elif isinstance(data, list):
-                return len([x for x in data if isinstance(x, str) and is_image_url(x)])
-        if 'text' in ct:
-            urls = get_urls_from_text(resp.text)
-            return len(urls)
-    except Exception:
-        pass
-    return None 
+            if isinstance(data, list):
+                return len([
+                    item
+                    for item in data
+                    if isinstance(item, str) and is_image_url(item)
+                ])
+        if 'text' in content_type:
+            return len(get_urls_from_text(response.text))
+    finally:
+        if response is not None:
+            response.close()
+    return None

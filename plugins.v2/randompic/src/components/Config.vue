@@ -44,7 +44,7 @@
           <div class="card-inner">
             <v-card-text>
               <v-row dense>
-                <v-col cols="12" md="6">
+                <v-col cols="12">
                   <div class="config-switch-row">
                     <v-icon size="18" class="switch-icon" :color="config.enable ? 'success' : 'grey'">mdi-power</v-icon>
                     <span class="switch-label">启用插件</span>
@@ -61,20 +61,7 @@
                         </div>
                       </div>
                     </label>
-                  </div>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field
-                    v-model="config.port"
-                    label="服务端口"
-                    placeholder="8002"
-                    prepend-inner-icon="mdi-numeric"
-                    hint=""
-                    dense
-                  />
-                  <div class="port-hint" style="font-size:12px;display:flex;align-items:center;margin-top:8px;margin-bottom:0;">
-                    <v-icon size="16" color="info" style="margin-right:4px;">mdi-information</v-icon>
-                    容器为 bridge 模式需要手动映射配置的端口
+                    <span class="service-mode-hint">API 由当前插件直接提供</span>
                   </div>
                 </v-col>
               </v-row>
@@ -215,7 +202,6 @@ const emit = defineEmits(['close', 'switch', 'save', 'config-updated-on-server']
 // 响应式数据
 const config = reactive({
   enable: false,
-  port: "8002",
   pc_path: "",
   mobile_path: "",
   network_image_url_pc: "",
@@ -229,9 +215,10 @@ const successMessage = ref(null);
 const errorMessage = ref(null);
 
 const isConfigValid = () => {
+  if (!config.enable) return true;
   const hasPc = config.pc_path || config.network_image_url_pc;
   const hasMobile = config.mobile_path || config.network_image_url_mobile;
-  return config.port && hasPc && hasMobile;
+  return Boolean(hasPc && hasMobile);
 };
 
 // 方法
@@ -253,7 +240,6 @@ const showNotification = (text, type = 'success') => {
 const resetConfig = () => {
   Object.assign(config, {
     enable: false,
-    port: "8002",
     pc_path: "",
     mobile_path: "",
     network_image_url_pc: "",
@@ -599,6 +585,16 @@ onMounted(() => {
 
 /* Custom switch styles for enable toggle */
 .config-switch-row { display: flex; align-items: center; gap: 10px; transform: translateY(-2px); }
+.service-mode-hint {
+  margin-left: auto;
+  color: #6b7280;
+  font-size: 12px;
+}
+[data-theme="dark"] .service-mode-hint,
+[data-theme="purple"] .service-mode-hint,
+[data-theme="transparent"] .service-mode-hint {
+  color: #9ca3af;
+}
 .config-switch-row .switch-label { font-size: 14px; color: #374151; }
 [data-theme="dark"] .config-switch-row .switch-label,
 [data-theme="purple"] .config-switch-row .switch-label,
@@ -849,6 +845,13 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .config-switch-row {
+    flex-wrap: wrap;
+  }
+  .service-mode-hint {
+    width: 100%;
+    margin-left: 28px;
+  }
   .action-btns {
     flex-direction: column;
     gap: 10px;

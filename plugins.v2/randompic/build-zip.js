@@ -10,7 +10,6 @@ const outputFilePath = path.join(__dirname, `${pluginName}.zip`)
 const requiredFiles = [
   '__init__.py',
   'network_image_provider.py',
-  'requirements.txt',
 ]
 
 for (const file of requiredFiles) {

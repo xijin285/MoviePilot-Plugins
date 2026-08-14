@@ -21,16 +21,16 @@
         <!-- 数据显示 -->
         <div v-else-if="initialDataLoaded && summaryData">
           <v-list density="compact" class="py-0">
-            <!-- 服务状态 -->
+            <!-- API 状态 -->
             <v-list-item class="pa-0">
               <template v-slot:prepend>
-                <v-icon size="small" :color="summaryData.server_status === 'running' ? 'success' : 'grey'" class="mr-2">
-                  {{ summaryData.server_status === 'running' ? 'mdi-server-network' : 'mdi-server-off' }}
+                <v-icon size="small" :color="summaryData.enable ? 'success' : 'grey'" class="mr-2">
+                  {{ summaryData.enable ? 'mdi-api' : 'mdi-api-off' }}
                 </v-icon>
               </template>
               <v-list-item-title class="text-caption">
-                服务状态: <span :class="summaryData.server_status === 'running' ? 'text-success' : 'text-grey'">
-                  {{ summaryData.server_status === 'running' ? '运行中' : '已停止' }}
+                API 状态: <span :class="summaryData.enable ? 'text-success' : 'text-grey'">
+                  {{ summaryData.enable ? '可用' : '已禁用' }}
                 </span>
               </v-list-item-title>
             </v-list-item>
@@ -132,7 +132,8 @@ const loading = ref(false);
 const error = ref(null);
 const initialDataLoaded = ref(false);
 const summaryData = reactive({
-  server_status: 'stopped',
+  enable: false,
+  api_status: 'disabled',
   total_count: 0,
   pc_count: 0,
   mobile_count: 0,
@@ -154,7 +155,8 @@ async function fetchData() {
     
     if (data) {
       // 更新数据
-      summaryData.server_status = data.server_status || 'stopped';
+      summaryData.enable = Boolean(data.enable);
+      summaryData.api_status = data.api_status || 'disabled';
       summaryData.total_count = data.total_count || 0;
       summaryData.pc_count = data.pc_count || 0;
       summaryData.mobile_count = data.mobile_count || 0;

@@ -10,20 +10,6 @@
           <v-icon class="btn-icon">mdi-cog</v-icon>
           <span class="btn-text">插件配置</span>
         </v-btn>
-        <v-btn class="btn-gradient-reset" size="small" @click="startService" :loading="starting">
-          <v-icon class="btn-icon">mdi-restart</v-icon>
-          <span class="btn-text">重启服务</span>
-        </v-btn>
-        <v-btn
-          class="btn-gradient-stop"
-          size="small"
-          @click="stopService"
-          :loading="stopping"
-          :disabled="status.server_status !== 'running'"
-        >
-          <v-icon class="btn-icon">mdi-stop</v-icon>
-          <span class="btn-text">停止服务</span>
-        </v-btn>
         <v-btn class="btn-gradient-close" size="small" @click="$emit('close')">
           <v-icon class="btn-icon">mdi-close</v-icon>
           <span class="btn-text">关闭</span>
@@ -125,48 +111,46 @@
       <!-- 状态卡片区域 - 右侧垂直排列 -->
       <v-col cols="12" md="4" style="height: 600px;">
         <v-row class="status-cards-vertical" dense>
-          <!-- 服务状态 -->
+          <!-- API 状态 -->
           <v-col cols="12">
             <v-card class="glass-card" elevation="4" style="height: 189px !important; min-height: 189px !important;">
               <v-card-title class="d-flex align-center">
-                <v-icon :color="status.server_status === 'running' ? 'success' : 'grey'" size="24" class="mr-2">
-                  {{ status.server_status === 'running' ? 'mdi-server-network' : 'mdi-server-off' }}
+                <v-icon :color="status.enable ? 'success' : 'grey'" size="24" class="mr-2">
+                  {{ status.enable ? 'mdi-api' : 'mdi-api-off' }}
                 </v-icon>
-                <span>服务状态</span>
+                <span>API 状态</span>
                 <v-spacer />
-                <button 
+                <button
                   class="mode-btn status-refresh-btn"
-                  @click="refreshStatus" 
+                  @click="refreshStatus"
                   :disabled="refreshing"
                 >
                   <v-icon size="16" class="mode-icon" :class="{ 'rotating': refreshing }">mdi-refresh</v-icon>
                 </button>
               </v-card-title>
               <v-card-text>
-                <div class="status-item">
+                <div class="api-runtime-row">
                   <span class="label">运行状态：</span>
-                  <v-chip
-                    :color="status.server_status === 'running' ? 'success' : 'grey'"
-                    size="small"
-                  >
-                    {{ status.server_status === 'running' ? '已启用' : '已禁用' }}
+                  <v-chip :color="status.enable ? 'success' : 'grey'" size="small">
+                    {{ status.enable ? '可用' : '已禁用' }}
                   </v-chip>
                 </div>
-                <div class="status-item">
-                  <span class="label">服务端口：</span>
-                  <v-chip
-                    :color="getPortStatusColor(status.port_status)"
-                    size="small"
+                <div class="api-health-grid">
+                  <div
+                    v-for="endpoint in apiHealthItems"
+                    :key="endpoint.key"
+                    class="api-health-item"
                   >
-                    {{ status.port || '未配置' }}
-                    <span v-if="status.port_status !== 'unknown' && status.port" class="port-status-text">
-                    /{{ getPortStatusText(status.port_status) }}
-                    </span>
-                  </v-chip>
-                </div>
-                <div class="status-item">
-                  <span class="label">服务监听IP：</span>
-                  <v-chip color="info" size="small">{{ currentHost || '-' }}</v-chip>
+                    <div class="api-health-name">
+                      <v-icon size="16" :color="endpoint.available ? 'success' : 'grey'">
+                        {{ endpoint.icon }}
+                      </v-icon>
+                      <span>{{ endpoint.label }}</span>
+                    </div>
+                    <v-chip :color="endpoint.available ? 'success' : 'grey'" size="x-small">
+                      {{ endpoint.available ? '正常' : '不可用' }}
+                    </v-chip>
+                  </div>
                 </div>
               </v-card-text>
             </v-card>
@@ -180,22 +164,27 @@
                 <span>目录监控</span>
               </v-card-title>
               <v-card-text>
-                <div class="status-item">
-                  <span class="label">横屏目录：</span>
-                  <v-chip :color="(status.pc_path || status.network_image_url_pc) ? 'success' : 'error'" size="small">
-                    {{ (status.pc_path || status.network_image_url_pc) ? '已配置' : '未配置' }}
-                  </v-chip>
+                <div class="source-monitor-grid">
+                  <div
+                    v-for="source in sourceMonitorItems"
+                    :key="source.key"
+                    class="source-monitor-item"
+                  >
+                    <div class="source-monitor-name">
+                      <v-icon size="15" :color="source.configured ? 'success' : 'grey'">
+                        {{ source.icon }}
+                      </v-icon>
+                      <span>{{ source.label }}</span>
+                    </div>
+                    <v-chip :color="source.configured ? 'success' : 'grey'" size="x-small">
+                      {{ source.configured ? '已配置' : '未配置' }}
+                    </v-chip>
+                  </div>
                 </div>
-                <div class="status-item">
-                  <span class="label">竖屏目录：</span>
-                  <v-chip :color="(status.mobile_path || status.network_image_url_mobile) ? 'success' : 'error'" size="small">
-                    {{ (status.mobile_path || status.network_image_url_mobile) ? '已配置' : '未配置' }}
-                  </v-chip>
-                </div>
-                <div class="status-item">
+                <div class="source-complete-row">
                   <span class="label">配置完整性：</span>
-                  <v-chip :color="status.pc_path && status.mobile_path ? 'success' : 'warning'" size="small">
-                    {{ status.pc_path && status.mobile_path ? '完整' : '不完整' }}
+                  <v-chip :color="sourceConfigComplete ? 'success' : 'warning'" size="small">
+                    {{ sourceConfigComplete ? '完整' : '不完整' }}
                   </v-chip>
                 </div>
               </v-card-text>
@@ -343,8 +332,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue';
-const currentHost = window.location.hostname;
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue';
 
 const props = defineProps({
   api: { type: Object, required: true }
@@ -355,24 +343,95 @@ defineEmits(['close', 'switch']);
 // 响应式数据
 const status = reactive({
   enable: false,
-  port: "",
+  api_status: "disabled",
+  api_endpoints: {
+    auto: false,
+    pc: false,
+    mobile: false,
+    stats: false,
+  },
   pc_path: "",
   mobile_path: "",
   pc_count: 0,
   mobile_count: 0,
   total_count: 0,
   today_visits: 0,
-  server_status: "stopped",
-  last_error: "",
-  listen_ip: "",
   network_image_url_pc: "",
   network_image_url_mobile: "",
+  network_image_url: "",
 });
 
 // 新增：详细统计
 const statusDetail = ref({
   local: { pc: 0, mobile: 0 },
   network: { pc: 0, mobile: 0 }
+});
+
+const apiHealthItems = computed(() => [
+  {
+    key: 'auto',
+    label: '自动识别',
+    icon: 'mdi-auto-fix',
+    available: Boolean(status.api_endpoints?.auto),
+  },
+  {
+    key: 'pc',
+    label: '横屏图片',
+    icon: 'mdi-monitor',
+    available: Boolean(status.api_endpoints?.pc),
+  },
+  {
+    key: 'mobile',
+    label: '竖屏图片',
+    icon: 'mdi-cellphone',
+    available: Boolean(status.api_endpoints?.mobile),
+  },
+  {
+    key: 'stats',
+    label: '统计数据',
+    icon: 'mdi-chart-box-outline',
+    available: Boolean(status.api_endpoints?.stats),
+  },
+]);
+
+const sourceMonitorItems = computed(() => {
+  const commonNetworkConfigured = Boolean(status.network_image_url);
+  return [
+    {
+      key: 'local-pc',
+      label: '本地横屏',
+      icon: 'mdi-monitor',
+      configured: Boolean(status.pc_path),
+    },
+    {
+      key: 'local-mobile',
+      label: '本地竖屏',
+      icon: 'mdi-cellphone',
+      configured: Boolean(status.mobile_path),
+    },
+    {
+      key: 'network-pc',
+      label: '网络横屏',
+      icon: 'mdi-cloud-outline',
+      configured: Boolean(status.network_image_url_pc || commonNetworkConfigured),
+    },
+    {
+      key: 'network-mobile',
+      label: '网络竖屏',
+      icon: 'mdi-cloud-outline',
+      configured: Boolean(status.network_image_url_mobile || commonNetworkConfigured),
+    },
+  ];
+});
+
+const sourceConfigComplete = computed(() => {
+  const pcConfigured = Boolean(
+    status.pc_path || status.network_image_url_pc || status.network_image_url,
+  );
+  const mobileConfigured = Boolean(
+    status.mobile_path || status.network_image_url_mobile || status.network_image_url,
+  );
+  return pcConfigured && mobileConfigured;
 });
 
 const previewType = ref('auto');
@@ -382,8 +441,6 @@ const previewLoading = ref(false);
 const previewError = ref('');
 
 const refreshing = ref(false);
-const starting = ref(false);
-const stopping = ref(false);
 
 const successMessage = ref(null);
 const errorMessage = ref(null);
@@ -407,34 +464,6 @@ const getApiUrl = (endpoint) => {
   return `${window.location.origin}/api/v1/plugin/RandomPic${endpoint}`;
 };
 
-const getPortStatusColor = (portStatus) => {
-  switch (portStatus) {
-    case 'available':
-      return 'success';
-    case 'occupied':
-      return 'error';
-    case 'error':
-      return 'warning';
-    case 'unknown':
-    default:
-      return 'grey';
-  }
-};
-
-const getPortStatusText = (portStatus) => {
-  switch (portStatus) {
-    case 'available':
-      return '可用';
-    case 'occupied':
-      return '被占用';
-    case 'error':
-      return '检查失败';
-    case 'unknown':
-    default:
-      return '未知';
-  }
-};
-
 const refreshStatus = async () => {
   refreshing.value = true;
   try {
@@ -452,8 +481,8 @@ const refreshStatus = async () => {
 };
 
 const loadPreview = async () => {
-  if (status.server_status !== 'running' || !status.port) {
-    previewError.value = '服务未启动或端口未配置';
+  if (!status.enable) {
+    previewError.value = '插件未启用';
     previewLoading.value = false;
     return;
   }
@@ -471,8 +500,8 @@ const loadPreview = async () => {
     previewObjectUrl.value = URL.createObjectURL(image);
     previewImageUrl.value = previewObjectUrl.value;
   } catch (error) {
-    previewError.value = '加载预览失败';
-    showNotification('加载预览失败', 'error');
+    previewError.value = error?.response?.data?.detail || '加载预览失败';
+    showNotification(previewError.value, 'error');
   } finally {
     previewLoading.value = false;
   }
@@ -526,38 +555,6 @@ const copyToClipboard = async (text) => {
     document.execCommand('copy');
     document.body.removeChild(textArea);
     showNotification('链接已复制到剪贴板', 'success');
-  }
-};
-
-const startService = async () => {
-  starting.value = true;
-  try {
-    // 通过API获取当前配置
-    const config = await props.api.get('plugin/RandomPic/config');
-    config.enable = true;
-    await props.api.post('plugin/RandomPic/config', config);
-    await refreshStatus();
-    showNotification('服务已启动', 'success');
-  } catch (error) {
-    showNotification('启动服务失败', 'error');
-  } finally {
-    starting.value = false;
-  }
-};
-
-const stopService = async () => {
-  stopping.value = true;
-  try {
-    // 通过API获取当前配置
-    const config = await props.api.get('plugin/RandomPic/config');
-    config.enable = false;
-    await props.api.post('plugin/RandomPic/config', config);
-    await refreshStatus();
-    showNotification('服务已停止', 'success');
-  } catch (error) {
-    showNotification('停止服务失败', 'error');
-  } finally {
-    stopping.value = false;
   }
 };
 
@@ -626,6 +623,51 @@ onUnmounted(() => {
   min-height: 600px !important;
   display: flex !important;
   flex-direction: column !important;
+}
+.preview-card > .v-card-text {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+.preview-container {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  border-radius: 8px;
+  background: transparent !important;
+}
+.preview-image-container {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+}
+.preview-image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  background: transparent !important;
+  box-shadow: none;
+}
+.preview-loading,
+.preview-error,
+.preview-placeholder {
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 状态卡片垂直排列样式 */
@@ -702,15 +744,6 @@ onUnmounted(() => {
   color: #e5e7eb !important;
 }
 .section-title .title-actions .btn-gradient-status { background: #e0f2fe !important; border-color: #bae6fd !important; color: #075985 !important; }
-.section-title .title-actions .btn-gradient-reset { background: #fef2f2 !important; border-color: #fde2e2 !important; color: #991b1b !important; }
-.section-title .title-actions .btn-gradient-stop {
-  min-width: 0 !important;
-  width: auto !important;
-  padding-inline: 8px !important;
-  background: #fff7ed !important;
-  border-color: #fed7aa !important;
-  color: #c2410c !important;
-}
 .section-title .title-actions .btn-gradient-save { background: #ecfdf5 !important; border-color: #d1fae5 !important; color: #065f46 !important; }
 .section-title .title-actions .btn-gradient-close { background: #f3f4f6 !important; border-color: #e5e7eb !important; color: #374151 !important; }
 [data-theme="dark"] .section-title .title-actions .btn-gradient-status,
@@ -719,22 +752,6 @@ onUnmounted(() => {
   background: #152433 !important;
   border-color: #1f2f40 !important;
   color: #93c5fd !important;
-}
-
-[data-theme="dark"] .section-title .title-actions .btn-gradient-reset,
-[data-theme="purple"] .section-title .title-actions .btn-gradient-reset,
-[data-theme="transparent"] .section-title .title-actions .btn-gradient-reset {
-  background: #2a2224 !important;
-  border-color: #3a2a2d !important;
-  color: #fca5a5 !important;
-}
-
-[data-theme="dark"] .section-title .title-actions .btn-gradient-stop,
-[data-theme="purple"] .section-title .title-actions .btn-gradient-stop,
-[data-theme="transparent"] .section-title .title-actions .btn-gradient-stop {
-  background: #2b211d !important;
-  border-color: #4a3024 !important;
-  color: #fdba74 !important;
 }
 
 [data-theme="dark"] .section-title .title-actions .btn-gradient-save,
@@ -776,26 +793,95 @@ onUnmounted(() => {
   font-weight: 600;
   color: #374151;
 }
-.port-status-text {
-  opacity: 0.8;
-  font-size: 11px;
+.api-runtime-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
-.port-error-text {
+.api-health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+.api-health-item {
+  min-width: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 7px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.api-health-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #374151;
   font-size: 12px;
-  color: #ef4444;
-  background: #fef2f2;
-  padding: 4px 8px;
-  border-radius: 4px;
-  border: 1px solid #fecaca;
-  word-break: break-all;
-  margin-top: 4px;
+  font-weight: 500;
+  white-space: nowrap;
 }
-[data-theme="dark"] .port-error-text,
-[data-theme="purple"] .port-error-text,
-[data-theme="transparent"] .port-error-text {
-  color: #fca5a5;
-  background: #2a2224;
-  border-color: #3a2a2d;
+[data-theme="dark"] .api-health-item,
+[data-theme="purple"] .api-health-item,
+[data-theme="transparent"] .api-health-item {
+  border-color: #2f3643;
+  background: #1f2430;
+}
+[data-theme="dark"] .api-health-name,
+[data-theme="purple"] .api-health-name,
+[data-theme="transparent"] .api-health-name {
+  color: #e5e7eb;
+}
+.source-monitor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 100%;
+}
+.source-monitor-item {
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 7px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.source-monitor-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #374151;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.source-complete-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+[data-theme="dark"] .source-monitor-item,
+[data-theme="purple"] .source-monitor-item,
+[data-theme="transparent"] .source-monitor-item {
+  border-color: #2f3643;
+  background: #1f2430;
+}
+[data-theme="dark"] .source-monitor-name,
+[data-theme="purple"] .source-monitor-name,
+[data-theme="transparent"] .source-monitor-name {
+  color: #e5e7eb;
 }
 .stats-grid {
   display: grid;
@@ -832,44 +918,7 @@ onUnmounted(() => {
 .action-btn {
   width: 100%;
 }
-.preview-container {
-  min-height: 500px;
-  height: 500px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  overflow: hidden;
-  background: transparent !important;
-}
-.preview-loading,
-.preview-error,
-.preview-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 500px;
-  color: #666;
-}
-.preview-image-container {
-  width: 100%;
-  height: 500px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent !important;
-}
-.preview-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: 8px;
-  background: transparent !important;
-  box-shadow: none;
-  width: auto;
-  height: auto;
-}
+
 /* 恢复最初的API接口样式 */
 .api-endpoint-card {
   padding: 16px;
@@ -1588,6 +1637,10 @@ onUnmounted(() => {
     min-height: 200px !important;
   }
   
+  .preview-card > .v-card-text {
+    padding: 8px !important;
+  }
+  
   /* 图片预览容器 - 移动端自适应高度 */
   .preview-container {
     min-height: 150px !important;
@@ -1607,7 +1660,7 @@ onUnmounted(() => {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 16px !important;
+    padding: 4px !important;
   }
   
   .preview-image {
@@ -1664,6 +1717,10 @@ onUnmounted(() => {
     min-height: 180px !important;
   }
   
+  .preview-card > .v-card-text {
+    padding: 6px !important;
+  }
+  
   /* 超小屏幕图片预览容器自适应高度 */
   .preview-container {
     min-height: 120px !important;
@@ -1683,7 +1740,7 @@ onUnmounted(() => {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 12px !important;
+    padding: 4px !important;
   }
   
   .preview-image {
