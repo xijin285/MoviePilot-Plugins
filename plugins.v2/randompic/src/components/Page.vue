@@ -17,10 +17,24 @@
       </div>
     </v-card-title>
 
+    <!-- 悬浮通知（标题栏下方，3秒自动消失） -->
+    <transition name="toast-fade">
+      <div
+        v-if="notificationVisible"
+        class="toast-toast"
+        :class="notificationType === 'error' ? 'toast-error' : 'toast-success'"
+      >
+        <v-icon size="16" class="toast-icon">
+          {{ notificationType === 'error' ? 'mdi-alert-circle' : 'mdi-check-circle' }}
+        </v-icon>
+        <span class="toast-text">{{ notificationText }}</span>
+      </div>
+    </transition>
+
     <!-- 主要内容区域：图片预览 + 状态卡片 -->
     <v-row class="main-content" align="stretch">
       <!-- 图片预览区域 - 左侧 -->
-      <v-col cols="12" md="8">
+      <v-col cols="12" md="8" class="preview-column">
         <v-card class="glass-card preview-card" elevation="4">
           <v-card-title class="preview-title-container">
             <div class="preview-title-left">
@@ -67,14 +81,57 @@
                   <v-icon size="16" class="mode-icon">mdi-open-in-new</v-icon>
                   <span class="mode-text">打开</span>
                 </button>
-                <button
-                  class="mode-btn"
-                  @click="downloadPreview"
+                <v-menu
+                  location="bottom end"
                   :disabled="!previewImageUrl || previewLoading"
                 >
-                  <v-icon size="16" class="mode-icon">mdi-download</v-icon>
-                  <span class="mode-text">下载</span>
-                </button>
+                  <template v-slot:activator="{ props: menuProps }">
+                    <button
+                      class="mode-btn"
+                      v-bind="menuProps"
+                      :disabled="!previewImageUrl || previewLoading"
+                    >
+                      <v-icon size="16" class="mode-icon">mdi-download</v-icon>
+                      <span class="mode-text">下载</span>
+                      <v-icon size="14" class="mode-icon">mdi-menu-down</v-icon>
+                    </button>
+                  </template>
+                  <v-list density="compact" class="preview-download-menu">
+                    <div class="preview-download-menu-title">下载方式</div>
+                    <v-list-item
+                      class="preview-download-item"
+                      @click="savePreviewToLocal"
+                      :disabled="savingToLocal"
+                    >
+                      <template v-slot:prepend>
+                        <div class="preview-download-item-icon">
+                          <v-icon size="18">mdi-folder-download</v-icon>
+                        </div>
+                      </template>
+                      <v-list-item-title>保存到本地目录</v-list-item-title>
+                      <v-list-item-subtitle>自动按横屏/竖屏分类</v-list-item-subtitle>
+                      <template v-slot:append>
+                        <v-icon size="16" class="preview-download-item-arrow">mdi-chevron-right</v-icon>
+                      </template>
+                    </v-list-item>
+                    <div class="preview-download-menu-divider"></div>
+                    <v-list-item
+                      class="preview-download-item"
+                      @click="downloadPreview"
+                    >
+                      <template v-slot:prepend>
+                        <div class="preview-download-item-icon">
+                          <v-icon size="18">mdi-download-box</v-icon>
+                        </div>
+                      </template>
+                      <v-list-item-title>下载到本机</v-list-item-title>
+                      <v-list-item-subtitle>保存到浏览器默认下载目录</v-list-item-subtitle>
+                      <template v-slot:append>
+                        <v-icon size="16" class="preview-download-item-arrow">mdi-chevron-right</v-icon>
+                      </template>
+                    </v-list-item>
+                  </v-list>
+                </v-menu>
               </div>
             </div>
           </v-card-title>
@@ -109,7 +166,7 @@
       </v-col>
 
       <!-- 状态卡片区域 - 右侧垂直排列 -->
-      <v-col cols="12" md="4" style="height: 600px;">
+      <v-col cols="12" md="4" class="status-column">
         <v-row class="status-cards-vertical" dense>
           <!-- API 状态 -->
           <v-col cols="12">
@@ -176,8 +233,8 @@
                       </v-icon>
                       <span>{{ source.label }}</span>
                     </div>
-                    <v-chip :color="source.configured ? 'success' : 'grey'" size="x-small">
-                      {{ source.configured ? '已配置' : '未配置' }}
+                    <v-chip :color="sourceBadgeColor(source)" size="x-small">
+                      {{ sourceBadgeText(source) }}
                     </v-chip>
                   </div>
                 </div>
@@ -231,16 +288,15 @@
     </v-row>
 
     <!-- API 接口信息 -->
-    <v-row class="mb-6 api-row">
-      <v-col cols="12">
-        <v-card class="glass-card" elevation="4">
+    <div class="api-section">
+      <v-card class="glass-card" elevation="4">
           <v-card-title class="d-flex align-center">
             <v-icon color="success" size="24" class="mr-2">mdi-api</v-icon>
             <span>API 接口</span>
           </v-card-title>
           <v-card-text>
-            <v-row>
-              <v-col cols="12" md="3">
+            <v-row class="api-endpoint-grid">
+              <v-col cols="6" md="3">
                 <div class="api-endpoint-card">
                   <div class="api-endpoint-header">
                     <div class="api-endpoint-icon">
@@ -259,7 +315,7 @@
                   </div>
                 </div>
               </v-col>
-              <v-col cols="12" md="3">
+              <v-col cols="6" md="3">
                 <div class="api-endpoint-card">
                   <div class="api-endpoint-header">
                     <div class="api-endpoint-icon">
@@ -278,7 +334,7 @@
                   </div>
                 </div>
               </v-col>
-              <v-col cols="12" md="3">
+              <v-col cols="6" md="3">
                 <div class="api-endpoint-card">
                   <div class="api-endpoint-header">
                     <div class="api-endpoint-icon">
@@ -297,7 +353,7 @@
                   </div>
                 </div>
               </v-col>
-              <v-col cols="12" md="3">
+              <v-col cols="6" md="3">
                 <div class="api-endpoint-card">
                   <div class="api-endpoint-header">
                     <div class="api-endpoint-icon">
@@ -319,15 +375,10 @@
             </v-row>
           </v-card-text>
         </v-card>
-      </v-col>
-    </v-row>
+    </div>
 
     <!-- 更紧凑的底部操作栏 -->
     <v-divider></v-divider>
-
-    <!-- 通知 -->
-    <v-alert v-if="successMessage" type="success" density="compact" class="mb-2 text-caption" variant="tonal" closable>{{ successMessage }}</v-alert>
-    <v-alert v-if="errorMessage" type="error" density="compact" class="mb-2 text-caption" variant="tonal" closable>{{ errorMessage }}</v-alert>
   </v-card>
 </template>
 
@@ -402,12 +453,14 @@ const sourceMonitorItems = computed(() => {
       label: '本地横屏',
       icon: 'mdi-monitor',
       configured: Boolean(status.pc_path),
+      custom: Boolean(status.pc_path_custom),
     },
     {
       key: 'local-mobile',
       label: '本地竖屏',
       icon: 'mdi-cellphone',
       configured: Boolean(status.mobile_path),
+      custom: Boolean(status.mobile_path_custom),
     },
     {
       key: 'network-pc',
@@ -423,6 +476,22 @@ const sourceMonitorItems = computed(() => {
     },
   ];
 });
+
+const sourceBadgeText = (source) => {
+  if (source.custom !== undefined) {
+    if (!source.configured) return '未配置';
+    return source.custom ? '自定义' : '默认';
+  }
+  return source.configured ? '已配置' : '未配置';
+};
+
+const sourceBadgeColor = (source) => {
+  if (source.custom !== undefined) {
+    if (!source.configured) return 'grey';
+    return source.custom ? 'warning' : 'success';
+  }
+  return source.configured ? 'success' : 'grey';
+};
 
 const sourceConfigComplete = computed(() => {
   const pcConfigured = Boolean(
@@ -442,21 +511,23 @@ const previewError = ref('');
 
 const refreshing = ref(false);
 
-const successMessage = ref(null);
-const errorMessage = ref(null);
+// 悬浮通知状态（标题栏下方，3秒自动消失）
+const notificationVisible = ref(false);
+const notificationText = ref('');
+const notificationType = ref('success');
+let notificationTimer = null;
 
 const showNotification = (text, type = 'success') => {
-  if (type === 'success') {
-    successMessage.value = text;
-    errorMessage.value = null;
-  } else {
-    errorMessage.value = text;
-    successMessage.value = null;
+  notificationText.value = text;
+  notificationType.value = type;
+  notificationVisible.value = true;
+  // 重置计时器，避免连续提示时提前隐藏
+  if (notificationTimer) {
+    clearTimeout(notificationTimer);
   }
-  // 3秒后自动清除消息
-  setTimeout(() => {
-    successMessage.value = null;
-    errorMessage.value = null;
+  notificationTimer = setTimeout(() => {
+    notificationVisible.value = false;
+    notificationTimer = null;
   }, 3000);
 };
 
@@ -523,6 +594,29 @@ const switchPreviewType = (type) => {
   }
 };
 
+const savingToLocal = ref(false);
+
+const savePreviewToLocal = async () => {
+  if (!previewObjectUrl.value) {
+    showNotification('没有可保存的预览图片', 'error');
+    return;
+  }
+  savingToLocal.value = true;
+  try {
+    const blob = await fetch(previewObjectUrl.value).then((res) => res.blob());
+    const formData = new FormData();
+    formData.append('file', blob, 'preview-image.jpg');
+    const result = await props.api.post('plugin/RandomPic/preview/save', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    showNotification(result?.msg || '已保存到本地目录', result?.success === false ? 'error' : 'success');
+  } catch (error) {
+    showNotification('保存到本地目录失败', 'error');
+  } finally {
+    savingToLocal.value = false;
+  }
+};
+
 const downloadPreview = () => {
   // 直接取页面上 img 的 src，保证和显示一致
   const img = document.querySelector('.preview-image');
@@ -575,10 +669,63 @@ onUnmounted(() => {
 .gallery-page {
   padding: 24px;
   background: transparent !important;
+
+  /* 移动端各区块统一由显式间距控制，避免 Vuetify 行负边距抵消间距 */
+  --mobile-card-gap: 16px;
   box-shadow: none !important;
   border: none !important;
   border-radius: 24px;
   padding-bottom: 0 !important;
+  position: relative;
+}
+
+/* 悬浮通知（标题栏下方，3秒自动消失） */
+.toast-toast {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.18);
+  pointer-events: auto;
+  max-width: 80%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toast-success {
+  background: rgba(16, 185, 129, 0.95);
+  color: #ffffff;
+}
+.toast-error {
+  background: rgba(239, 68, 68, 0.95);
+  color: #ffffff;
+}
+.toast-icon {
+  flex-shrink: 0;
+}
+.toast-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.toast-fade-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-12px);
+}
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-12px);
 }
 .v-card:last-child {
   margin-bottom: 0 !important;
@@ -671,6 +818,10 @@ onUnmounted(() => {
 }
 
 /* 状态卡片垂直排列样式 */
+.status-column {
+  height: 600px;
+}
+
 .status-cards-vertical.v-row {
   height: 100%;
   display: grid; /* 改用网格，避免 Vuetify Flex 冲突 */
@@ -919,6 +1070,15 @@ onUnmounted(() => {
   width: 100%;
 }
 
+.api-section {
+  margin-top: 24px;
+  margin-bottom: 24px;
+}
+
+.api-endpoint-grid {
+  --v-row-gutter: 8px !important;
+}
+
 /* 恢复最初的API接口样式 */
 .api-endpoint-card {
   padding: 16px;
@@ -1086,16 +1246,47 @@ onUnmounted(() => {
     gap: 8px;
   }
   
-  /* API接口卡片移动端间距 */
-  .api-row {
-    margin-top: 32px !important;
+  /* 移动端统一卡片间距，避免主内容行负外边距参与计算 */
+  .main-content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mobile-card-gap);
+    margin: 0 !important;
   }
-  
+
+  :global(.gallery-page .main-content > .preview-column),
+  :global(.gallery-page .main-content > .status-column) {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 !important;
+  }
+
+  .status-column {
+    height: auto;
+    margin: 0 !important;
+  }
+
+  .status-cards-vertical.v-row {
+    height: auto;
+    margin: 0 !important;
+    grid-template-rows: repeat(3, auto);
+    row-gap: var(--mobile-card-gap);
+  }
+
+  :global(.gallery-page .status-cards-vertical > .v-col-12) {
+    padding: 0 !important;
+  }
+
+  .api-section {
+    margin: var(--mobile-card-gap) 0;
+  }
+
   /* API接口移动端样式 */
   .api-endpoint-card {
     padding: 14px;
+    margin-bottom: 0;
   }
-  
+
   .api-endpoint-header {
     margin-bottom: 6px;
     gap: 10px;
@@ -1251,6 +1442,154 @@ onUnmounted(() => {
 .mode-btn-active:hover .mode-text {
   color: #ffffff;
   transform: scale(1.05);
+}
+
+:global(.preview-download-menu) {
+  background-color: #ffffff !important;
+  border-radius: 14px;
+  padding: 6px;
+  min-width: 260px;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.22), 0 4px 12px rgba(15, 23, 42, 0.1) !important;
+  overflow: hidden;
+}
+:global(.preview-download-menu-title) {
+  padding: 8px 12px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+:global(.preview-download-item) {
+  border-radius: 10px;
+  margin: 2px 0;
+  min-height: 52px;
+  padding: 4px 8px;
+  transition: background 0.25s cubic-bezier(0.32, 0.72, 0, 1), transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+:global(.preview-download-item:hover) {
+  background: rgba(102, 126, 234, 0.08);
+  transform: translateX(2px);
+}
+:global(.preview-download-item:active) {
+  transform: scale(0.98);
+}
+:global(.preview-download-item .v-list-item-title) {
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  line-height: 1.3;
+}
+:global(.preview-download-item .v-list-item-subtitle) {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+:global(.preview-download-item-icon) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(102, 126, 234, 0.12);
+  color: #667eea;
+  transition: background 0.25s cubic-bezier(0.32, 0.72, 0, 1), color 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+:global(.preview-download-item:hover .preview-download-item-icon) {
+  background: rgba(102, 126, 234, 0.18);
+  color: #4f6ef7;
+}
+:global(.preview-download-item-arrow) {
+  color: #cbd5e1;
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1), color 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+:global(.preview-download-item:hover .preview-download-item-arrow) {
+  color: #667eea;
+  transform: translateX(2px);
+}
+:global(.preview-download-menu-divider) {
+  height: 1px;
+  margin: 4px 8px;
+  background: rgba(15, 23, 42, 0.06);
+}
+:global(.preview-download-item--disabled) {
+  opacity: 0.45;
+}
+:global(.preview-download-item--disabled:hover) {
+  background: transparent;
+  transform: none;
+}
+:global(.preview-download-menu.v-theme--dark),
+:global(.v-theme--dark .preview-download-menu),
+:global([data-theme="dark"]) .preview-download-menu,
+:global([data-theme="purple"]) .preview-download-menu,
+:global([data-theme="transparent"]) .preview-download-menu {
+  background: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: none !important;
+  opacity: 1 !important;
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-menu-title,
+:global(.v-theme--dark .preview-download-menu .preview-download-menu-title),
+:global([data-theme="dark"]) .preview-download-menu-title,
+:global([data-theme="purple"]) .preview-download-menu-title,
+:global([data-theme="transparent"]) .preview-download-menu-title {
+  color: #cbd5e1 !important;
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-item .v-list-item-title,
+:global(.v-theme--dark .preview-download-menu .v-list-item-title),
+:global([data-theme="dark"]) .preview-download-item .v-list-item-title,
+:global([data-theme="purple"]) .preview-download-item .v-list-item-title,
+:global([data-theme="transparent"]) .preview-download-item .v-list-item-title {
+  color: #f8fafc !important;
+  opacity: 1 !important;
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-item .v-list-item-subtitle,
+:global(.v-theme--dark .preview-download-menu .v-list-item-subtitle),
+:global([data-theme="dark"]) .preview-download-item .v-list-item-subtitle,
+:global([data-theme="purple"]) .preview-download-item .v-list-item-subtitle,
+:global([data-theme="transparent"]) .preview-download-item .v-list-item-subtitle {
+  color: #a5b4c7 !important;
+  opacity: 1 !important;
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-item-icon,
+:global(.v-theme--dark .preview-download-menu .preview-download-item-icon),
+:global([data-theme="dark"]) .preview-download-item-icon,
+:global([data-theme="purple"]) .preview-download-item-icon,
+:global([data-theme="transparent"]) .preview-download-item-icon {
+  background: rgba(129, 140, 248, 0.16);
+  color: #a5b4fc;
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-menu-divider,
+:global(.v-theme--dark .preview-download-menu .preview-download-menu-divider),
+:global([data-theme="dark"]) .preview-download-menu-divider,
+:global([data-theme="purple"]) .preview-download-menu-divider,
+:global([data-theme="transparent"]) .preview-download-menu-divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-item-arrow,
+:global(.v-theme--dark .preview-download-menu .preview-download-item-arrow),
+:global([data-theme="dark"]) .preview-download-item-arrow,
+:global([data-theme="purple"]) .preview-download-item-arrow,
+:global([data-theme="transparent"]) .preview-download-item-arrow {
+  color: #64748b;
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-item:hover,
+:global(.v-theme--dark .preview-download-menu .preview-download-item:hover) {
+  background: rgba(129, 140, 248, 0.12);
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-item:hover .preview-download-item-icon,
+:global(.v-theme--dark .preview-download-menu .preview-download-item:hover .preview-download-item-icon) {
+  background: rgba(129, 140, 248, 0.24);
+  color: #c7d2fe;
+}
+:global(.preview-download-menu.v-theme--dark) .preview-download-item:hover .preview-download-item-arrow,
+:global(.v-theme--dark .preview-download-menu .preview-download-item:hover .preview-download-item-arrow) {
+  color: #a5b4fc;
 }
 
 [data-theme="dark"] .mode-btn,
@@ -1410,31 +1749,6 @@ onUnmounted(() => {
   color: #9ca3af !important;
 }
 
-/* v-alert 样式 */
-.v-alert {
-  border-radius: 12px !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-  backdrop-filter: blur(8px);
-  transition: all 0.3s ease;
-}
-
-.v-alert:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.15) !important;
-}
-
-[data-theme="dark"] .v-alert,
-[data-theme="purple"] .v-alert,
-[data-theme="transparent"] .v-alert {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
-}
-
-[data-theme="dark"] .v-alert:hover,
-[data-theme="purple"] .v-alert:hover,
-[data-theme="transparent"] .v-alert:hover {
-  box-shadow: 0 6px 16px rgba(0,0,0,0.4) !important;
-}
-
 /* 系统深色模式兜底 */
 @media (prefers-color-scheme: dark) {
   .api-copy-btn {
@@ -1539,12 +1853,6 @@ onUnmounted(() => {
     background: #1f2430 !important;
     color: #e5e7eb !important;
     border-color: #2a2f3a !important;
-  }
-  .v-alert {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
-  }
-  .v-alert:hover {
-    box-shadow: 0 6px 16px rgba(0,0,0,0.4) !important;
   }
 }
 
@@ -1751,9 +2059,9 @@ onUnmounted(() => {
     object-fit: contain !important;
   }
   
-  /* 超小屏幕API接口卡片间距 */
-  .api-row {
-    margin-top: 28px !important;
+  /* 超小屏继续沿用统一卡片间距 */
+  .api-section {
+    margin: var(--mobile-card-gap) 0;
   }
   
   /* 超小屏幕图片统计布局 */

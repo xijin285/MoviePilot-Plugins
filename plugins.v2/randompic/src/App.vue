@@ -29,13 +29,18 @@ const mockDatabase = reactive({
     enable: false,
     pc_path: "",
     mobile_path: "",
+    default_pc_path: "/data/plugins/RandomPic/PC",
+    default_mobile_path: "/data/plugins/RandomPic/Mobile",
+    download_count: 20,
   },
   status: {
     enable: true,
     api_status: "available",
     access_mode: "moviepilot",
-    pc_path: "",
-    mobile_path: "",
+    pc_path: "/data/plugins/RandomPic/landscape",
+    pc_path_custom: false,
+    mobile_path: "/data/custom/portrait",
+    mobile_path_custom: true,
     pc_count: 156,
     mobile_count: 89,
     total_count: 245,
@@ -58,6 +63,10 @@ const mockPluginApiWrapper = {
       Object.assign(mockDatabase.config, data);
       showNotification('配置已更新', 'success');
       return { message: '配置已成功保存', saved_config: JSON.parse(JSON.stringify(mockDatabase.config)) };
+    }
+    if (url.includes('preview/save')) {
+      showNotification('图片已保存到本地目录（模拟）', 'success');
+      return { success: true, msg: '已保存为横屏图片（模拟）' };
     }
     return {};
   }

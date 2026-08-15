@@ -90,9 +90,10 @@
                     <v-text-field
                       v-model="config.pc_path"
                       label="横屏图片路径"
-                      placeholder="/path/pc/images"
+                      :placeholder="defaultPcPath || '/path/pc/images'"
                       prepend-inner-icon="mdi-folder"
-                      hint=""
+                      hint="留空时使用默认目录"
+                      persistent-hint
                       dense
                     />
                   </div>
@@ -110,9 +111,10 @@
                     <v-text-field
                       v-model="config.mobile_path"
                       label="竖屏图片路径"
-                      placeholder="/path/mobile/images"
+                      :placeholder="defaultMobilePath || '/path/mobile/images'"
                       prepend-inner-icon="mdi-folder"
-                      hint=""
+                      hint="留空时使用默认目录"
+                      persistent-hint
                       dense
                     />
                   </div>
@@ -179,6 +181,129 @@
           </div>
         </div>
 
+        <!-- 下载管理 -->
+        <div class="mp-card config-section download-manage-settings">
+          <div class="card-overlay"></div>
+          <div class="section-title">
+            <v-icon class="mr-2" color="warning">mdi-download-multiple</v-icon>
+            下载管理
+          </div>
+          <div class="card-inner">
+            <v-card-text>
+              <v-row dense>
+                <v-col cols="12" sm="6">
+                  <v-text-field
+                    v-model.number="config.download_count"
+                    label="候选图片数量"
+                    type="number"
+                    min="1"
+                    max="100"
+                    prepend-inner-icon="mdi-counter"
+                    hint="预览时从网络源获取的候选图片数量（1-100）"
+                    persistent-hint
+                    dense
+                  />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-select
+                    v-model="downloadSource"
+                    :items="downloadSourceOptions"
+                    label="下载源"
+                    prepend-inner-icon="mdi-source-branch"
+                    hint="Auto 同时使用横屏+竖屏网络源；PC/Mobile 仅使用对应网络源"
+                    persistent-hint
+                    dense
+                    class="source-select"
+                  />
+                </v-col>
+              </v-row>
+              <v-row dense class="mt-1">
+                <v-col cols="12">
+                  <v-btn
+                    color="warning"
+                    variant="tonal"
+                    :loading="candidateLoading"
+                    :disabled="!config.enable || candidateLoading"
+                    @click="loadCandidates"
+                  >
+                    <v-icon start size="18">mdi-image-search</v-icon>
+                    预览候选图片
+                  </v-btn>
+                  <span class="download-status-text ml-3" :class="downloadStatusColor">
+                    {{ downloadStatusText }}
+                  </span>
+                </v-col>
+              </v-row>
+              <v-row v-if="downloadProgressText" dense class="mt-1">
+                <v-col cols="12">
+                  <div class="download-progress-text">{{ downloadProgressText }}</div>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </div>
+        </div>
+
+        <!-- 候选图片选择对话框 -->
+        <v-dialog v-model="candidateDialog" max-width="880" persistent>
+          <v-card>
+            <v-card-title class="d-flex align-center">
+              <v-icon color="warning" class="mr-2">mdi-image-multiple</v-icon>
+              选择要下载的图片（已选 {{ selectedCount }}/{{ candidateItems.length }}）
+              <v-spacer></v-spacer>
+              <v-btn icon size="small" @click="candidateDialog = false">
+                <v-icon>mdi-close</v-icon>
+              </v-btn>
+            </v-card-title>
+            <v-card-text>
+              <div v-if="candidateItems.length === 0" class="text-center py-6 text-grey">
+                未获取到候选图片，请检查网络源配置
+              </div>
+              <div v-else class="candidate-grid">
+                <div
+                  v-for="(item, index) in candidateItems"
+                  :key="item.url"
+                  class="candidate-item"
+                  :class="{ 'candidate-selected': item.selected }"
+                  @click="toggleCandidate(index)"
+                >
+                  <img
+                    :src="item.url"
+                    :alt="'候选图片 ' + (index + 1)"
+                    loading="lazy"
+                    @error="handleImageError(index)"
+                  />
+                  <div class="candidate-check">
+                    <v-icon v-if="item.selected" color="success" size="18">mdi-check-circle</v-icon>
+                    <v-icon v-else color="white" size="18">mdi-checkbox-blank-circle-outline</v-icon>
+                  </div>
+                </div>
+              </div>
+            </v-card-text>
+            <v-card-actions>
+              <v-btn size="small" variant="tonal" @click="toggleAllCandidates">
+                <v-icon start size="16">mdi-select-all</v-icon>
+                {{ allSelected ? '取消全选' : '全选' }}
+              </v-btn>
+              <v-btn size="small" variant="tonal" @click="invertCandidates" class="ml-1">
+                <v-icon start size="16">mdi-select-inverse</v-icon>
+                反选
+              </v-btn>
+              <v-spacer></v-spacer>
+              <v-btn size="small" variant="tonal" @click="candidateDialog = false">取消</v-btn>
+              <v-btn
+                color="warning"
+                size="small"
+                :disabled="selectedCount === 0 || downloadRunning"
+                :loading="downloadRunning"
+                @click="confirmDownload"
+              >
+                <v-icon start size="16">mdi-download</v-icon>
+                确认下载（{{ selectedCount }}）
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
         <!-- 通知 -->
         <v-alert v-if="successMessage" type="success" density="compact" class="mb-2 text-caption" variant="tonal" closable>{{ successMessage }}</v-alert>
         <v-alert v-if="errorMessage" type="error" density="compact" class="mb-2 text-caption" variant="tonal" closable>{{ errorMessage }}</v-alert>
@@ -190,7 +315,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
   api: { type: Object, required: true },
@@ -207,17 +332,161 @@ const config = reactive({
   network_image_url_pc: "",
   network_image_url_mobile: "",
   network_image_url: "", // 兼容老配置
+  download_count: 20,
 });
+
+// 默认本地目录（来自后端，用于空值占位提示）
+const defaultPcPath = ref("");
+const defaultMobilePath = ref("");
 
 const saving = ref(false);
 
 const successMessage = ref(null);
 const errorMessage = ref(null);
 
+// 下载管理
+const downloadSource = ref('both');
+const downloadSourceOptions = [
+  { title: '横屏+竖屏（Auto）', value: 'both' },
+  { title: '仅横屏源（PC）', value: 'pc' },
+  { title: '仅竖屏源（Mobile）', value: 'mobile' },
+];
+const downloadRunning = ref(false);
+const downloadStatus = ref(null);
+let downloadPollTimer = null;
+
+// 候选图片预览选择
+const candidateDialog = ref(false);
+const candidateLoading = ref(false);
+const candidateItems = ref([]);
+
+const selectedCount = computed(() => candidateItems.value.filter((item) => item.selected).length);
+const allSelected = computed(
+  () => candidateItems.value.length > 0 && selectedCount.value === candidateItems.value.length,
+);
+
+const downloadStatusText = computed(() => {
+  if (downloadRunning.value) return '下载中...';
+  if (!downloadStatus.value) return '尚未开始';
+  const s = downloadStatus.value;
+  if (s.running) return `下载中 ${s.done}/${s.total}`;
+  return s.total > 0 ? '下载完成' : '无下载记录';
+});
+
+const downloadStatusColor = computed(() => {
+  if (downloadRunning.value || downloadStatus.value?.running) return 'text-warning';
+  if (downloadStatus.value?.total > 0) return 'text-success';
+  return 'text-grey';
+});
+
+const downloadProgressText = computed(() => {
+  const s = downloadStatus.value;
+  if (!s || s.total === 0) return '';
+  const pct = s.total > 0 ? Math.round((s.done / s.total) * 100) : 0;
+  return `进度 ${pct}% | 完成 ${s.done}/${s.total} | 成功 ${s.success} | 横屏 ${s.pc_saved || 0} | 竖屏 ${s.mobile_saved || 0} | 失败 ${s.failed} | 跳过 ${s.skipped}`;
+});
+
+const loadCandidates = async () => {
+  if (!config.enable) {
+    showNotification('请先启用插件', 'error');
+    return;
+  }
+  candidateLoading.value = true;
+  try {
+    const result = await props.api.get('plugin/RandomPic/download/candidates', {
+      params: {
+        source: downloadSource.value,
+        count: Number(config.download_count) || 30,
+      },
+    });
+    const urls = result?.data?.urls || [];
+    candidateItems.value = urls.map((url) => ({ url, selected: true }));
+    candidateDialog.value = true;
+    if (urls.length === 0) {
+      showNotification('未获取到候选图片，请检查网络源配置', 'error');
+    }
+  } catch (error) {
+    showNotification('获取候选图片失败', 'error');
+  } finally {
+    candidateLoading.value = false;
+  }
+};
+
+const toggleCandidate = (index) => {
+  const item = candidateItems.value[index];
+  if (item) {
+    item.selected = !item.selected;
+  }
+};
+
+const toggleAllCandidates = () => {
+  const next = !allSelected.value;
+  candidateItems.value.forEach((item) => {
+    item.selected = next;
+  });
+};
+
+const invertCandidates = () => {
+  candidateItems.value.forEach((item) => {
+    item.selected = !item.selected;
+  });
+};
+
+const handleImageError = (index) => {
+  const item = candidateItems.value[index];
+  if (item) {
+    item.url = '';
+  }
+};
+
+const confirmDownload = async () => {
+  const urls = candidateItems.value.filter((item) => item.selected && item.url).map((item) => item.url);
+  if (urls.length === 0) {
+    showNotification('未选择可用的图片地址', 'error');
+    return;
+  }
+  downloadRunning.value = true;
+  try {
+    const result = await props.api.post('plugin/RandomPic/download', { urls });
+    if (result && result.msg) {
+      showNotification(result.msg, 'success');
+    }
+    candidateDialog.value = false;
+    pollDownloadStatus();
+  } catch (error) {
+    downloadRunning.value = false;
+    showNotification('启动下载失败', 'error');
+  }
+};
+
+const pollDownloadStatus = async () => {
+  stopPollDownloadStatus();
+  downloadPollTimer = setInterval(async () => {
+    try {
+      const status = await props.api.get('plugin/RandomPic/download/status');
+      downloadStatus.value = status || null;
+      if (!status || !status.running) {
+        downloadRunning.value = false;
+        stopPollDownloadStatus();
+      }
+    } catch (error) {
+      downloadRunning.value = false;
+      stopPollDownloadStatus();
+    }
+  }, 2000);
+};
+
+const stopPollDownloadStatus = () => {
+  if (downloadPollTimer) {
+    clearInterval(downloadPollTimer);
+    downloadPollTimer = null;
+  }
+};
+
 const isConfigValid = () => {
   if (!config.enable) return true;
-  const hasPc = config.pc_path || config.network_image_url_pc;
-  const hasMobile = config.mobile_path || config.network_image_url_mobile;
+  const hasPc = (config.pc_path || defaultPcPath.value) || config.network_image_url_pc;
+  const hasMobile = (config.mobile_path || defaultMobilePath.value) || config.network_image_url_mobile;
   return Boolean(hasPc && hasMobile);
 };
 
@@ -245,6 +514,7 @@ const resetConfig = () => {
     network_image_url_pc: "",
     network_image_url_mobile: "",
     network_image_url: "",
+    download_count: 20,
   });
   showNotification('配置已重置', 'success');
 };
@@ -257,10 +527,19 @@ const saveConfig = async () => {
 
   saving.value = true;
   try {
-    await props.api.post('plugin/RandomPic/config', config);
+    const payload = {
+      enable: config.enable,
+      pc_path: config.pc_path,
+      mobile_path: config.mobile_path,
+      network_image_url_pc: config.network_image_url_pc,
+      network_image_url_mobile: config.network_image_url_mobile,
+      network_image_url: config.network_image_url,
+      download_count: config.download_count,
+    };
+    await props.api.post('plugin/RandomPic/config', payload);
     showNotification('配置保存成功', 'success');
-    emit('save', JSON.parse(JSON.stringify(config)));
-    emit('config-updated-on-server', config);
+    emit('save', JSON.parse(JSON.stringify(payload)));
+    emit('config-updated-on-server', payload);
   } catch (error) {
     showNotification('配置保存失败', 'error');
   } finally {
@@ -272,7 +551,16 @@ const saveConfig = async () => {
 onMounted(() => {
   if (props.initialConfig) {
     Object.assign(config, props.initialConfig);
+    defaultPcPath.value = props.initialConfig.default_pc_path || "";
+    defaultMobilePath.value = props.initialConfig.default_mobile_path || "";
   }
+  if (config.enable) {
+    pollDownloadStatus();
+  }
+});
+
+onUnmounted(() => {
+  stopPollDownloadStatus();
 });
 </script>
 
@@ -707,6 +995,78 @@ onMounted(() => {
   font-weight: 600;
 }
 
+/* 下载源下拉：图标与文字分开一点 */
+.source-select :deep(.v-field__prepend-inner) {
+  padding-inline-end: 8px;
+}
+.source-select :deep(.v-field__input) {
+  padding-inline-start: 4px;
+}
+/* 下拉面板选项内图标与文字的间距 */
+.source-select :deep(.v-list-item__content) {
+  margin-inline-start: 4px;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  max-height: 480px;
+  overflow-y: auto;
+}
+.candidate-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #e6e8eb;
+  cursor: pointer;
+  background: #f3f4f6;
+}
+.candidate-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.candidate-item.candidate-selected {
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+}
+.candidate-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 50%;
+  padding: 1px;
+  line-height: 1;
+}
+[data-theme="dark"] .candidate-item,
+[data-theme="purple"] .candidate-item,
+[data-theme="transparent"] .candidate-item {
+  border-color: #2f3643;
+}
+.download-status-text {
+  font-size: 13px;
+  font-weight: 600;
+}
+.download-progress-text {
+  font-size: 12px;
+  color: #6b7280;
+  background: rgba(127, 127, 127, 0.08);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: 'Courier New', monospace;
+}
+[data-theme="dark"] .download-progress-text,
+[data-theme="purple"] .download-progress-text,
+[data-theme="transparent"] .download-progress-text {
+  color: #9ca3af;
+}
 .directory-info {
   display: flex;
   align-items: center;

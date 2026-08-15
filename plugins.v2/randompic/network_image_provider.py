@@ -1,10 +1,15 @@
 import random
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 from app.utils.http import RequestUtils
 
 IMG_EXTS = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
+# 单源（随机图床等一次返回一张）预览时的最大请求次数，避免等待过久
+MAX_SOURCE_REQUESTS = 6
+# 候选图片收集并发数
+COLLECT_WORKERS = 3
 
 
 def is_url(value):
@@ -89,6 +94,104 @@ def get_network_image_url(config_value):
             response.close()
 
     return url
+
+
+def collect_network_image_urls(config_value, limit=20):
+    """从网络图片源配置中批量收集图片 URL。
+
+    支持逗号分隔的多个直链/API、txt 文本、JSON API、随机图床 API。
+    多个候选源并发收集，随机图床源限制请求次数以保证响应速度。
+    :return: 去重后的图片 URL 列表
+    """
+    if not config_value or not isinstance(config_value, str):
+        return []
+    candidates = [value.strip() for value in config_value.split(',') if is_url(value.strip())]
+    if not candidates:
+        return []
+
+    urls = []
+    seen = set()
+
+    def _add(url):
+        if url not in seen:
+            seen.add(url)
+            urls.append(url)
+
+    with ThreadPoolExecutor(max_workers=COLLECT_WORKERS) as executor:
+        futures = []
+        for candidate in candidates:
+            if len(urls) >= limit:
+                break
+            if is_image_url(candidate):
+                _add(candidate)
+                continue
+            futures.append(executor.submit(_collect_from_source, candidate, limit))
+        for future in as_completed(futures):
+            for url in future.result():
+                _add(url)
+                if len(urls) >= limit:
+                    break
+    return urls[:limit]
+
+
+def _collect_from_source(url, limit):
+    """从单个 API/文本源收集图片 URL，支持随机图床多次请求去重。"""
+    if limit <= 0:
+        return []
+    first = _parse_source_urls(url)
+    if not first:
+        return []
+    if len(first) > 1:
+        return first[:limit]
+
+    results = []
+    seen = set()
+    for _ in range(min(limit, MAX_SOURCE_REQUESTS)):
+        batch = _parse_source_urls(url)
+        new_found = False
+        for item in batch:
+            if item not in seen:
+                seen.add(item)
+                results.append(item)
+                new_found = True
+        if not new_found or len(results) >= limit:
+            break
+    return results[:limit]
+
+
+def _parse_source_urls(url):
+    """请求并解析单个源，返回其中的图片 URL 列表。"""
+    response = None
+    try:
+        response = RequestUtils(timeout=3).get_res(url)
+        if not response:
+            return []
+        content_type = response.headers.get('Content-Type', '')
+        if content_type.startswith('image/'):
+            return [response.url]
+        if 'json' in content_type:
+            data = response.json()
+            found = []
+            if isinstance(data, dict):
+                for key in ('url', 'image', 'img', 'src', 'images', 'imgs'):
+                    value = data.get(key)
+                    if isinstance(value, str) and is_image_url(value):
+                        found.append(value)
+                    elif isinstance(value, list):
+                        found.extend(item for item in value if isinstance(item, str) and is_image_url(item))
+            elif isinstance(data, list):
+                found.extend(item for item in data if isinstance(item, str) and is_image_url(item))
+            if found:
+                return found
+            return get_urls_from_text(str(data))
+        if 'text' in content_type:
+            return get_urls_from_text(response.text)
+    except Exception:
+        return []
+    finally:
+        if response is not None:
+            response.close()
+    return []
 
 
 def count_network_images(config_value):

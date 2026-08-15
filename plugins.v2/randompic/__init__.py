@@ -1,20 +1,29 @@
+import hashlib
 import mimetypes
 import random
 import re
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import HTTPException, Query, Request
+from fastapi import File, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, Response
+
+from PIL import Image
 
 import app.plugins as plugin_runtime
 from app.log import logger
 from app.plugins import _PluginBase
 from app.utils.http import RequestUtils
 
-from .network_image_provider import count_network_images, get_network_image_url
+from .network_image_provider import (
+    collect_network_image_urls,
+    count_network_images,
+    get_network_image_url,
+)
 
 _IMAGE_PATTERNS = ('*.jpg', '*.jpeg', '*.png', '*.gif', '*.webp')
 _MOBILE_UA_PATTERN = re.compile(
@@ -98,7 +107,7 @@ class RandomPic(_PluginBase):
     # 插件图标
     plugin_icon = 'https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png'
     # 插件版本
-    plugin_version = '2.3.0'
+    plugin_version = '2.3.1'
     # 插件作者
     plugin_author = 'xijin285'
     # 作者主页
@@ -118,17 +127,30 @@ class RandomPic(_PluginBase):
         self._network_image_url_pc: Optional[str] = None
         self._network_image_url_mobile: Optional[str] = None
         self._network_image_url: Optional[str] = None
+        self._download_count: int = 20
+        self._download_lock = threading.Lock()
+        self._download_status: Dict[str, Any] = {}
+
+    def _default_paths(self) -> Tuple[str, str]:
+        """返回默认 PC/Mobile 目录（插件数据目录下）。"""
+        base = self.get_data_path()
+        return str(base / 'PC'), str(base / 'Mobile')
 
     def init_plugin(self, config: Optional[Dict[str, Any]] = None):
         _close_legacy_runtime()
         if not config:
             return
+        default_pc, default_mobile = self._default_paths()
         self._enable = bool(config.get('enable'))
-        self._pc_path = config.get('pc_path')
-        self._mobile_path = config.get('mobile_path')
+        self._pc_path = config.get('pc_path') or default_pc
+        self._mobile_path = config.get('mobile_path') or default_mobile
         self._network_image_url_pc = config.get('network_image_url_pc')
         self._network_image_url_mobile = config.get('network_image_url_mobile')
         self._network_image_url = config.get('network_image_url')
+        try:
+            self._download_count = max(1, int(config.get('download_count') or 20))
+        except (TypeError, ValueError):
+            self._download_count = 20
 
     def get_state(self) -> bool:
         return self._enable
@@ -171,6 +193,13 @@ class RandomPic(_PluginBase):
                 'summary': '获取图片预览',
             },
             {
+                'path': '/preview/save',
+                'endpoint': self._save_preview_image,
+                'methods': ['POST'],
+                'auth': 'bear',
+                'summary': '保存预览图片到本地目录并自动分类',
+            },
+            {
                 'path': '/random',
                 'endpoint': self._get_random,
                 'methods': ['GET'],
@@ -184,6 +213,27 @@ class RandomPic(_PluginBase):
                 'allow_anonymous': True,
                 'summary': '获取随机图库统计',
             },
+            {
+                'path': '/download/candidates',
+                'endpoint': self._get_download_candidates,
+                'methods': ['GET'],
+                'auth': 'bear',
+                'summary': '获取候选下载图片列表',
+            },
+            {
+                'path': '/download',
+                'endpoint': self._start_download,
+                'methods': ['POST'],
+                'auth': 'bear',
+                'summary': '下载网络图片并按横竖屏分类保存到本地',
+            },
+            {
+                'path': '/download/status',
+                'endpoint': self._get_download_status,
+                'methods': ['GET'],
+                'auth': 'bear',
+                'summary': '获取下载任务状态',
+            },
         ]
         # v3 兼容：保持插件自定义响应格式（纯 dict），
         # 绕过宿主 ResponseAPIRoute 的统一 envelope 自动包装
@@ -193,13 +243,17 @@ class RandomPic(_PluginBase):
         return apis
 
     def _get_config(self) -> Dict[str, Any]:
+        default_pc, default_mobile = self._default_paths()
         return {
             'enable': self._enable,
-            'pc_path': self._pc_path,
-            'mobile_path': self._mobile_path,
+            'pc_path': self._pc_path or default_pc,
+            'mobile_path': self._mobile_path or default_mobile,
+            'default_pc_path': default_pc,
+            'default_mobile_path': default_mobile,
             'network_image_url_pc': self._network_image_url_pc,
             'network_image_url_mobile': self._network_image_url_mobile,
             'network_image_url': self._network_image_url,
+            'download_count': self._download_count,
         }
 
     def _save_config(self, data: dict) -> dict:
@@ -210,6 +264,10 @@ class RandomPic(_PluginBase):
             network_image_url_pc = data.get('network_image_url_pc')
             network_image_url_mobile = data.get('network_image_url_mobile')
             network_image_url = data.get('network_image_url')
+            try:
+                download_count = max(1, int(data.get('download_count') or 20))
+            except (TypeError, ValueError):
+                download_count = 20
 
             if enable:
                 has_pc_source = bool(
@@ -231,6 +289,7 @@ class RandomPic(_PluginBase):
             self._network_image_url_pc = network_image_url_pc
             self._network_image_url_mobile = network_image_url_mobile
             self._network_image_url = network_image_url
+            self._download_count = download_count
             self.update_config(self._get_config())
             return {'success': True, 'msg': '配置保存成功'}
         except Exception as err:
@@ -379,9 +438,15 @@ class RandomPic(_PluginBase):
 
     def _get_status(self) -> Dict[str, Any]:
         stats = self._build_stats()
-        pc_available = bool(self._pc_path or self._network_image_url_pc or self._network_image_url)
+        default_pc, default_mobile = self._default_paths()
+        pc_path = self._pc_path or default_pc
+        mobile_path = self._mobile_path or default_mobile
+        # 是否用户自定义（非空且不等于默认路径）
+        pc_path_custom = bool(self._pc_path) and str(self._pc_path) != str(default_pc)
+        mobile_path_custom = bool(self._mobile_path) and str(self._mobile_path) != str(default_mobile)
+        pc_available = bool(pc_path or self._network_image_url_pc or self._network_image_url)
         mobile_available = bool(
-            self._mobile_path or self._network_image_url_mobile or self._network_image_url
+            mobile_path or self._network_image_url_mobile or self._network_image_url
         )
         return {
             'enable': self._enable,
@@ -392,8 +457,10 @@ class RandomPic(_PluginBase):
                 'mobile': self._enable and mobile_available,
                 'stats': self._enable,
             },
-            'pc_path': self._pc_path,
-            'mobile_path': self._mobile_path,
+            'pc_path': pc_path,
+            'pc_path_custom': pc_path_custom,
+            'mobile_path': mobile_path,
+            'mobile_path_custom': mobile_path_custom,
             'network_image_url_pc': self._network_image_url_pc,
             'network_image_url_mobile': self._network_image_url_mobile,
             'network_image_url': self._network_image_url,
@@ -403,6 +470,232 @@ class RandomPic(_PluginBase):
             'today_visits': stats['today'],
             'detail': stats['detail'],
         }
+
+    def _get_download_candidates(
+        self,
+        source: str = Query(default='both', pattern='^(both|pc|mobile)$'),
+        count: int = Query(default=30, ge=1, le=100),
+    ) -> Dict[str, Any]:
+        self._ensure_enabled()
+        urls = self._collect_download_urls(source, count)
+        return {'success': True, 'data': {'urls': urls, 'total': len(urls)}}
+
+    def _start_download(self, data: dict) -> dict:
+        self._ensure_enabled()
+
+        selected_urls = data.get('urls')
+        if isinstance(selected_urls, list) and selected_urls:
+            urls = [
+                url.strip()
+                for url in selected_urls
+                if isinstance(url, str) and url.strip().startswith(('http://', 'https://'))
+            ]
+            if not urls:
+                return {'success': False, 'msg': '未选择有效的图片地址'}
+            count = len(urls)
+            source_type = 'both'
+        else:
+            urls = None
+            try:
+                count = int(data.get('count') or self._download_count or 20)
+            except (TypeError, ValueError):
+                count = self._download_count
+            source_type = data.get('source') or 'both'
+            if count < 1 or count > 500:
+                return {'success': False, 'msg': '下载数量需在 1-500 之间'}
+            if source_type not in ('both', 'pc', 'mobile'):
+                return {'success': False, 'msg': '不支持的下载源'}
+
+        has_local = bool(self._pc_path or self._mobile_path)
+        if not has_local:
+            return {'success': False, 'msg': '请先配置本地图片目录'}
+        if not urls and not (
+            self._network_image_url_pc or self._network_image_url_mobile or self._network_image_url
+        ):
+            return {'success': False, 'msg': '请先配置网络图片地址'}
+
+        with self._download_lock:
+            if self._download_status.get('running'):
+                return {'success': False, 'msg': '下载任务进行中，请稍后再试'}
+            self._download_status = {
+                'running': True,
+                'total': 0,
+                'done': 0,
+                'success': 0,
+                'failed': 0,
+                'skipped': 0,
+                'pc_saved': 0,
+                'mobile_saved': 0,
+                'message': '正在启动下载任务...',
+            }
+
+        thread = threading.Thread(
+            target=self._download_worker,
+            args=(count, source_type, urls),
+            daemon=True,
+        )
+        thread.start()
+        return {'success': True, 'msg': '下载任务已启动'}
+
+    def _get_download_status(self) -> Dict[str, Any]:
+        with self._download_lock:
+            return dict(self._download_status)
+
+    def _download_worker(
+        self,
+        count: int,
+        source_type: str,
+        selected_urls: Optional[List[str]] = None,
+    ) -> None:
+        try:
+            if selected_urls:
+                urls = selected_urls
+            else:
+                urls = self._collect_download_urls(source_type, count)
+            if not urls:
+                with self._download_lock:
+                    self._download_status.update(
+                        {'running': False, 'message': '未从网络源解析到图片地址'}
+                    )
+                return
+
+            total = min(count, len(urls))
+            with self._download_lock:
+                self._download_status.update({'total': total, 'message': '开始下载图片...'})
+
+            for url in urls[:total]:
+                with self._download_lock:
+                    self._download_status['done'] += 1
+                try:
+                    saved = self._download_and_save(url)
+                    with self._download_lock:
+                        if saved == 'pc':
+                            self._download_status['pc_saved'] += 1
+                            self._download_status['success'] += 1
+                        elif saved == 'mobile':
+                            self._download_status['mobile_saved'] += 1
+                            self._download_status['success'] += 1
+                        elif saved == 'exists':
+                            self._download_status['skipped'] += 1
+                        else:
+                            self._download_status['failed'] += 1
+                except Exception as err:
+                    logger.warning(f'下载图片失败 {url} - {err}')
+                    with self._download_lock:
+                        self._download_status['failed'] += 1
+        finally:
+            with self._download_lock:
+                self._download_status['running'] = False
+                self._download_status['message'] = '下载任务已完成'
+
+    def _collect_download_urls(self, source_type: str, count: int) -> List[str]:
+        sources = []
+        if source_type in ('both', 'pc'):
+            sources.append(self._network_image_url_pc)
+        if source_type in ('both', 'mobile'):
+            sources.append(self._network_image_url_mobile)
+        if source_type == 'both':
+            sources.append(self._network_image_url)
+
+        collected = []
+        with ThreadPoolExecutor(max_workers=len(sources) or 1) as executor:
+            futures = [
+                executor.submit(collect_network_image_urls, str(source), count)
+                for source in sources
+                if source and str(source).strip()
+            ]
+            for future in as_completed(futures):
+                collected.extend(future.result())
+                if len(collected) >= count:
+                    break
+
+        seen = set()
+        deduped = []
+        for url in collected:
+            if url not in seen:
+                seen.add(url)
+                deduped.append(url)
+        return deduped
+
+    def _download_and_save(self, url: str) -> str:
+        """下载单张图片，按实际宽高比分类保存到本地目录。
+
+        :return: pc / mobile / exists / invalid
+        """
+        with RequestUtils(timeout=15).response_manager(
+            method='get',
+            url=url,
+            allow_redirects=True,
+        ) as response:
+            if response is None or not response.ok:
+                return 'invalid'
+            content_type = response.headers.get('Content-Type', '')
+            if not content_type.startswith('image/'):
+                return 'invalid'
+            return self._classify_and_save_content(response.content, content_type)
+
+    def _classify_and_save_content(self, content: bytes, content_type: str) -> str:
+        """按实际宽高比将图片字节分类保存到本地目录。
+
+        :return: pc / mobile / exists / invalid
+        """
+        try:
+            with Image.open(BytesIO(content)) as img:
+                width, height = img.size
+        except Exception as err:
+            logger.warning(f'解析图片尺寸失败 - {err}')
+            return 'invalid'
+
+        is_landscape = width >= height
+        target_path = self._pc_path if is_landscape else self._mobile_path
+        if not target_path or not str(target_path).strip():
+            return 'invalid'
+        target_dir = Path(target_path)
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as err:
+            logger.warning(f'创建目录失败 {target_dir} - {err}')
+            return 'invalid'
+
+        ext = mimetypes.guess_extension(content_type.split(';')[0].strip()) or '.jpg'
+        if ext.lower() not in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+            ext = '.jpg'
+        filename = f'{hashlib.md5(content).hexdigest()[:12]}{ext}'
+        filepath = target_dir / filename
+        if filepath.exists():
+            return 'exists'
+        try:
+            filepath.write_bytes(content)
+        except Exception as err:
+            logger.warning(f'保存图片失败 {filepath} - {err}')
+            return 'invalid'
+        return 'pc' if is_landscape else 'mobile'
+
+    def _save_preview_image(self, file: UploadFile = File(...)) -> Dict[str, Any]:
+        """将预览的图片字节保存到本地目录，自动按横竖屏分类。"""
+        self._ensure_enabled()
+        try:
+            content = file.file.read()
+            content_type = file.content_type or mimetypes.guess_type(file.filename or '')[0] or ''
+        except Exception as err:
+            logger.error(f'读取上传预览图片失败: {err}')
+            return {'success': False, 'msg': '读取上传图片失败'}
+        finally:
+            try:
+                file.file.close()
+            except Exception:
+                pass
+
+        if not content:
+            return {'success': False, 'msg': '上传内容为空'}
+
+        result = self._classify_and_save_content(content, content_type)
+        if result == 'invalid':
+            return {'success': False, 'msg': '图片解析或保存失败'}
+        if result == 'exists':
+            return {'success': True, 'msg': '图片已存在，自动跳过'}
+        category = '横屏' if result == 'pc' else '竖屏'
+        return {'success': True, 'msg': f'已保存为{category}图片'}
 
     def get_form(self) -> Tuple[Optional[List[dict]], Dict[str, Any]]:
         return None, self._get_config()
