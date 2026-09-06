@@ -13,12 +13,25 @@ class DashboardBuilder:
     def _get_ikuai_status(self) -> Dict[str, Any]:
         """获取爱快路由器状态信息"""
         try:
+            auth_mode = (getattr(self.plugin, '_ikuai_auth_mode', 'auto') or 'auto').lower()
+            api_token = (getattr(self.plugin, '_ikuai_api_token', '') or '').strip()
+            has_url = bool(self.plugin._ikuai_url)
+            has_password = bool(self.plugin._ikuai_password)
+            # token 模式：URL + 令牌即可支撑状态/控制面；密码仅下载备份需要
+            if auth_mode == "token":
+                if not has_url or not api_token:
+                    return {"status": "error", "message": "请先配置爱快路由器基本信息（URL、用户名、密码）"}
+            elif not has_url or not has_password:
+                return {"status": "error", "message": "请先配置爱快路由器基本信息（URL、用户名、密码）"}
+
             from ..ikuai.client import IkuaiClient
             client = IkuaiClient(
                 url=self.plugin._ikuai_url,
                 username=self.plugin._ikuai_username,
                 password=self.plugin._ikuai_password,
-                plugin_name=self.plugin_name
+                plugin_name=self.plugin_name,
+                auth_mode=auth_mode,
+                api_token=api_token
             )
             
             # 尝试登录

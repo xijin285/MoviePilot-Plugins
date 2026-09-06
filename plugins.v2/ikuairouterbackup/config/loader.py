@@ -39,6 +39,8 @@ class ConfigLoader:
 
         self.plugin._ikuai_username = str(saved_config.get("ikuai_username", "admin"))
         self.plugin._ikuai_password = str(saved_config.get("ikuai_password", ""))
+        self.plugin._ikuai_auth_mode = str(saved_config.get("ikuai_auth_mode", "auto"))
+        self.plugin._ikuai_api_token = str(saved_config.get("ikuai_api_token", ""))
         self.plugin._enable_local_backup = bool(saved_config.get("enable_local_backup", True))
         
         # 备份路径配置

@@ -136,7 +136,9 @@ class IkuaiMessageHandler:
                 url=self.ikuai_plugin._ikuai_url,
                 username=self.ikuai_plugin._ikuai_username,
                 password=self.ikuai_plugin._ikuai_password,
-                plugin_name=self.ikuai_plugin_name
+                plugin_name=self.ikuai_plugin_name,
+                auth_mode=getattr(self.ikuai_plugin, '_ikuai_auth_mode', 'auto'),
+                api_token=getattr(self.ikuai_plugin, '_ikuai_api_token', '')
             )
             
             if not client.login():
@@ -221,7 +223,9 @@ class IkuaiMessageHandler:
                 url=self.ikuai_plugin._ikuai_url,
                 username=self.ikuai_plugin._ikuai_username,
                 password=self.ikuai_plugin._ikuai_password,
-                plugin_name=self.ikuai_plugin_name
+                plugin_name=self.ikuai_plugin_name,
+                auth_mode=getattr(self.ikuai_plugin, '_ikuai_auth_mode', 'auto'),
+                api_token=getattr(self.ikuai_plugin, '_ikuai_api_token', '')
             )
             
             if not client.login():
@@ -321,7 +325,9 @@ class IkuaiMessageHandler:
                 url=self.ikuai_plugin._ikuai_url,
                 username=self.ikuai_plugin._ikuai_username,
                 password=self.ikuai_plugin._ikuai_password,
-                plugin_name=self.ikuai_plugin_name
+                plugin_name=self.ikuai_plugin_name,
+                auth_mode=getattr(self.ikuai_plugin, '_ikuai_auth_mode', 'auto'),
+                api_token=getattr(self.ikuai_plugin, '_ikuai_api_token', '')
             )
             
             if not client.login():

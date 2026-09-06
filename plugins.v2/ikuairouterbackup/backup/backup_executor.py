@@ -41,8 +41,19 @@ class BackupExecutor:
             self.plugin._running = True
             logger.info(f"开始执行 {self.plugin_name} 任务...")
 
-            if not self.plugin._ikuai_url or not self.plugin._ikuai_username or not self.plugin._ikuai_password:
+            auth_mode = (getattr(self.plugin, '_ikuai_auth_mode', 'auto') or 'auto').lower()
+            api_token = (getattr(self.plugin, '_ikuai_api_token', '') or '').strip()
+            if not self.plugin._ikuai_url:
+                error_msg = "配置不完整：爱快路由器地址未设置。"
+            elif auth_mode == "token" and not api_token:
+                error_msg = "配置不完整：API令牌模式未填写令牌。"
+            elif auth_mode == "token" and not self.plugin._ikuai_password:
+                error_msg = "配置不完整：下载备份文件仍需账号密码（爱快4.x未开放令牌下载），请填写密码。"
+            elif auth_mode != "token" and (not self.plugin._ikuai_username or not self.plugin._ikuai_password):
                 error_msg = "配置不完整：URL、用户名或密码未设置。"
+            else:
+                error_msg = None
+            if error_msg:
                 logger.error(f"{self.plugin_name} {error_msg}")
                 self.plugin._send_notification(success=False, message=error_msg)
                 history_entry["message"] = error_msg
@@ -115,12 +126,14 @@ class BackupExecutor:
         
         :return: (是否成功, 错误信息, 备份文件名)
         """
-        # 初始化iKuai客户端
+        # 初始化iKuai客户端（自动适配认证方式：3.x 账号密码 / 4.x 令牌）
         client = IkuaiClient(
             url=self.plugin._ikuai_url,
             username=self.plugin._ikuai_username,
             password=self.plugin._ikuai_password,
-            plugin_name=self.plugin_name
+            plugin_name=self.plugin_name,
+            auth_mode=getattr(self.plugin, '_ikuai_auth_mode', 'auto'),
+            api_token=getattr(self.plugin, '_ikuai_api_token', '')
         )
         
         # 登录
@@ -144,8 +157,15 @@ class BackupExecutor:
         
         # 兼容新老版本，按 date 字段降序排序，优先取 filename，没有则取 name
         def get_date(x):
-            # 兼容各种字段名
-            return x.get("date") or x.get("backup_time") or ""
+            # 兼容各种字段名：v3 用 date/backup_time，v4 用 timestamp(Unix秒)
+            v = x.get("date") or x.get("backup_time") or ""
+            if not v and x.get("timestamp"):
+                try:
+                    import datetime as _dt
+                    v = _dt.datetime.fromtimestamp(int(x["timestamp"])).strftime("%Y-%m-%d %H:%M:%S")
+                except (ValueError, TypeError, OSError):
+                    v = ""
+            return v
         sorted_backups = sorted(backup_list, key=get_date, reverse=True)
         latest_backup = sorted_backups[0] if sorted_backups else None
         actual_router_filename_from_api = None

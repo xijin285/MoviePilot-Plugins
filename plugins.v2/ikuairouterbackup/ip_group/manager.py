@@ -6,9 +6,13 @@ from datetime import datetime
 from typing import Any, List, Dict, Tuple, Optional
 from urllib.parse import urljoin, quote, urlparse
 import requests
+import urllib3
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 from app.log import logger
+
+# 抑制爱快路由器自签名证书触发的InsecureRequestWarning
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class IPGroupManager:
@@ -47,7 +51,7 @@ class IPGroupManager:
             password_md5 = hashlib.md5(self.password.encode('utf-8')).hexdigest()
             login_data = {"username": self.username, "passwd": password_md5}
             
-            response = session.post(login_url, data=json.dumps(login_data), headers={'Content-Type': 'application/json'}, timeout=10)
+            response = session.post(login_url, data=json.dumps(login_data), headers={'Content-Type': 'application/json'}, timeout=10, verify=False)
             response.raise_for_status()
             
             cookies = response.cookies
@@ -783,7 +787,7 @@ class IPGroupManager:
                 }
             try:
                 logger.info(f"正在创建IP分组: {group_name}，包含 {len(ip_list)} 个IP范围")
-                response = session.post(create_url, data=json.dumps(ip_group_data), headers=request_headers, timeout=30)
+                response = session.post(create_url, data=json.dumps(ip_group_data), headers=request_headers, timeout=30, verify=False)
                 response.raise_for_status()
                 try:
                     res_json = response.json()
@@ -857,7 +861,7 @@ class IPGroupManager:
                 }
             try:
                 logger.info(f"尝试从 {self.ikuai_url} 获取IP分组列表...")
-                response = session.post(list_url, data=json.dumps(list_data), headers=request_headers, timeout=15)
+                response = session.post(list_url, data=json.dumps(list_data), headers=request_headers, timeout=15, verify=False)
                 response.raise_for_status()
                 try:
                     res_json = response.json()
@@ -926,7 +930,7 @@ class IPGroupManager:
                 }
             try:
                 logger.info(f"尝试删除IP分组: {group_name}")
-                response = session.post(delete_url, data=json.dumps(delete_data), headers=request_headers, timeout=30)
+                response = session.post(delete_url, data=json.dumps(delete_data), headers=request_headers, timeout=30, verify=False)
                 response.raise_for_status()
                 try:
                     res_json = response.json()
@@ -1114,7 +1118,7 @@ class IPGroupManager:
                     'Referer': self.ikuai_url.rstrip('/') + '/'
                 }
                 
-                response = session.post(create_url, data=json.dumps(test_data), headers=request_headers, timeout=30)
+                response = session.post(create_url, data=json.dumps(test_data), headers=request_headers, timeout=30, verify=False)
                 response.raise_for_status()
                 response_text = response.text.strip().lower()
                 

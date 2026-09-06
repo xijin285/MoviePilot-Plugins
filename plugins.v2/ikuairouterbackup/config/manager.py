@@ -52,7 +52,7 @@ class ConfigManager:
             critical_config = {}
             critical_keys = {
                 'enabled', 'notify', 'onlyonce', 'retry_count', 'retry_interval', 'notification_style',
-                'ikuai_url', 'ikuai_username', 'ikuai_password',
+                'ikuai_url', 'ikuai_username', 'ikuai_password', 'ikuai_auth_mode', 'ikuai_api_token',
                 'enable_local_backup', 'backup_path', 'keep_backup_num',
                 'enable_webdav', 'webdav_url', 'webdav_username', 'webdav_password', 'webdav_path', 'webdav_keep_backup_num',
                 'clear_history', 'delete_after_backup',
@@ -81,6 +81,8 @@ class ConfigManager:
             "ikuai_url": self.plugin._original_ikuai_url,
             "ikuai_username": self.plugin._ikuai_username,
             "ikuai_password": self.plugin._ikuai_password,
+            "ikuai_auth_mode": self.plugin._ikuai_auth_mode,
+            "ikuai_api_token": self.plugin._ikuai_api_token,
             "enable_local_backup": self.plugin._enable_local_backup,
             "backup_path": self.plugin._backup_path,
             "keep_backup_num": self.plugin._keep_backup_num,

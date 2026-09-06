@@ -128,6 +128,60 @@ class FormBuilder:
                                             ]}
                                         ]
                                     },
+                                    # 认证方式 + 4.x API令牌
+                                    {
+                                        'component': 'VRow',
+                                        'props': {'class': 'mb-2'},
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12, 'sm': 6, 'md': 4}, 'content': [
+                                                {'component': 'VSelect', 'props': {
+                                                    'model': 'ikuai_auth_mode',
+                                                    'label': '认证方式',
+                                                    'items': [
+                                                        {'title': '自动（推荐）', 'value': 'auto'},
+                                                        {'title': '账号密码', 'value': 'password'},
+                                                        {'title': 'API令牌(4.x)', 'value': 'token'}
+                                                    ],
+                                                    'prepend-inner-icon': 'mdi-shield-key',
+                                                    'variant': 'outlined',
+                                                    'density': 'comfortable',
+                                                    'hide-details': True
+                                                }}
+                                            ]},
+                                            {'component': 'VCol', 'props': {'cols': 12, 'sm': 6, 'md': 8}, 'content': [
+                                                {'component': 'VTextField', 'props': {
+                                                    'model': 'ikuai_api_token',
+                                                    'label': 'API令牌(4.x)',
+                                                    'type': 'password',
+                                                    'placeholder': '登录管理→个人API令牌，仅4.x生效',
+                                                    'prepend-inner-icon': 'mdi-key',
+                                                    'variant': 'outlined',
+                                                    'density': 'comfortable',
+                                                    'hide-details': True
+                                                }}
+                                            ]}
+                                        ]
+                                    },
+                                    # 认证方式说明
+                                    {
+                                        'component': 'VRow',
+                                        'props': {'class': 'mb-3'},
+                                        'content': [
+                                            {'component': 'VCol', 'props': {'cols': 12}, 'content': [
+                                                {'component': 'VAlert', 'props': {
+                                                    'type': 'info',
+                                                    'variant': 'tonal',
+                                                    'text': '自动模式：3.x/配置了令牌的4.x自动适配——4.x令牌做备份控制，下载备份文件仍需账号密码会话；纯账号密码则全链路走密码。token模式仅4.x生效且需同时填写API令牌和密码。',
+                                                    'border': 'start',
+                                                    'border-color': 'info',
+                                                    'icon': 'mdi-information-outline',
+                                                    'elevation': 0,
+                                                    'rounded': 'lg',
+                                                    'density': 'compact'
+                                                }}
+                                            ]}
+                                        ]
+                                    },
                                                 {
                                         'component': 'VRow',
                                         'props': {'class': 'mb-2'},
@@ -759,6 +813,8 @@ class FormBuilder:
             "ikuai_url": self.plugin._original_ikuai_url,
             "ikuai_username": self.plugin._ikuai_username,
             "ikuai_password": self.plugin._ikuai_password,
+            "ikuai_auth_mode": self.plugin._ikuai_auth_mode,
+            "ikuai_api_token": self.plugin._ikuai_api_token,
             "enable_local_backup": self.plugin._enable_local_backup,
             "backup_path": self.plugin._backup_path,
             "keep_backup_num": self.plugin._keep_backup_num,

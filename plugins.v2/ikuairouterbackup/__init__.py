@@ -37,7 +37,7 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "1.4.0"
+    plugin_version = "1.4.1"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -82,6 +82,8 @@ class IkuaiRouterBackup(_PluginBase):
     _ikuai_url: str = ""
     _ikuai_username: str = "admin"
     _ikuai_password: str = ""
+    _ikuai_auth_mode: str = "auto"  # 认证方式：auto/password/token
+    _ikuai_api_token: str = ""      # 爱快4.x 个人API令牌
     _enable_local_backup: bool = True  # 新增：本地备份开关
     _backup_path: str = ""
     _keep_backup_num: int = 7
@@ -452,11 +454,17 @@ class IkuaiRouterBackup(_PluginBase):
             return False, error_msg
 
     def _get_processed_ikuai_url(self, url: str) -> str:
-        """返回处理后的iKuai URL，确保有http/https前缀并移除末尾的斜杠"""
+        """
+        返回处理后的iKuai URL，确保有http/https前缀并移除末尾的斜杠。
+        爱快4.x强制HTTPS登录，故未填写协议时默认补 https://（自动识别）。
+        """
         url = url.strip().rstrip('/')
         if not url:
             return ""
-        if not url.startswith(('http://', 'https://')):
-            return f"http://{url}"
-        return url
+        if url.startswith('https://'):
+            return url
+        if url.startswith('http://'):
+            return url
+        # 未指定协议，默认按 HTTPS 处理（爱快4.x强制HTTPS）
+        return f"https://{url}"
 

@@ -101,7 +101,9 @@ class RestoreExecutor:
             url=self.plugin._ikuai_url,
             username=self.plugin._ikuai_username,
             password=self.plugin._ikuai_password,
-            plugin_name=self.plugin_name
+            plugin_name=self.plugin_name,
+            auth_mode=getattr(self.plugin, '_ikuai_auth_mode', 'auto'),
+            api_token=getattr(self.plugin, '_ikuai_api_token', '')
         )
         
         # 登录
