@@ -141,6 +141,7 @@
     "author": "xijin285",
     "level": 2,
     "v3": false,
+    "release": true,
     "requirements": [
       "requests>=2.25.0",
       "apscheduler>=3.6.0",
