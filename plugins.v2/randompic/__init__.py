@@ -3,8 +3,10 @@ import mimetypes
 import random
 import re
 import threading
+import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -14,11 +16,7 @@ from fastapi.responses import FileResponse, Response
 
 from PIL import Image
 
-import app.plugins as plugin_runtime
-from app.log import logger
-from app.plugins import _PluginBase
-from app.utils.http import RequestUtils
-
+from .compat import IS_V3, RequestUtils, _PluginBase, logger, plugin_runtime
 from .network_image_provider import (
     collect_network_image_urls,
     count_network_images,
@@ -35,24 +33,11 @@ _MOBILE_UA_PATTERN = re.compile(
 _LEGACY_RUNTIME_REGISTRY = '_randompic_runtime_registry'
 _LEGACY_RUNTIME_LOCK = '_randompic_runtime_lock'
 
-visit_lock = threading.Lock()
-today_visit_count = 0
-today_date = datetime.now().date()
-
-
-def _increment_visit_count() -> None:
-    global today_visit_count, today_date
-    with visit_lock:
-        current_date = datetime.now().date()
-        if current_date != today_date:
-            today_visit_count = 0
-            today_date = current_date
-        today_visit_count += 1
-
-
-def _get_today_visit_count() -> int:
-    with visit_lock:
-        return today_visit_count
+_VISIT_HISTORY_MAX = 60
+_VISIT_DAILY_KEY = 'visit_daily'
+_VISIT_DAILY_DAYS = 7
+# 访问量持久化最小间隔（秒），避免每张图片请求都写一次插件数据
+_VISIT_SAVE_INTERVAL = 30
 
 
 def _count_local_images(directory: Optional[str]) -> int:
@@ -66,6 +51,8 @@ def _count_local_images(directory: Optional[str]) -> int:
 
 def _close_legacy_runtime() -> None:
     """升级无端口版本时关闭旧版本登记的独立 HTTP 服务。"""
+    if plugin_runtime is None:
+        return
     registry = getattr(plugin_runtime, _LEGACY_RUNTIME_REGISTRY, None)
     if not isinstance(registry, dict):
         return
@@ -107,7 +94,7 @@ class RandomPic(_PluginBase):
     # 插件图标
     plugin_icon = 'https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png'
     # 插件版本
-    plugin_version = '2.3.1'
+    plugin_version = '2.6.0'
     # 插件作者
     plugin_author = 'xijin285'
     # 作者主页
@@ -130,6 +117,93 @@ class RandomPic(_PluginBase):
         self._download_count: int = 20
         self._download_lock = threading.Lock()
         self._download_status: Dict[str, Any] = {}
+        # 访问统计：最近调用记录 + 每日访问量
+        self._visit_lock = threading.Lock()
+        self._visit_history: deque = deque(maxlen=_VISIT_HISTORY_MAX)
+        self._visit_daily: Dict[str, int] = {}
+        self._visit_saved_at: float = 0.0
+
+    def _load_visit_daily(self) -> None:
+        """从插件数据目录恢复近 7 天的每日访问量。"""
+        try:
+            saved = self.get_data(_VISIT_DAILY_KEY)
+        except Exception as err:
+            logger.debug(f'读取访问统计数据失败: {err}')
+            return
+        if not isinstance(saved, dict):
+            return
+        today = datetime.now().date()
+        valid_keys = {
+            (today - timedelta(days=offset)).isoformat() for offset in range(_VISIT_DAILY_DAYS)
+        }
+        with self._visit_lock:
+            self._visit_daily = {
+                key: int(value)
+                for key, value in saved.items()
+                if key in valid_keys
+            }
+
+    def _save_visit_daily(self, force: bool = False) -> None:
+        """持久化每日访问量；默认按 _VISIT_SAVE_INTERVAL 节流，避免高频写库。"""
+        now = time.monotonic()
+        if not force and now - self._visit_saved_at < _VISIT_SAVE_INTERVAL:
+            return
+        self._visit_saved_at = now
+        try:
+            with self._visit_lock:
+                snapshot = dict(self._visit_daily)
+            self.save_data(_VISIT_DAILY_KEY, snapshot)
+        except Exception as err:
+            logger.debug(f'保存访问统计数据失败: {err}')
+
+    def _record_visit(
+        self,
+        endpoint: str,
+        image_type: Optional[str],
+        source_type: str,
+        ok: bool,
+        elapsed_ms: int,
+        user_agent: str,
+    ) -> None:
+        """记录一次 API 访问：追加最近记录并累计当日访问量。"""
+        now = datetime.now()
+        entry = {
+            'time': now.strftime('%H:%M:%S'),
+            'date': now.date().isoformat(),
+            'endpoint': endpoint,
+            'type': image_type or 'auto',
+            'source': source_type,
+            'ok': bool(ok),
+            'elapsed_ms': int(elapsed_ms),
+            'ua': (user_agent or '').strip()[:60],
+        }
+        with self._visit_lock:
+            self._visit_daily[now.date().isoformat()] = (
+                self._visit_daily.get(now.date().isoformat(), 0) + 1
+            )
+            self._visit_history.appendleft(entry)
+        self._save_visit_daily()
+
+    def _today_visit_count(self) -> int:
+        with self._visit_lock:
+            return self._visit_daily.get(datetime.now().date().isoformat(), 0)
+
+    def _get_visit_stats(self) -> Dict[str, Any]:
+        """返回最近调用记录和近 7 天每日访问量。"""
+        with self._visit_lock:
+            recent = list(self._visit_history)
+            daily = dict(self._visit_daily)
+        today = datetime.now().date()
+        daily_list = []
+        for offset in range(_VISIT_DAILY_DAYS - 1, -1, -1):
+            day = today - timedelta(days=offset)
+            key = day.isoformat()
+            daily_list.append({
+                'date': key,
+                'label': day.strftime('%m-%d'),
+                'count': daily.get(key, 0),
+            })
+        return {'recent': recent, 'daily': daily_list}
 
     def _default_paths(self) -> Tuple[str, str]:
         """返回默认 PC/Mobile 目录（插件数据目录下）。"""
@@ -138,6 +212,7 @@ class RandomPic(_PluginBase):
 
     def init_plugin(self, config: Optional[Dict[str, Any]] = None):
         _close_legacy_runtime()
+        self._load_visit_daily()
         if not config:
             return
         default_pc, default_mobile = self._default_paths()
@@ -155,7 +230,9 @@ class RandomPic(_PluginBase):
     def get_state(self) -> bool:
         return self._enable
 
-    def get_render_mode(self) -> Tuple[str, Optional[str]]:
+    @staticmethod
+    def get_render_mode() -> Tuple[str, Optional[str]]:
+        """声明 Vue 联邦渲染模式；V2/V3 均可通过实例或类访问。"""
         return 'vue', 'dist/assets'
 
     @staticmethod
@@ -214,6 +291,20 @@ class RandomPic(_PluginBase):
                 'summary': '获取随机图库统计',
             },
             {
+                'path': '/visits',
+                'endpoint': self._get_visits,
+                'methods': ['GET'],
+                'auth': 'bear',
+                'summary': '获取访问记录和近7天访问趋势',
+            },
+            {
+                'path': '/ping',
+                'endpoint': self._ping_sources,
+                'methods': ['GET'],
+                'auth': 'bear',
+                'summary': '网络图源连通性测速',
+            },
+            {
                 'path': '/download/candidates',
                 'endpoint': self._get_download_candidates,
                 'methods': ['GET'],
@@ -235,11 +326,13 @@ class RandomPic(_PluginBase):
                 'summary': '获取下载任务状态',
             },
         ]
-        # v3 兼容：保持插件自定义响应格式（纯 dict），
-        # 绕过宿主 ResponseAPIRoute 的统一 envelope 自动包装
-        for _api in apis:
-            if isinstance(_api, dict) and "openapi_extra" not in _api:
-                _api["openapi_extra"] = {"x-moviepilot-raw-response": True}
+        # V3 兼容：保持插件自定义响应格式（纯 dict），
+        # 绕过宿主 ResponseAPIRoute 的统一 envelope 自动包装。
+        # V2 宿主的 add_api_route 不接受该扩展字段，仅在 V3 下追加。
+        if IS_V3:
+            for _api in apis:
+                if isinstance(_api, dict) and "openapi_extra" not in _api:
+                    _api["openapi_extra"] = {"x-moviepilot-raw-response": True}
         return apis
 
     def _get_config(self) -> Dict[str, Any]:
@@ -362,9 +455,22 @@ class RandomPic(_PluginBase):
         type: Optional[str] = Query(default=None, pattern='^(pc|mobile)$'),
     ) -> Response:
         self._ensure_enabled()
-        _increment_visit_count()
-        source_type, source = self._select_image_source(request, type)
+        start_time = time.monotonic()
+        try:
+            source_type, source = self._select_image_source(request, type)
+        except HTTPException:
+            self._record_visit(
+                'random', type, 'error', False,
+                int((time.monotonic() - start_time) * 1000),
+                request.headers.get('user-agent', ''),
+            )
+            raise
         if source_type == 'network':
+            self._record_visit(
+                'random', type, 'network', True,
+                int((time.monotonic() - start_time) * 1000),
+                request.headers.get('user-agent', ''),
+            )
             return Response(
                 status_code=302,
                 headers={
@@ -373,13 +479,23 @@ class RandomPic(_PluginBase):
                     'Access-Control-Allow-Origin': '*',
                 },
             )
+        self._record_visit(
+            'random', type, 'local', True,
+            int((time.monotonic() - start_time) * 1000),
+            request.headers.get('user-agent', ''),
+        )
         return self._local_image_response(source)
 
     def _get_preview(self, request: Request, type: Optional[str] = None) -> Response:
         self._ensure_enabled()
-        _increment_visit_count()
+        start_time = time.monotonic()
         source_type, source = self._select_image_source(request, type)
         if source_type == 'local':
+            self._record_visit(
+                'preview', type, 'local', True,
+                int((time.monotonic() - start_time) * 1000),
+                request.headers.get('user-agent', ''),
+            )
             return self._local_image_response(source)
 
         headers = {'User-Agent': request.headers.get('user-agent', '')}
@@ -388,13 +504,26 @@ class RandomPic(_PluginBase):
             url=source,
             allow_redirects=True,
         ) as response:
+            elapsed_ms = int((time.monotonic() - start_time) * 1000)
             if response is None or not response.ok:
                 logger.error('获取网络图片预览失败')
+                self._record_visit(
+                    'preview', type, 'network', False, elapsed_ms,
+                    request.headers.get('user-agent', ''),
+                )
                 raise HTTPException(status_code=502, detail='网络图片预览加载失败')
 
             content_type = response.headers.get('Content-Type', '')
             if not content_type.startswith('image/'):
+                self._record_visit(
+                    'preview', type, 'network', False, elapsed_ms,
+                    request.headers.get('user-agent', ''),
+                )
                 raise HTTPException(status_code=502, detail='网络图片源未返回图片')
+            self._record_visit(
+                'preview', type, 'network', True, elapsed_ms,
+                request.headers.get('user-agent', ''),
+            )
             return Response(
                 content=response.content,
                 media_type=content_type,
@@ -422,7 +551,7 @@ class RandomPic(_PluginBase):
             'total': pc_total + mobile_total,
             'pc': pc_total,
             'mobile': mobile_total,
-            'today': _get_today_visit_count(),
+            'today': self._today_visit_count(),
             'detail': {
                 'local': {'pc': pc_local, 'mobile': mobile_local},
                 'network': {
@@ -470,6 +599,55 @@ class RandomPic(_PluginBase):
             'today_visits': stats['today'],
             'detail': stats['detail'],
         }
+
+    def _get_visits(self) -> Dict[str, Any]:
+        self._ensure_enabled()
+        return self._get_visit_stats()
+
+    @staticmethod
+    def _ping_single_source(label: str, url: Optional[str]) -> Dict[str, Any]:
+        """对单个网络图源执行 HEAD 测速，返回连通性和耗时。"""
+        if not url or not str(url).strip():
+            return {'label': label, 'configured': False, 'ok': False, 'ms': None}
+        start_time = time.monotonic()
+        try:
+            with RequestUtils(timeout=8).response_manager(
+                method='head',
+                url=str(url).strip(),
+                allow_redirects=True,
+            ) as response:
+                elapsed_ms = int((time.monotonic() - start_time) * 1000)
+                ok = bool(response is not None and response.status_code < 400)
+                return {
+                    'label': label,
+                    'configured': True,
+                    'ok': ok,
+                    'ms': elapsed_ms if ok else None,
+                }
+        except Exception:
+            return {
+                'label': label,
+                'configured': True,
+                'ok': False,
+                'ms': int((time.monotonic() - start_time) * 1000),
+            }
+
+    def _ping_sources(self) -> Dict[str, Any]:
+        self._ensure_enabled()
+        results = {}
+        targets = {
+            'pc': ('横屏图源', self._network_image_url_pc),
+            'mobile': ('竖屏图源', self._network_image_url_mobile),
+            'common': ('通用图源', self._network_image_url),
+        }
+        with ThreadPoolExecutor(max_workers=len(targets)) as executor:
+            futures = {
+                key: executor.submit(self._ping_single_source, label, url)
+                for key, (label, url) in targets.items()
+            }
+            for key, future in futures.items():
+                results[key] = future.result()
+        return {'success': True, 'data': results}
 
     def _get_download_candidates(
         self,
@@ -706,6 +884,22 @@ class RandomPic(_PluginBase):
     def get_dashboard_meta(self) -> Optional[List[Dict[str, str]]]:
         return [{'key': 'main_dashboard', 'name': '随机图库状态'}]
 
+    def get_sidebar_nav(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        声明插件在主界面左侧导航栏（仪表盘分组）中的全页入口，
+        前端跳转 #/plugin-app/RandomPic/main 并加载 ./AppPage 组件。
+        """
+        return [
+            {
+                'nav_key': 'main',
+                'title': '随机图库仪表盘',
+                'icon': 'mdi-image-multiple-outline',
+                'section': 'start',
+                'permission': 'manage',
+                'order': 15,
+            }
+        ]
+
     def get_dashboard(self, key: str, **kwargs) -> Optional[
         Tuple[Dict[str, Any], Dict[str, Any], Optional[List[dict]]]
     ]:
@@ -723,3 +917,5 @@ class RandomPic(_PluginBase):
 
     def stop_service(self):
         _close_legacy_runtime()
+        # 停止前强制落盘，避免节流窗口内的访问量丢失
+        self._save_visit_daily(force=True)

@@ -3,6 +3,7 @@ import random
 import requests
 import ipaddress
 import subprocess
+import threading
 import os
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -34,7 +35,7 @@ class CFIPSelector(_PluginBase):
     plugin_name = "PT云盾优选"
     plugin_desc = "PT站点专属优选IP，自动写入hosts，访问快人一步"
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cfipselector.png"
-    plugin_version = "1.3.0"
+    plugin_version = "1.3.1"
     plugin_author = "xijin285"
     author_url = "https://github.com/xijin285"
     plugin_config_prefix = "cfipselector_"
@@ -211,6 +212,8 @@ class CFIPSelector(_PluginBase):
             self._clear_hosts_cfipselector()
         # 新增：每小时自动同步内置tracker列表（仅在UI输入为空时）
         self.__add_auto_sync_trackers_task()
+        # 预热网络状态缓存，避免首次打开状态页时显示“检测中”
+        self._get_network_status()
         # 新增：插件初始化时自动同步GitHub tracker列表（仅在无自定义时）
         if not self._tracker_include_list:
             self.sync_trackers_from_github()
@@ -1523,173 +1526,235 @@ class CFIPSelector(_PluginBase):
         }
         return form, model
 
-    def _check_network_connectivity(self) -> bool:
-        """
-        检测网络连接状态
-        """
+    # ==================== 状态页（非阻塞，秒开） ====================
+    #
+    # 网络探测结果用类级缓存保存 + 后台线程定时刷新。
+    # 此前 get_page() 里同步做 2 次 socket 探测（各 3 秒超时），
+    # 宿主渲染状态页前必须等探测结束，最长卡 6 秒。
+
+    _network_cache: Dict[str, Any] = {'ok': None, 'checked_at': ''}
+    _network_checking: bool = False
+    _NETWORK_CACHE_TTL: int = 300
+
+    def _network_check_worker(self) -> None:
+        """后台执行网络连通性探测，结果写入类级缓存。"""
+        ok = False
         try:
             import socket
-            # 测试连接到Google DNS
-            socket.create_connection(("8.8.8.8", 53), timeout=3)
-            return True
+            # 优先探测国内公共 DNS，避免把“8.8.8.8 被墙”误判为断网
+            for host, port in (("223.5.5.5", 53), ("119.29.29.29", 53), ("1.1.1.1", 443)):
+                try:
+                    socket.create_connection((host, port), timeout=2)
+                    ok = True
+                    break
+                except Exception:
+                    continue
         except Exception:
-            try:
-                # 备用测试：连接到Cloudflare DNS
-                socket.create_connection(("1.1.1.1", 53), timeout=3)
-                return True
-            except Exception:
-                return False
+            ok = False
+        type(self)._network_cache = {
+            'ok': ok,
+            'checked_at': datetime.now().strftime('%H:%M:%S'),
+        }
+        type(self)._network_checking = False
 
-    def _check_selection_status(self) -> bool:
+    def _get_network_status(self) -> Tuple[Optional[bool], str]:
         """
-        检测优选状态：检查是否有有效的优选结果
+        非阻塞获取网络状态：立即返回缓存值（未检测过为 None，表示检测中），
+        缓存过期时触发后台线程刷新，不阻塞页面渲染。
         """
-        # 检查是否有优选时间和IP
-        has_selection_time = bool(getattr(self, '_last_select_time', '') and 
-                                getattr(self, '_last_select_time', '') != '暂无记录')
-        has_selected_ip = bool(getattr(self, '_last_selected_ip', '') and 
-                              getattr(self, '_last_selected_ip', '') != '暂无')
-        
-        # 检查hosts文件中是否有优选IP条目
-        has_hosts_entries = False
+        cache = type(self)._network_cache
+        checked_at = cache.get('checked_at') or ''
+        fresh = False
+        if checked_at:
+            try:
+                checked_time = datetime.strptime(
+                    f"{datetime.now().strftime('%Y-%m-%d')} {checked_at}",
+                    '%Y-%m-%d %H:%M:%S',
+                )
+                fresh = abs((datetime.now() - checked_time).total_seconds()) < self._NETWORK_CACHE_TTL
+            except Exception:
+                fresh = False
+        if not fresh and not type(self)._network_checking:
+            type(self)._network_checking = True
+            threading.Thread(target=self._network_check_worker, daemon=True).start()
+        return cache.get('ok'), checked_at
+
+    def _read_cf_hosts_entries(self) -> List[Tuple[str, str]]:
+        """
+        解析 hosts 中本插件写入的优选条目（# CFIPSelector优选IP 块），
+        返回 (IP, 空格分隔的域名) 列表。
+        """
+        entries: List[Tuple[str, str]] = []
         try:
             import platform
             if platform.system() == "Windows":
-                hosts_path = r"c:\windows\system32\drivers\etc\hosts"
+                hosts_path = r"c://windows//system32//drivers//etc//hosts"
             else:
                 hosts_path = '/etc/hosts'
-            
+            in_block = False
             with open(hosts_path, 'r', encoding='utf-8') as f:
-                content = f.read()
-                if "# CFIPSelector优选IP" in content:
-                    # 检查是否有实际的IP条目（不是只有注释）
-                    lines = content.split('\n')
-                    for line in lines:
-                        if line.strip() and not line.startswith('#') and not line.startswith('#'):
-                            # 检查是否是IP地址格式
-                            parts = line.strip().split()
-                            if len(parts) >= 2:
-                                ip_part = parts[0]
-                                if '.' in ip_part or ':' in ip_part:  # IPv4或IPv6
-                                    has_hosts_entries = True
-                                    break
+                for line in f:
+                    stripped = line.strip()
+                    if stripped == "# CFIPSelector优选IP":
+                        in_block = True
+                        continue
+                    if in_block:
+                        if not stripped or stripped.startswith('#'):
+                            break
+                        parts = stripped.split()
+                        if len(parts) >= 2 and ('.' in parts[0] or ':' in parts[0]):
+                            entries.append((parts[0], ' '.join(parts[1:])))
         except Exception:
             pass
-        
-        return has_selection_time and has_selected_ip and has_hosts_entries
+        return entries
+
+    def _check_network_connectivity(self) -> bool:
+        """兼容保留：返回缓存的网络状态（未检测过视为 False），不再阻塞。"""
+        ok, _ = self._get_network_status()
+        return bool(ok)
+
+    def _check_selection_status(self) -> bool:
+        """
+        检测优选状态：有优选记录且 hosts 中存在本插件写入的生效条目。
+        """
+        has_selection_time = bool(getattr(self, '_last_select_time', '') and
+                                  self._last_select_time != '暂无记录')
+        has_selected_ip = bool(getattr(self, '_last_selected_ip', '') and
+                               self._last_selected_ip != '暂无')
+        return has_selection_time and has_selected_ip and bool(self._read_cf_hosts_entries())
 
     def get_page(self) -> List[dict]:
-        import random
-        enabled = self._enabled
-        datacenters = self._datacenters
-        last_select_time = getattr(self, '_last_select_time', '暂无记录')
-        last_ip = getattr(self, '_last_selected_ip', '暂无')
-        sign_sites = self._sign_sites or []
+        """
+        状态页：全部读取本地缓存数据（配置、hosts 文件），即时渲染。
+        网络连通性为后台异步探测的缓存结果，页面不再等待网络请求。
+        """
+        enabled = bool(getattr(self, '_enabled', False))
+        datacenters = getattr(self, '_datacenters', '') or '未设置'
+        last_select_time = getattr(self, '_last_select_time', '') or '暂无记录'
+        last_ip = getattr(self, '_last_selected_ip', '') or '暂无'
+        sign_sites = getattr(self, '_sign_sites', []) or []
+
+        # 检测站点名称
         site_names = []
-        if hasattr(self, 'siteoper') and self.siteoper:
+        if getattr(self, 'siteoper', None):
             try:
                 for site in self.siteoper.list_active():
                     if str(site.id) in sign_sites:
                         site_names.append(getattr(site, 'name', str(site.id)))
             except Exception:
                 pass
-        
-        # 检测状态
-        network_connected = self._check_network_connectivity()
-        selection_success = self._check_selection_status()
-        
-        # 根据状态决定颜色
-        color_choices = ['info', 'success', 'primary', 'warning', 'error', 'secondary']
-        
-        # 检测站点芯片颜色
-        chips = []
-        def get_fixed_color(name):
-            color_choices = ['info', 'success', 'primary', 'warning', 'error', 'secondary']
-            if not name:
-                return 'primary'
-            idx = abs(hash(name)) % len(color_choices)
-            return color_choices[idx]
-        for name in site_names:
-            if network_connected and selection_success:
-                # 网络连接正常且优选成功，使用固定颜色
-                chip_color = get_fixed_color(name)
-            else:
-                # 网络连接异常或优选失败，使用灰色
-                chip_color = 'grey'
-            chips.append({
-                'component': 'VChip',
-                'props': {
-                    'color': chip_color,
-                    'label': True,
-                    'class': 'ma-1'
-                },
-                'text': name
-            })
-        
-        # 状态卡片颜色
-        def get_status_color():
-            if network_connected and selection_success:
-                return 'primary'  # 固定色，不再随机
-            else:
-                return 'grey'
-        status_color = get_status_color()
-        
-        # 状态区配色方案
-        plugin_status_color = 'success' if enabled else 'grey'
-        datacenter_color = 'info'
-        last_time_color = 'purple'
-        hosts_ip_color = 'warning'
+
+        # 本地状态（全部非阻塞）
+        network_ok, network_time = self._get_network_status()
+        hosts_entries = self._read_cf_hosts_entries()
+        selection_ok = self._check_selection_status()
+
+        # --- 状态总览 ---
+        run_chip = ({'component': 'VChip', 'props': {'color': 'success', 'label': True}, 'text': '已启用'}
+                    if enabled else
+                    {'component': 'VChip', 'props': {'color': 'grey', 'label': True}, 'text': '已禁用'})
+        if network_ok is True:
+            network_chip = {'component': 'VChip', 'props': {'color': 'success', 'label': True}, 'text': '网络正常'}
+        elif network_ok is False:
+            network_chip = {'component': 'VChip', 'props': {'color': 'error', 'label': True}, 'text': '网络异常'}
+        else:
+            network_chip = {'component': 'VChip', 'props': {'color': 'grey', 'label': True}, 'text': '网络检测中…'}
+        if enabled and selection_ok:
+            select_chip = {'component': 'VChip', 'props': {'color': 'success', 'label': True},
+                           'text': f'生效中（{len(hosts_entries)} 条）'}
+        else:
+            select_chip = {'component': 'VChip', 'props': {'color': 'warning' if enabled else 'grey', 'label': True},
+                           'text': '未生效'}
+
+        def overview_col(label, chip, caption=''):
+            chip_content = [{'component': chip['component'], 'props': chip['props'], 'text': chip.get('text', '')}]
+            if caption:
+                chip_content.append({'component': 'span',
+                                     'props': {'class': 'text-caption text-medium-emphasis ml-2'},
+                                     'text': caption})
+            return {'component': 'VCol', 'props': {'cols': 12, 'sm': 4, 'class': 'd-flex align-center'},
+                    'content': [
+                        {'component': 'span',
+                         'props': {'class': 'text-body-2 text-medium-emphasis mr-2'},
+                         'text': label},
+                        {'component': 'div', 'props': {'class': 'd-flex align-center'},
+                         'content': chip_content},
+                    ]}
 
         cards = [
-            {'component': 'VCardTitle', 'props': {'class': 'text-h6 font-weight-bold', 'style': 'display: flex; align-items: center;'},
-             'content': [
-                 {'component': 'span', 'text': '当前状态'}
-             ]},
+            {'component': 'VCardTitle', 'props': {'class': 'text-h6 font-weight-bold'}, 'content': [
+                {'component': 'span', 'text': '当前状态'}]},
             {'component': 'VDivider', 'props': {'class': 'mb-2'}},
-            {'component': 'VRow', 'content': [
-                {'component': 'VCol', 'props': {'cols': 4, 'class': 'd-flex align-center'}, 'content': [
-                    {'component': 'span', 'text': '插件状态'}
-                ]},
-                {'component': 'VCol', 'props': {'cols': 8, 'class': 'd-flex align-center'}, 'content': [
-                    {'component': 'VChip', 'props': {
-                        'color': plugin_status_color,
-                        'label': True
-                    }, 'text': '已启用' if enabled else '已禁用'}
-                ]}
-            ]},
-            {'component': 'VRow', 'content': [
-                {'component': 'VCol', 'props': {'cols': 4, 'class': 'd-flex align-center'}, 'content': [
-                    {'component': 'span', 'text': '目标数据中心'}
-                ]},
-                {'component': 'VCol', 'props': {'cols': 8, 'class': 'd-flex align-center'}, 'content': [
-                    {'component': 'VChip', 'props': {'color': datacenter_color, 'label': True}, 'text': datacenters or '未设置'}
-                ]}
-            ]},
-            {'component': 'VRow', 'content': [
-                {'component': 'VCol', 'props': {'cols': 4, 'class': 'd-flex align-center'}, 'content': [
-                    {'component': 'span', 'text': '上次优选时间'}
-                ]},
-                {'component': 'VCol', 'props': {'cols': 8, 'class': 'd-flex align-center'}, 'content': [
-                    {'component': 'VChip', 'props': {'color': last_time_color, 'label': True}, 'text': last_select_time}
-                ]}
-            ]},
-            {'component': 'VRow', 'content': [
-                {'component': 'VCol', 'props': {'cols': 4, 'class': 'd-flex align-center'}, 'content': [
-                    {'component': 'span', 'text': '当前 hosts IP'}
-                ]},
-                {'component': 'VCol', 'props': {'cols': 8, 'class': 'd-flex align-center'}, 'content': [
-                    {'component': 'VChip', 'props': {'color': hosts_ip_color, 'label': True}, 'text': last_ip}
-                ]}
+            {'component': 'VRow', 'props': {'class': 'mt-1'}, 'content': [
+                overview_col('运行状态', run_chip),
+                overview_col('网络连接', network_chip,
+                             f'检测于 {network_time}' if network_time else ''),
+                overview_col('优选结果', select_chip),
             ]},
         ]
-        cards.append({
-            'component': 'VCardTitle', 'props': {'class': 'text-h6 font-weight-bold', 'style': 'display: flex; align-items: center;'},
-            'content': [
-                {'component': 'span', 'text': f'检测站点（{len(site_names)}）'}
-            ]
-        })
-        cards.append({'component': 'VDivider', 'props': {'class': 'mb-2'}})
-        cards.append({'component': 'div', 'props': {'class': 'd-flex flex-wrap align-center'}, 'content': chips})
+
+        # --- 优选信息 ---
+        cards += [
+            {'component': 'VCardTitle', 'props': {'class': 'text-h6 font-weight-bold'}, 'content': [
+                {'component': 'span', 'text': '优选信息'}]},
+            {'component': 'VDivider', 'props': {'class': 'mb-2'}},
+        ]
+        info_rows = [
+            ('上次优选时间', last_select_time, 'purple'),
+            ('当前 hosts IP', last_ip, 'warning'),
+            ('目标数据中心', datacenters, 'info'),
+        ]
+        for label, value, color in info_rows:
+            cards.append({'component': 'VRow', 'content': [
+                {'component': 'VCol', 'props': {'cols': 4, 'class': 'd-flex align-center'}, 'content': [
+                    {'component': 'span', 'text': label}]},
+                {'component': 'VCol', 'props': {'cols': 8, 'class': 'd-flex align-center'}, 'content': [
+                    {'component': 'VChip', 'props': {'color': color, 'label': True}, 'text': str(value)}]},
+            ]})
+
+        # --- hosts 生效明细 ---
+        cards += [
+            {'component': 'VCardTitle', 'props': {'class': 'text-h6 font-weight-bold'}, 'content': [
+                {'component': 'span', 'text': f'hosts 生效明细（{len(hosts_entries)}）'}]},
+            {'component': 'VDivider', 'props': {'class': 'mb-2'}},
+        ]
+        if hosts_entries:
+            for ip, domains in hosts_entries[:10]:
+                cards.append({'component': 'VRow', 'content': [
+                    {'component': 'VCol', 'props': {'cols': 4, 'md': 3, 'class': 'd-flex align-center'}, 'content': [
+                        {'component': 'VChip',
+                         'props': {'color': 'warning', 'label': True, 'size': 'small'},
+                         'text': ip}]},
+                    {'component': 'VCol', 'props': {'cols': 8, 'md': 9, 'class': 'd-flex align-center'}, 'content': [
+                        {'component': 'span', 'props': {'class': 'text-body-2'}, 'text': domains}]},
+                ]})
+            if len(hosts_entries) > 10:
+                cards.append({'component': 'VRow', 'content': [
+                    {'component': 'VCol', 'content': [
+                        {'component': 'span', 'props': {'class': 'text-caption text-medium-emphasis'},
+                         'text': f'… 其余 {len(hosts_entries) - 10} 条省略'}]}]})
+        else:
+            cards.append({'component': 'VRow', 'content': [
+                {'component': 'VCol', 'content': [
+                    {'component': 'span', 'props': {'class': 'text-body-2 text-medium-emphasis'},
+                     'text': '暂无生效记录，hosts 中未发现本插件写入的优选条目'}]}]})
+
+        # --- 检测站点 ---
+        color_choices = ['info', 'success', 'primary', 'warning', 'error', 'secondary']
+        chips = []
+        for name in site_names:
+            if enabled and selection_ok and network_ok is not False:
+                chip_color = color_choices[abs(hash(name)) % len(color_choices)] if name else 'primary'
+            else:
+                chip_color = 'grey'
+            chips.append({'component': 'VChip', 'props': {'color': chip_color, 'label': True, 'class': 'ma-1'},
+                          'text': name})
+        cards += [
+            {'component': 'VCardTitle', 'props': {'class': 'text-h6 font-weight-bold'}, 'content': [
+                {'component': 'span', 'text': f'检测站点（{len(site_names)}）'}]},
+            {'component': 'VDivider', 'props': {'class': 'mb-2'}},
+            {'component': 'div', 'props': {'class': 'd-flex flex-wrap align-center'}, 'content': chips},
+        ]
         return cards
 
     def stop_service(self):

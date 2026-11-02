@@ -170,3 +170,8 @@ cython_debug/
 dist/
 node_modules/
 *.zip
+
+# V3 联邦插件产物必须入库：V3 市场直接从 plugins.v3/<插件>/ 逐文件拉取源码，
+# 没有 dist 的前端组件装上去会白屏
+!plugins.v3/*/dist/
+!plugins.v3/*/dist/**

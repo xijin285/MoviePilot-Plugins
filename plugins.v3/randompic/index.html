@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>随机图库 - MoviePilot 插件</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Roboto', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      
+      #app {
+        min-height: 100vh;
+      }
+      
+      /* 全局样式 */
+      .glass-card {
+        background: rgba(255, 255, 255, 0.1) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      
+      .glow-btn {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .glow-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+      }
+      
+      .glow-btn:hover::before {
+        left: 100%;
+      }
+      
+      .glow-btn-blue {
+        background: linear-gradient(45deg, #2196F3, #21CBF3);
+        color: white;
+      }
+      
+      .glow-btn-green {
+        background: linear-gradient(45deg, #4CAF50, #8BC34A);
+        color: white;
+      }
+      
+      .glow-btn-orange {
+        background: linear-gradient(45deg, #FF9800, #FFC107);
+        color: white;
+      }
+      
+      .glow-btn-purple {
+        background: linear-gradient(45deg, #9C27B0, #E91E63);
+        color: white;
+      }
+      
+      .glow-btn-cyan {
+        background: linear-gradient(45deg, #00BCD4, #009688);
+        color: white;
+      }
+      
+      .glow-btn-pink {
+        background: linear-gradient(45deg, #E91E63, #F44336);
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html> 

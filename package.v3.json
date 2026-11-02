@@ -1,0 +1,77 @@
+{
+  "RandomPic": {
+    "name": "随机图床API",
+    "description": "基于MoviePilot同源接口的随机图片API，支持横屏/竖屏图片分类",
+    "labels": "图床,API",
+    "version": "3.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png",
+    "author": "xijin285",
+    "level": 1,
+    "release": true,
+    "system_version": ">=3.0.0",
+    "history": {
+      "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本：全面接入 app.sdk，移除 V2 兼容层\n• 📌 新增侧边栏仪表盘：注册「随机图库仪表盘」全页入口（仪表盘分组），统计卡片 / 图片预览 / 运行状态 / 下载进度 / API 示例一站直达\n• 🎨 主题自适应重构：状态页、配置页、仪表盘配色全部改为 Vuetify 主题变量，卡片采用薄纱毛玻璃风格，跟随 MoviePilot 明暗主题自动切换\n• 🧹 体积优化：CSS 由 322KB 精简至 47KB，不再打包 Vuetify 全局样式，杜绝主程序样式污染\n• 🐛 修复 V3 本地安装失败问题（残留兼容层导入）\n\n安装说明\n• 需要 MoviePilot V3（支持 Vue 联邦插件），插件市场安装或本地导入 zip 均可\n• V2 用户请继续使用 RandomPic v2.6.0，勿混装\n\n已知说明\n• 升级后若局部仍显示旧配色，浏览器 Ctrl+F5 强制刷新一次即可"
+    }
+  },
+  "CFIPSelector": {
+    "name": "PT云盾优选",
+    "description": "PT站点专属优选IP，自动写入hosts，访问快人一步",
+    "labels": "站点,优选",
+    "version": "3.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/cfipselector.png",
+    "author": "xijin285",
+    "level": 2,
+    "release": true,
+    "requirements": [
+      "requests>=2.25.0",
+      "apscheduler>=3.6.0",
+      "python-hosts>=1.0.4"
+    ],
+    "system_version": ">=3.0.0",
+    "history": {
+      "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本，保留 V2 分支兼容\n• ⚡ 状态页提速：网络探测改为后台缓存刷新，页面打开由最长 6 秒降至毫秒级即时渲染\n• 📊 状态页重设计：状态总览 / 优选信息 / hosts 生效明细 / 检测站点四分区展示；探测目标改用国内 DNS，避免误报断网"
+    }
+  },
+  "IkuaiRouterBackup": {
+    "name": "爱快路由时光机",
+    "description": "轻松配置您的爱快路由，让路由管理更简单",
+    "labels": "备份,路由器",
+    "version": "3.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
+    "author": "xijin285",
+    "level": 1,
+    "release": true,
+    "system_version": ">=3.0.0",
+    "history": {
+      "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本，保留 V2 分支兼容\n• 📌 V2 最新为 1.4.1，已适配爱快 OS 4.X 架构与 API 令牌认证"
+    }
+  },
+  "DoubanFolio": {
+    "name": "豆瓣档案(自用版)",
+    "description": "追剧观影自动同步进度到豆瓣，打造专属观影档案",
+    "labels": "豆瓣",
+    "version": "3.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/douban.png",
+    "author": "xijin285",
+    "level": 2,
+    "release": true,
+    "system_version": ">=3.0.0",
+    "history": {
+      "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本，保留 V2 分支兼容\n• 🐛 修复与 V3 基类初始化契约不一致导致的加载失败（super().__init__ 与 dashboard 签名）"
+    }
+  },
+  "VueQuarkDisk": {
+    "name": "夸克网盘存储",
+    "description": "使存储支持夸克网盘",
+    "labels": "存储,网盘",
+    "version": "3.0.0",
+    "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/vuequarkdisk.png",
+    "author": "xijin285,KoWming",
+    "level": 1,
+    "release": true,
+    "system_version": ">=3.0.0",
+    "history": {
+      "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本，保留 V2 分支兼容\n• 🏷️ 显示名变更：「Vue-夸克网盘存储」→「夸克网盘存储」\n• 🎨 前端去除 Vuetify 全局样式打包，界面跟随主程序主题"
+    }
+  }
+}

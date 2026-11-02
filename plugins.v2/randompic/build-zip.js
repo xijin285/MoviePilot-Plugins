@@ -7,10 +7,15 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const pluginName = 'randompic'
 const outputFilePath = path.join(__dirname, `${pluginName}.zip`)
-const requiredFiles = [
-  '__init__.py',
-  'network_image_provider.py',
-]
+// 自动收集插件根目录下所有 Python 文件，避免新增模块（如 compat.py）忘记打包
+const requiredFiles = fs
+  .readdirSync(__dirname)
+  .filter((file) => file.endsWith('.py'))
+  .sort()
+
+if (!requiredFiles.includes('__init__.py')) {
+  throw new Error('缺少打包必需文件: __init__.py')
+}
 
 for (const file of requiredFiles) {
   if (!fs.existsSync(path.join(__dirname, file))) {

@@ -3,7 +3,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
-from app.utils.http import RequestUtils
+from .compat import RequestUtils
 
 IMG_EXTS = ('.jpg', '.jpeg', '.png', '.gif', '.webp')
 # 单源（随机图床等一次返回一张）预览时的最大请求次数，避免等待过久
