@@ -8,7 +8,7 @@ from app.core.metainfo import MetaInfo
 from app.plugins import _PluginBase
 from .doubanapi import DoubanApi
 from app.schemas import WebhookEventInfo, MediaInfo
-from app.schemas.types import EventType, MediaType
+from app.schemas.types import EventType, MediaType, MediaSource
 import re
 from app.log import logger
 from app.schemas import Notification, NotificationType, MessageChannel
@@ -24,7 +24,7 @@ class DoubanFolio(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/douban.png"
     # 插件版本
-    plugin_version = "3.0.0"
+    plugin_version = "3.0.1"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -178,7 +178,6 @@ class DoubanFolio(_PluginBase):
 
         if not mediainfo:
             logger.warn(f'标题：{title}，tmdbid：{tmdb_id}，指定tmdbid未识别到媒体信息，尝试仅使用标题识别')
-            meta.tmdbid = None
             mediainfo = self._recognize_media(meta, None)
             if not mediainfo:
                 logger.error(f'仍然未识别到媒体信息，请检查TMDB网络连接...')
@@ -217,7 +216,6 @@ class DoubanFolio(_PluginBase):
 
         if not mediainfo:
             logger.warn(f'标题：{title}，tmdbid：{event_info.tmdb_id}，指定tmdbid未识别到媒体信息，尝试仅使用标题识别')
-            meta.tmdbid = None
             mediainfo = self._recognize_media(meta, None)
             if not mediainfo:
                 logger.error(f'仍然未识别到媒体信息，请检查TMDB网络连接...')
@@ -230,7 +228,12 @@ class DoubanFolio(_PluginBase):
         self._sync_to_douban(title, "collect", event_info.item_type, processed_items, mediainfo.poster_path)
 
     def _recognize_media(self, meta: MetaInfo, tmdb_id: Optional[int]) -> Optional[MediaInfo]:
-        return MediaChain().recognize_media(meta=meta, mtype=meta.type, tmdbid=tmdb_id, cache=True)
+        # MoviePilot V3：tmdbid 参数已移除，改为 media_source + media_id 成对传入
+        if tmdb_id:
+            return MediaChain().recognize_media(meta=meta, mtype=meta.type,
+                                                media_source=MediaSource.TMDB,
+                                                media_id=str(tmdb_id), cache=True)
+        return MediaChain().recognize_media(meta=meta, mtype=meta.type, cache=True)
 
     def _send_notification(self, success: bool, message: str):
         if not self._notify:

@@ -50,13 +50,14 @@
     "name": "豆瓣档案(自用版)",
     "description": "追剧观影自动同步进度到豆瓣，打造专属观影档案",
     "labels": "豆瓣",
-    "version": "3.0.0",
+    "version": "3.0.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/douban.png",
     "author": "xijin285",
     "level": 2,
     "release": true,
     "system_version": ">=3.0.0",
     "history": {
+      "v3.0.1": "本次更新\n• 🐛 修复 Webhook 事件处理报错：RecognitionMixin.recognize_media() got an unexpected keyword argument 'tmdbid'\n• 🔧 适配 V3 识别接口：改为 media_source=MediaSource.TMDB + media_id 成对传参；移除已废弃的 meta.tmdbid 赋值",
       "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本，保留 V2 分支兼容\n• 🐛 修复与 V3 基类初始化契约不一致导致的加载失败（super().__init__ 与 dashboard 签名）"
     }
   },
