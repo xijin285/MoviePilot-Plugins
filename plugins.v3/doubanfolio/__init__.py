@@ -65,7 +65,7 @@ class DoubanFolio(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/douban.png"
     # 插件版本
-    plugin_version = "3.1.0"
+    plugin_version = "3.1.1"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -241,9 +241,20 @@ class DoubanFolio(_PluginBase):
                 self.sync_log(event=event, played=True)
 
     def _process_tv_show(self, event_info: WebhookEventInfo, processed_items: Dict, played: bool = False):
-        index = event_info.item_name.index(" S")
-        title = event_info.item_name[:index]
-        season_id, episode_id = map(int, [event_info.season_id, event_info.episode_id])
+        item_name = event_info.item_name or ""
+        # 从「剧名 S01」样式标题中分离剧名；标题无 Sxx 标记（如整剧层级事件）时按整名处理
+        index = item_name.find(" S")
+        if index != -1 and item_name[index + 2:index + 3].isdigit():
+            title = item_name[:index]
+        else:
+            title = item_name
+            logger.info(f"事件标题未包含 Sxx 标记，按整剧事件处理：{item_name}")
+        try:
+            season_id = int(event_info.season_id)
+            episode_id = int(event_info.episode_id)
+        except (TypeError, ValueError):
+            logger.info(f"事件缺少季/集信息（整剧层级操作），跳过同步：{item_name}")
+            return
         tmdb_id = event_info.tmdb_id
 
         if not played:
