@@ -56,15 +56,6 @@ def _count_local_images(directory: Optional[str]) -> int:
     return sum(1 for pattern in _IMAGE_PATTERNS for _ in image_dir.glob(pattern))
 
 
-def _url_domain(url: str) -> str:
-    """从图片地址中提取域名，用于访问记录里展示「来源」。"""
-    try:
-        from urllib.parse import urlparse
-        return urlparse(str(url or '')).netloc
-    except Exception:
-        return ''
-
-
 def _close_legacy_runtime() -> None:
     """升级无端口版本时关闭旧版本登记的独立 HTTP 服务。"""
     if plugin_runtime is None:
@@ -110,7 +101,7 @@ class RandomPic(_PluginBase):
     # 插件图标
     plugin_icon = 'https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png'
     # 插件版本
-    plugin_version = '3.1.0'
+    plugin_version = '3.1.1'
     # 插件作者
     plugin_author = 'xijin285'
     # 作者主页
@@ -175,6 +166,32 @@ class RandomPic(_PluginBase):
         except Exception as err:
             logger.debug(f'保存访问统计数据失败: {err}')
 
+    @staticmethod
+    def _visit_origin(request: Optional[Request]) -> Tuple[str, str]:
+        """根据请求 Host 判定访问来源：本地 / 局域网 / 域名（含公网 IP）。"""
+        if request is None:
+            return 'local', ''
+        host = (request.headers.get('host') or '').strip().lower()
+        if host.startswith('['):
+            hostname = host.split(']')[0].lstrip('[')
+        else:
+            hostname = host.split(':')[0]
+        if not hostname or hostname in ('localhost', '::1'):
+            return 'local', ''
+        if re.fullmatch(r'(\d{1,3})(?:\.\d{1,3}){3}', hostname):
+            parts = [int(x) for x in hostname.split('.')]
+            if parts == [127, 0, 0, 1]:
+                return 'local', ''
+            is_private = (
+                parts[0] == 10
+                or (parts[0] == 192 and parts[1] == 168)
+                or (parts[0] == 172 and 16 <= parts[1] <= 31)
+            )
+            if is_private:
+                return 'lan', hostname
+            return 'domain', hostname
+        return 'domain', hostname
+
     def _record_visit(
         self,
         endpoint: str,
@@ -182,21 +199,27 @@ class RandomPic(_PluginBase):
         source_type: str,
         ok: bool,
         elapsed_ms: int,
-        user_agent: str,
-        source_domain: str = '',
+        request: Optional[Request] = None,
     ) -> None:
-        """记录一次 API 访问：追加最近记录并累计当日访问量。"""
+        """记录一次 API 访问：追加最近记录并累计当日访问量。
+
+        来源按请求 Host 判定：localhost/127.x 记「本地」，
+        局域网 IP 记「局域网」，域名/公网 IP 记「域名」并保存实际值。
+        """
         now = datetime.now()
+        origin, origin_host = self._visit_origin(request)
+        ua = (request.headers.get('user-agent', '') if request is not None else '')
         entry = {
             'time': now.strftime('%H:%M:%S'),
             'date': now.date().isoformat(),
             'endpoint': endpoint,
             'type': image_type or 'auto',
-            'source': source_type,
-            'domain': source_domain,
+            'source': origin,
+            'domain': origin_host,
+            'img': source_type,
             'ok': bool(ok),
             'elapsed_ms': int(elapsed_ms),
-            'ua': (user_agent or '').strip()[:60],
+            'ua': ua.strip()[:60],
         }
         with self._visit_lock:
             self._visit_daily[now.date().isoformat()] = (
@@ -511,15 +534,14 @@ class RandomPic(_PluginBase):
             self._record_visit(
                 'random', type, 'error', False,
                 int((time.monotonic() - start_time) * 1000),
-                request.headers.get('user-agent', ''),
+                request,
             )
             raise
         if source_type == 'network':
             self._record_visit(
                 'random', type, 'network', True,
                 int((time.monotonic() - start_time) * 1000),
-                request.headers.get('user-agent', ''),
-                source_domain=_url_domain(source),
+                request,
             )
             return Response(
                 status_code=302,
@@ -532,7 +554,7 @@ class RandomPic(_PluginBase):
         self._record_visit(
             'random', type, 'local', True,
             int((time.monotonic() - start_time) * 1000),
-            request.headers.get('user-agent', ''),
+            request,
         )
         return self._local_image_response(source)
 
@@ -544,7 +566,7 @@ class RandomPic(_PluginBase):
             self._record_visit(
                 'preview', type, 'local', True,
                 int((time.monotonic() - start_time) * 1000),
-                request.headers.get('user-agent', ''),
+                request,
             )
             return self._local_image_response(source)
 
@@ -559,8 +581,7 @@ class RandomPic(_PluginBase):
                 logger.error('获取网络图片预览失败')
                 self._record_visit(
                     'preview', type, 'network', False, elapsed_ms,
-                    request.headers.get('user-agent', ''),
-                    source_domain=_url_domain(source),
+                    request,
                 )
                 raise HTTPException(status_code=502, detail='网络图片预览加载失败')
 
@@ -568,14 +589,12 @@ class RandomPic(_PluginBase):
             if not content_type.startswith('image/'):
                 self._record_visit(
                     'preview', type, 'network', False, elapsed_ms,
-                    request.headers.get('user-agent', ''),
-                    source_domain=_url_domain(source),
+                    request,
                 )
                 raise HTTPException(status_code=502, detail='网络图片源未返回图片')
             self._record_visit(
                 'preview', type, 'network', True, elapsed_ms,
-                request.headers.get('user-agent', ''),
-                source_domain=_url_domain(source),
+                request,
             )
             return Response(
                 content=response.content,
@@ -943,7 +962,10 @@ class RandomPic(_PluginBase):
         """
         声明插件在主界面左侧导航栏（仪表盘分组）中的全页入口，
         前端跳转 #/plugin-app/RandomPic/main 并加载 ./AppPage 组件。
+        「启用仪表盘」关闭时同步隐藏侧边栏入口。
         """
+        if not self._dashboard_enable:
+            return None
         return [
             {
                 'nav_key': 'main',

@@ -1,7 +1,7 @@
 import { importShared } from './__federation_fn_import-054b33c3.js';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-c4c0bc37.js';
 
-const AppPage_vue_vue_type_style_index_0_scoped_deea89e3_lang = '';
+const AppPage_vue_vue_type_style_index_0_scoped_bdb2a0d8_lang = '';
 
 const {createTextVNode:_createTextVNode,resolveComponent:_resolveComponent,withCtx:_withCtx,createVNode:_createVNode,createElementVNode:_createElementVNode,toDisplayString:_toDisplayString,renderList:_renderList,Fragment:_Fragment,openBlock:_openBlock,createElementBlock:_createElementBlock,normalizeStyle:_normalizeStyle,createCommentVNode:_createCommentVNode,createBlock:_createBlock,normalizeClass:_normalizeClass} = await importShared('vue');
 
@@ -340,10 +340,16 @@ const endpointLabel = (endpoint) =>
   ({ random: '随机图', preview: '预览' }[endpoint] || endpoint || '-');
 const typeLabel = (type) =>
   ({ auto: '自动', pc: '横屏', mobile: '竖屏' }[type] || type || '-');
-const sourceLabel = (source) =>
-  ({ local: '本地', network: '域名', error: '错误' }[source] || source || '-');
-// 来源列：域名图源优先显示实际域名（如 picsum.photos）
-const sourceDisplay = (v) => (v && v.domain ? v.domain : sourceLabel(v && v.source));
+// 来源列：按访问入口显示 —— 本地 / 局域网 / 实际域名
+const sourceDisplay = (v) => {
+  if (!v) return "-";
+  const s = v.source;
+  if (s === "local") return "本地";
+  if (s === "lan") return "局域网";
+  if (s === "domain") return v.domain || "域名";
+  if (s === "network") return v.domain || "域名"; // 兼容旧记录（网络图源）
+  return s || "-";
+};
 
 const loadVisits = async () => {
   visitsLoading.value = true;
@@ -1271,6 +1277,6 @@ return (_ctx, _cache) => {
 }
 
 };
-const AppPage = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-deea89e3"]]);
+const AppPage = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-bdb2a0d8"]]);
 
 export { AppPage as default };

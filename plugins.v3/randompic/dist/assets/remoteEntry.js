@@ -60,16 +60,16 @@ const currentImports = {};
       const exportSet = new Set(['Module', '__esModule', 'default', '_export_sfc']);
       let moduleMap = {
 "./AppPage":()=>{
-      dynamicLoadingCss(["style-cfa25430.css"], false, './AppPage');
-      return __federation_import('./__federation_expose_AppPage-4e425826.js').then(module =>Object.keys(module).every(item => exportSet.has(item)) ? () => module.default : () => module)},
+      dynamicLoadingCss(["style-39f6b323.css"], false, './AppPage');
+      return __federation_import('./__federation_expose_AppPage-92aae5f2.js').then(module =>Object.keys(module).every(item => exportSet.has(item)) ? () => module.default : () => module)},
 "./Page":()=>{
-      dynamicLoadingCss(["style-cfa25430.css"], false, './Page');
+      dynamicLoadingCss(["style-39f6b323.css"], false, './Page');
       return __federation_import('./__federation_expose_Page-fcdee471.js').then(module =>Object.keys(module).every(item => exportSet.has(item)) ? () => module.default : () => module)},
 "./Config":()=>{
-      dynamicLoadingCss(["style-cfa25430.css"], false, './Config');
-      return __federation_import('./__federation_expose_Config-2437265b.js').then(module =>Object.keys(module).every(item => exportSet.has(item)) ? () => module.default : () => module)},
+      dynamicLoadingCss(["style-39f6b323.css"], false, './Config');
+      return __federation_import('./__federation_expose_Config-cf42a050.js').then(module =>Object.keys(module).every(item => exportSet.has(item)) ? () => module.default : () => module)},
 "./Dashboard":()=>{
-      dynamicLoadingCss(["style-cfa25430.css"], false, './Dashboard');
+      dynamicLoadingCss(["style-39f6b323.css"], false, './Dashboard');
       return __federation_import('./__federation_expose_Dashboard-2f71d513.js').then(module =>Object.keys(module).every(item => exportSet.has(item)) ? () => module.default : () => module)},};
       const seen = {};
       const dynamicLoadingCss = (cssFilePaths, dontAppendStylesToHead, exposeItemName) => {

@@ -1,7 +1,7 @@
 import { importShared } from './__federation_fn_import-054b33c3.js';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-c4c0bc37.js';
 
-const Config_vue_vue_type_style_index_0_scoped_4c2b5111_lang = '';
+const Config_vue_vue_type_style_index_0_scoped_ffcedae7_lang = '';
 
 const {createTextVNode:_createTextVNode,resolveComponent:_resolveComponent,withCtx:_withCtx,createVNode:_createVNode,createElementVNode:_createElementVNode,vModelCheckbox:_vModelCheckbox,withDirectives:_withDirectives,openBlock:_openBlock,createElementBlock:_createElementBlock,toDisplayString:_toDisplayString,normalizeClass:_normalizeClass,createBlock:_createBlock,createCommentVNode:_createCommentVNode,renderList:_renderList,Fragment:_Fragment} = await importShared('vue');
 
@@ -567,7 +567,7 @@ return (_ctx, _cache) => {
                                       ])
                                     ], -1))
                                   ]),
-                                  _cache[33] || (_cache[33] = _createElementVNode("span", { class: "service-mode-hint" }, "关闭后首页不显示随机图库仪表盘", -1))
+                                  _cache[33] || (_cache[33] = _createElementVNode("span", { class: "service-mode-hint" }, "关闭后首页仪表盘与侧边栏「随机图库」入口一并隐藏", -1))
                                 ])
                               ]),
                               _: 1
@@ -1220,6 +1220,6 @@ return (_ctx, _cache) => {
 }
 
 };
-const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-4c2b5111"]]);
+const ConfigComponent = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-ffcedae7"]]);
 
 export { ConfigComponent as default };

@@ -81,7 +81,7 @@
                         </div>
                       </div>
                     </label>
-                    <span class="service-mode-hint">关闭后首页不显示随机图库仪表盘</span>
+                    <span class="service-mode-hint">关闭后首页仪表盘与侧边栏「随机图库」入口一并隐藏</span>
                   </div>
                 </v-col>
                 <v-col cols="12">

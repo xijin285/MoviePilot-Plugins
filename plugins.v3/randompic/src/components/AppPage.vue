@@ -574,10 +574,16 @@ const endpointLabel = (endpoint) =>
   ({ random: '随机图', preview: '预览' }[endpoint] || endpoint || '-');
 const typeLabel = (type) =>
   ({ auto: '自动', pc: '横屏', mobile: '竖屏' }[type] || type || '-');
-const sourceLabel = (source) =>
-  ({ local: '本地', network: '域名', error: '错误' }[source] || source || '-');
-// 来源列：域名图源优先显示实际域名（如 picsum.photos）
-const sourceDisplay = (v) => (v && v.domain ? v.domain : sourceLabel(v && v.source));
+// 来源列：按访问入口显示 —— 本地 / 局域网 / 实际域名
+const sourceDisplay = (v) => {
+  if (!v) return "-";
+  const s = v.source;
+  if (s === "local") return "本地";
+  if (s === "lan") return "局域网";
+  if (s === "domain") return v.domain || "域名";
+  if (s === "network") return v.domain || "域名"; // 兼容旧记录（网络图源）
+  return s || "-";
+};
 
 const loadVisits = async () => {
   visitsLoading.value = true;
