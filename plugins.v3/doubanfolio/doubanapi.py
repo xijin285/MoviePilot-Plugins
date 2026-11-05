@@ -7,7 +7,6 @@ from bs4 import BeautifulSoup
 from http.cookies import SimpleCookie
 from app.core.config import settings
 from app.core.meta import MetaBase
-from app.helper.cookiecloud import CookieCloudHelper
 from app.log import logger
 from app.utils.http import RequestUtils
 
@@ -15,14 +14,7 @@ from app.utils.http import RequestUtils
 class DoubanApi:
 
     def __init__(self, user_cookie: str = None):
-        if not user_cookie:
-            self.cookiecloud = CookieCloudHelper()
-            cookie_dict, msg = self.cookiecloud.download()
-            if cookie_dict is None:
-                logger.error(f"获取cookiecloud数据错误 {msg}")
-            self.cookies = cookie_dict.get("douban.com")
-        else:
-            self.cookies = user_cookie
+        self.cookies = user_cookie
         self.cookies = {k: v.value for k, v in SimpleCookie(self.cookies).items()}
 
         self.headers = {
@@ -47,7 +39,7 @@ class DoubanApi:
         # logger.debug(f"ck:{self.ck} cookie:{self.cookies}")
 
         if not self.cookies:
-            logger.error(f"cookie获取为空，请检查插件配置或cookie cloud")
+            logger.error(f"cookie获取为空，请在插件配置中扫码登录或手动填写 Cookie")
         if not self.ck:
             logger.error(f"请求ck失败，请检查传入的cookie登录状态")
 
@@ -114,6 +106,81 @@ class DoubanApi:
             # logger.debug(f"{subject_item['title']} {subject_item['subject_id']}")
             return subject_item["title"], subject_item["subject_id"]
         return None, None
+
+    def delete_watching_mark(self, subject_id: str, category: str = "movie",
+                             mark_id: str = "") -> bool:
+        """
+        删除豆瓣上该条目的标记（豆瓣网页收藏页里叫「删除 / 删除该标记」）。
+
+        优先走网页版「删除」按钮同款接口 /j/mine/j_cat_ui（sid + ck），
+        sid 依次尝试收藏页解析出的标记 ID（d_link rel / data-cid）与条目 ID；
+        都不行再回退移动端 frodo 的 DELETE /rexxar/api/v2/<cat>/<sid>/interest。
+        """
+        sid = str(subject_id or "").strip()
+        if not sid or not self.ck:
+            return False
+        host = "movie" if category == "movie" else category
+        headers = dict(self.headers)
+        headers["Referer"] = f"https://{host}.douban.com/"
+        headers["Origin"] = f"https://{host}.douban.com"
+        headers["Host"] = f"{host}.douban.com"
+        headers["Cookie"] = ";".join([f"{key}={value}" for key, value in self.cookies.items()])
+        # 方案一：网页版收藏页「删除」按钮
+        candidates = []
+        for value in (str(mark_id or "").strip(), sid):
+            if value and value not in candidates:
+                candidates.append(value)
+        for value in candidates:
+            try:
+                resp = requests.post(
+                    url=f"https://{host}.douban.com/j/mine/j_cat_ui",
+                    headers=headers,
+                    data={"sid": value, "ck": self.ck},
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    try:
+                        data = resp.json()
+                        # 豆瓣 j_cat_ui 成功时返回 {'result': 'y'}（y=yes），也兼容 True/1
+                        ok = data.get("result") in (True, 1, "y", "Y", "yes", "true") or data.get("r") in (0, True)
+                    except Exception:
+                        ok = "true" in (resp.text or "").lower()
+                    if ok:
+                        logger.info(f"删除豆瓣标记成功（j_cat_ui, sid={value}）：{sid}")
+                        return True
+                    logger.warn(f"删除豆瓣标记 j_cat_ui(sid={value}) 返回异常：{(resp.text or '')[:120]}")
+                else:
+                    logger.warn(f"删除豆瓣标记 j_cat_ui(sid={value}) HTTP {resp.status_code}：{(resp.text or '')[:120]}")
+            except Exception as exc:
+                logger.warn(f"删除豆瓣标记 j_cat_ui(sid={value}) 请求失败：{exc}")
+        # 方案二：移动端 frodo 删除标记
+        try:
+            mobile_headers = {
+                "User-Agent": settings.USER_AGENT,
+                "Referer": f"https://m.douban.com/movie/subject/{sid}/",
+                "Cookie": headers["Cookie"],
+            }
+            resp2 = requests.delete(
+                f"https://m.douban.com/rexxar/api/v2/{host}/{sid}/interest",
+                headers=mobile_headers,
+                params={"ck": self.ck},
+                timeout=10,
+            )
+            if resp2.status_code in (200, 204):
+                try:
+                    data2 = resp2.json()
+                    if not data2.get("code") and not data2.get("msg"):
+                        logger.info(f"删除豆瓣标记成功（frodo）：{sid}")
+                        return True
+                except Exception:
+                    logger.info(f"删除豆瓣标记成功（frodo）：{sid}")
+                    return True
+                logger.warn(f"删除豆瓣标记 frodo 返回异常：{(resp2.text or '')[:120]}")
+            else:
+                logger.warn(f"删除豆瓣标记 frodo HTTP {resp2.status_code}：{(resp2.text or '')[:120]}")
+        except Exception as exc:
+            logger.warn(f"删除豆瓣标记 frodo 请求失败：{exc}")
+        return False
 
     def set_watching_status(self, subject_id: str, status: str = "do", private: bool = True) -> bool:
         self.headers["Referer"] = f"https://movie.douban.com/subject/{subject_id}/"
