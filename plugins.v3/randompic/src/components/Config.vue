@@ -64,6 +64,46 @@
                     <span class="service-mode-hint">API 由当前插件直接提供</span>
                   </div>
                 </v-col>
+                <v-col cols="12">
+                  <div class="config-switch-row">
+                    <v-icon size="18" class="switch-icon" :color="config.dashboard_enable ? 'success' : 'grey'">mdi-view-dashboard-outline</v-icon>
+                    <span class="switch-label">启用仪表盘</span>
+                    <label class="switch">
+                      <input type="checkbox" v-model="config.dashboard_enable" />
+                      <div class="slider">
+                        <div class="circle">
+                          <svg class="cross" viewBox="0 0 365.696 365.696" height="6" width="6" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="currentColor" d="M243.188 182.86 356.32 69.726c12.5-12.5 12.5-32.766 0-45.247L341.238 9.398c-12.504-12.503-32.77-12.503-45.25 0L182.86 122.528 69.727 9.374c-12.5-12.5-32.766-12.5-45.247 0L9.375 24.457c-12.5 12.504-12.5 32.77 0 45.25l113.152 113.152L9.398 295.99c-12.503 12.503-12.503 32.769 0 45.25L24.48 356.32c12.5 12.5 32.766 12.5 45.247 0l113.132-113.132L295.99 356.32c12.503 12.5 32.769 12.5 45.25 0l15.081-15.082c12.5-12.504 12.5-32.77 0-45.25zm0 0"></path>
+                          </svg>
+                          <svg class="checkmark" viewBox="0 0 24 24" height="10" width="10" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="currentColor" d="M9.707 19.121a.997.997 0 0 1-1.414 0l-5.646-5.647a1.5 1.5 0 0 1 0-2.121l.707-.707a1.5 1.5 0 0 1 2.121 0L9 14.171l9.525-9.525a1.5 1.5 0 0 1 2.121 0l.707.707a1.5 1.5 0 0 1 0 2.121z"></path>
+                          </svg>
+                        </div>
+                      </div>
+                    </label>
+                    <span class="service-mode-hint">关闭后首页不显示随机图库仪表盘</span>
+                  </div>
+                </v-col>
+                <v-col cols="12">
+                  <div class="config-switch-row">
+                    <v-icon size="18" class="switch-icon" :color="config.network_first ? 'success' : 'grey'">mdi-cloud-arrow-down-outline</v-icon>
+                    <span class="switch-label">网络图片地址优先</span>
+                    <label class="switch">
+                      <input type="checkbox" v-model="config.network_first" />
+                      <div class="slider">
+                        <div class="circle">
+                          <svg class="cross" viewBox="0 0 365.696 365.696" height="6" width="6" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="currentColor" d="M243.188 182.86 356.32 69.726c12.5-12.5 12.5-32.766 0-45.247L341.238 9.398c-12.504-12.503-32.77-12.503-45.25 0L182.86 122.528 69.727 9.374c-12.5-12.5-32.766-12.5-45.247 0L9.375 24.457c-12.5 12.504-12.5 32.77 0 45.25l113.152 113.152L9.398 295.99c-12.503 12.503-12.503 32.769 0 45.25L24.48 356.32c12.5 12.5 32.766 12.5 45.247 0l113.132-113.132L295.99 356.32c12.503 12.5 32.769 12.5 45.25 0l15.081-15.082c12.5-12.504 12.5-32.77 0-45.25zm0 0"></path>
+                          </svg>
+                          <svg class="checkmark" viewBox="0 0 24 24" height="10" width="10" xmlns="http://www.w3.org/2000/svg">
+                            <path fill="currentColor" d="M9.707 19.121a.997.997 0 0 1-1.414 0l-5.646-5.647a1.5 1.5 0 0 1 0-2.121l.707-.707a1.5 1.5 0 0 1 2.121 0L9 14.171l9.525-9.525a1.5 1.5 0 0 1 2.121 0l.707.707a1.5 1.5 0 0 1 0 2.121z"></path>
+                          </svg>
+                        </div>
+                      </div>
+                    </label>
+                    <span class="service-mode-hint">默认关闭（本地优先），开启后域名图源高于本地目录</span>
+                  </div>
+                </v-col>
               </v-row>
             </v-card-text>
           </div>
@@ -147,7 +187,7 @@
                       label="横屏网络图片地址"
                       placeholder="https://example.com/your-pc-image.jpg，支持多个逗号分隔"
                       prepend-inner-icon="mdi-link"
-                      hint="支持图片直链、API、json/txt等，多个用英文逗号分隔，优先级高于本地横屏目录"
+                      hint="支持图片直链、API、json/txt等，多个用英文逗号分隔；开启「网络图片地址优先」后优先于本地横屏目录"
                       persistent-hint
                       dense
                     />
@@ -168,7 +208,7 @@
                       label="竖屏网络图片地址"
                       placeholder="https://example.com/your-mobile-image.jpg，支持多个逗号分隔"
                       prepend-inner-icon="mdi-link"
-                      hint="支持图片直链、API、json/txt等，多个用英文逗号分隔，优先级高于本地竖屏目录"
+                      hint="支持图片直链、API、json/txt等，多个用英文逗号分隔；开启「网络图片地址优先」后优先于本地竖屏目录"
                       persistent-hint
                       dense
                     />
@@ -333,6 +373,8 @@ const config = reactive({
   network_image_url_mobile: "",
   network_image_url: "", // 兼容老配置
   download_count: 20,
+  dashboard_enable: true,   // 默认显示仪表盘
+  network_first: false,    // 默认本地优先
 });
 
 // 默认本地目录（来自后端，用于空值占位提示）
@@ -515,6 +557,8 @@ const resetConfig = () => {
     network_image_url_mobile: "",
     network_image_url: "",
     download_count: 20,
+    dashboard_enable: true,
+    network_first: false,
   });
   showNotification('配置已重置', 'success');
 };
@@ -535,6 +579,8 @@ const saveConfig = async () => {
       network_image_url_mobile: config.network_image_url_mobile,
       network_image_url: config.network_image_url,
       download_count: config.download_count,
+      dashboard_enable: config.dashboard_enable,
+      network_first: config.network_first,
     };
     await props.api.post('plugin/RandomPic/config', payload);
     showNotification('配置保存成功', 'success');

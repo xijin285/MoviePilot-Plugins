@@ -56,6 +56,15 @@ def _count_local_images(directory: Optional[str]) -> int:
     return sum(1 for pattern in _IMAGE_PATTERNS for _ in image_dir.glob(pattern))
 
 
+def _url_domain(url: str) -> str:
+    """从图片地址中提取域名，用于访问记录里展示「来源」。"""
+    try:
+        from urllib.parse import urlparse
+        return urlparse(str(url or '')).netloc
+    except Exception:
+        return ''
+
+
 def _close_legacy_runtime() -> None:
     """升级无端口版本时关闭旧版本登记的独立 HTTP 服务。"""
     if plugin_runtime is None:
@@ -101,7 +110,7 @@ class RandomPic(_PluginBase):
     # 插件图标
     plugin_icon = 'https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/randompic.png'
     # 插件版本
-    plugin_version = '3.0.0'
+    plugin_version = '3.1.0'
     # 插件作者
     plugin_author = 'xijin285'
     # 作者主页
@@ -122,6 +131,9 @@ class RandomPic(_PluginBase):
         self._network_image_url_mobile: Optional[str] = None
         self._network_image_url: Optional[str] = None
         self._download_count: int = 20
+        # 新增开关：是否显示首页仪表盘；网络（域名）图片地址是否优先于本地目录
+        self._dashboard_enable: bool = True
+        self._network_first: bool = False
         self._download_lock = threading.Lock()
         self._download_status: Dict[str, Any] = {}
         # 访问统计：最近调用记录 + 每日访问量
@@ -171,6 +183,7 @@ class RandomPic(_PluginBase):
         ok: bool,
         elapsed_ms: int,
         user_agent: str,
+        source_domain: str = '',
     ) -> None:
         """记录一次 API 访问：追加最近记录并累计当日访问量。"""
         now = datetime.now()
@@ -180,6 +193,7 @@ class RandomPic(_PluginBase):
             'endpoint': endpoint,
             'type': image_type or 'auto',
             'source': source_type,
+            'domain': source_domain,
             'ok': bool(ok),
             'elapsed_ms': int(elapsed_ms),
             'ua': (user_agent or '').strip()[:60],
@@ -229,6 +243,11 @@ class RandomPic(_PluginBase):
         self._network_image_url_pc = config.get('network_image_url_pc')
         self._network_image_url_mobile = config.get('network_image_url_mobile')
         self._network_image_url = config.get('network_image_url')
+        # 仪表盘开关：老配置无该字段时默认显示
+        dashboard_enable = config.get('dashboard_enable')
+        self._dashboard_enable = True if dashboard_enable is None else bool(dashboard_enable)
+        # 网络（域名）图源优先开关：默认关闭，即本地目录优先
+        self._network_first = bool(config.get('network_first'))
         try:
             self._download_count = max(1, int(config.get('download_count') or 20))
         except (TypeError, ValueError):
@@ -352,6 +371,8 @@ class RandomPic(_PluginBase):
             'network_image_url_mobile': self._network_image_url_mobile,
             'network_image_url': self._network_image_url,
             'download_count': self._download_count,
+            'dashboard_enable': self._dashboard_enable,
+            'network_first': self._network_first,
         }
 
     def _save_config(self, data: dict) -> dict:
@@ -388,6 +409,9 @@ class RandomPic(_PluginBase):
             self._network_image_url_mobile = network_image_url_mobile
             self._network_image_url = network_image_url
             self._download_count = download_count
+            dashboard_enable = data.get('dashboard_enable')
+            self._dashboard_enable = True if dashboard_enable is None else bool(dashboard_enable)
+            self._network_first = bool(data.get('network_first'))
             self.update_config(self._get_config())
             return {'success': True, 'msg': '配置保存成功'}
         except Exception as err:
@@ -401,6 +425,23 @@ class RandomPic(_PluginBase):
     @staticmethod
     def _is_mobile_request(request: Request) -> bool:
         return bool(_MOBILE_UA_PATTERN.search(request.headers.get('user-agent', '')))
+
+    @staticmethod
+    def _pick_local_image(local_directory: Optional[str]) -> Optional[str]:
+        """从本地目录随机挑一张图片；目录不存在或为空时返回 None。"""
+        if not local_directory:
+            return None
+        image_dir = Path(local_directory)
+        if not image_dir.is_dir():
+            return None
+        image_files = [
+            image_path
+            for pattern in _IMAGE_PATTERNS
+            for image_path in image_dir.glob(pattern)
+        ]
+        if not image_files:
+            return None
+        return str(random.choice(image_files))
 
     def _select_image_source(
         self,
@@ -420,25 +461,28 @@ class RandomPic(_PluginBase):
             network_source = self._network_image_url_pc or self._network_image_url
             local_directory = self._pc_path
 
-        if network_source:
-            image_url = get_network_image_url(network_source)
-            if image_url:
-                return 'network', image_url
+        if self._network_first:
+            # 网络图片地址优先：先取域名图源，取不到回退本地目录
+            if network_source:
+                image_url = get_network_image_url(network_source)
+                if image_url:
+                    return 'network', image_url
+            local_image = self._pick_local_image(local_directory)
+            if local_image:
+                return 'local', local_image
+        else:
+            # 本地优先（默认）：先取本地目录，没有图片回退域名图源
+            local_image = self._pick_local_image(local_directory)
+            if local_image:
+                return 'local', local_image
+            if network_source:
+                image_url = get_network_image_url(network_source)
+                if image_url:
+                    return 'network', image_url
 
-        if not local_directory:
+        if not local_directory and not network_source:
             raise HTTPException(status_code=404, detail='未配置对应类型的图片源')
-        image_dir = Path(local_directory)
-        if not image_dir.is_dir():
-            raise HTTPException(status_code=404, detail='对应类型的图片目录不存在')
-
-        image_files = [
-            image_path
-            for pattern in _IMAGE_PATTERNS
-            for image_path in image_dir.glob(pattern)
-        ]
-        if not image_files:
-            raise HTTPException(status_code=404, detail='对应类型的图片目录中没有图片')
-        return 'local', str(random.choice(image_files))
+        raise HTTPException(status_code=404, detail='对应类型的图片源中没有可用图片')
 
     @staticmethod
     def _local_image_response(image_path: str) -> FileResponse:
@@ -475,6 +519,7 @@ class RandomPic(_PluginBase):
                 'random', type, 'network', True,
                 int((time.monotonic() - start_time) * 1000),
                 request.headers.get('user-agent', ''),
+                source_domain=_url_domain(source),
             )
             return Response(
                 status_code=302,
@@ -515,6 +560,7 @@ class RandomPic(_PluginBase):
                 self._record_visit(
                     'preview', type, 'network', False, elapsed_ms,
                     request.headers.get('user-agent', ''),
+                    source_domain=_url_domain(source),
                 )
                 raise HTTPException(status_code=502, detail='网络图片预览加载失败')
 
@@ -523,11 +569,13 @@ class RandomPic(_PluginBase):
                 self._record_visit(
                     'preview', type, 'network', False, elapsed_ms,
                     request.headers.get('user-agent', ''),
+                    source_domain=_url_domain(source),
                 )
                 raise HTTPException(status_code=502, detail='网络图片源未返回图片')
             self._record_visit(
                 'preview', type, 'network', True, elapsed_ms,
                 request.headers.get('user-agent', ''),
+                source_domain=_url_domain(source),
             )
             return Response(
                 content=response.content,
@@ -887,6 +935,8 @@ class RandomPic(_PluginBase):
         return []
 
     def get_dashboard_meta(self) -> Optional[List[Dict[str, str]]]:
+        if not self._dashboard_enable:
+            return None
         return [{'key': 'main_dashboard', 'name': '随机图库状态'}]
 
     def get_sidebar_nav(self) -> Optional[List[Dict[str, Any]]]:
@@ -897,7 +947,7 @@ class RandomPic(_PluginBase):
         return [
             {
                 'nav_key': 'main',
-                'title': '随机图库仪表盘',
+                'title': '随机图库',
                 'icon': 'mdi-image-multiple-outline',
                 'section': 'start',
                 'permission': 'manage',
@@ -908,7 +958,7 @@ class RandomPic(_PluginBase):
     def get_dashboard(self, key: str, **kwargs) -> Optional[
         Tuple[Dict[str, Any], Dict[str, Any], Optional[List[dict]]]
     ]:
-        if key != 'main_dashboard':
+        if key != 'main_dashboard' or not self._dashboard_enable:
             return None
         return {
             'cols': 12,

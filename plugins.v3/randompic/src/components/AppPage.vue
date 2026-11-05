@@ -250,7 +250,7 @@
             <span class="visit-time">{{ v.time }}</span>
             <span>{{ endpointLabel(v.endpoint) }}</span>
             <span>{{ typeLabel(v.type) }}</span>
-            <span>{{ sourceLabel(v.source) }}</span>
+            <span>{{ sourceDisplay(v) }}</span>
             <span>{{ v.elapsed_ms }}ms</span>
             <span>
               <v-icon size="14" :color="v.ok ? 'success' : 'error'">
@@ -575,7 +575,9 @@ const endpointLabel = (endpoint) =>
 const typeLabel = (type) =>
   ({ auto: '自动', pc: '横屏', mobile: '竖屏' }[type] || type || '-');
 const sourceLabel = (source) =>
-  ({ local: '本地', network: '网络', error: '错误' }[source] || source || '-');
+  ({ local: '本地', network: '域名', error: '错误' }[source] || source || '-');
+// 来源列：域名图源优先显示实际域名（如 picsum.photos）
+const sourceDisplay = (v) => (v && v.domain ? v.domain : sourceLabel(v && v.source));
 
 const loadVisits = async () => {
   visitsLoading.value = true;

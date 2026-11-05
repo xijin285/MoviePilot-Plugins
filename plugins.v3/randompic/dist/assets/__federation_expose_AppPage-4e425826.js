@@ -1,7 +1,7 @@
 import { importShared } from './__federation_fn_import-054b33c3.js';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-c4c0bc37.js';
 
-const AppPage_vue_vue_type_style_index_0_scoped_ccd1346a_lang = '';
+const AppPage_vue_vue_type_style_index_0_scoped_deea89e3_lang = '';
 
 const {createTextVNode:_createTextVNode,resolveComponent:_resolveComponent,withCtx:_withCtx,createVNode:_createVNode,createElementVNode:_createElementVNode,toDisplayString:_toDisplayString,renderList:_renderList,Fragment:_Fragment,openBlock:_openBlock,createElementBlock:_createElementBlock,normalizeStyle:_normalizeStyle,createCommentVNode:_createCommentVNode,createBlock:_createBlock,normalizeClass:_normalizeClass} = await importShared('vue');
 
@@ -341,7 +341,9 @@ const endpointLabel = (endpoint) =>
 const typeLabel = (type) =>
   ({ auto: '自动', pc: '横屏', mobile: '竖屏' }[type] || type || '-');
 const sourceLabel = (source) =>
-  ({ local: '本地', network: '网络', error: '错误' }[source] || source || '-');
+  ({ local: '本地', network: '域名', error: '错误' }[source] || source || '-');
+// 来源列：域名图源优先显示实际域名（如 picsum.photos）
+const sourceDisplay = (v) => (v && v.domain ? v.domain : sourceLabel(v && v.source));
 
 const loadVisits = async () => {
   visitsLoading.value = true;
@@ -1055,7 +1057,7 @@ return (_ctx, _cache) => {
                       _createElementVNode("span", _hoisted_42, _toDisplayString(v.time), 1),
                       _createElementVNode("span", null, _toDisplayString(endpointLabel(v.endpoint)), 1),
                       _createElementVNode("span", null, _toDisplayString(typeLabel(v.type)), 1),
-                      _createElementVNode("span", null, _toDisplayString(sourceLabel(v.source)), 1),
+                      _createElementVNode("span", null, _toDisplayString(sourceDisplay(v)), 1),
                       _createElementVNode("span", null, _toDisplayString(v.elapsed_ms) + "ms", 1),
                       _createElementVNode("span", null, [
                         _createVNode(_component_v_icon, {
@@ -1269,6 +1271,6 @@ return (_ctx, _cache) => {
 }
 
 };
-const AppPage = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-ccd1346a"]]);
+const AppPage = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-deea89e3"]]);
 
 export { AppPage as default };
