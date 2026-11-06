@@ -68,13 +68,14 @@
     "name": "夸克网盘存储",
     "description": "使存储支持夸克网盘",
     "labels": "存储,网盘",
-    "version": "3.1.0",
+    "version": "3.1.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/vuequarkdisk.png",
     "author": "xijin285",
     "level": 1,
     "release": true,
     "system_version": ">=3.0.0",
     "history": {
+      "v3.1.1": "本次更新\n• 🐛 修复媒体整理失败：补齐整理链覆盖检查所需的 get_item_strict 严格查询接口\n",
       "v3.1.0": "本次更新\n• 🐛 修复存储页「不支持的存储类型」报错：接入统一存储管理动作（配置保存 / 存储用量 / 整理方式）\n• ✨ 新增 get_folder：媒体整理时目标目录不存在可自动递归创建\n",
       "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本，保留 V2 分支兼容\n• 🏷️ 显示名变更：「Vue-夸克网盘存储」→「夸克网盘存储」\n• 🎨 前端去除 Vuetify 全局样式打包，界面跟随主程序主题"
     }

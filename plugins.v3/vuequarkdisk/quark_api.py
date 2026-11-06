@@ -15,6 +15,7 @@ from app import schemas
 from app.core.config import global_vars, settings
 from app.log import logger
 from app.modules.filemanager.storages import transfer_process
+from app.schemas.exception import StorageQueryError
 
 from .quark_client import QuarkClient
 
@@ -475,6 +476,44 @@ class QuarkApi:
         except Exception as err:
             logger.error(f"【夸克网盘】获取文件信息异常: {err}")
             return None
+
+    def get_item_strict(self, path: Path) -> Optional[schemas.FileItem]:
+        """
+        严格获取文件项：确认不存在返回 None，无法确认状态时抛出 StorageQueryError。
+
+        整理链的覆盖检查依赖此方法区分「目标确认不存在」与「查询失败」，
+        查询失败时抛异常可让宿主跳过整理以避免误覆盖。
+        """
+        normalized = self._normalize_path(str(path))
+        if normalized == "/":
+            return self.get_item(path)
+
+        cached = self._item_cache.get(normalized)
+        if cached:
+            return schemas.FileItem(**cached)
+
+        try:
+            parent_path = path.parent if path.parent.as_posix() else Path("/")
+            parent_id = self._path_to_id(parent_path.as_posix())
+            parent = schemas.FileItem(
+                storage=self._disk_name,
+                path=parent_path.as_posix() if parent_path.as_posix() != "." else "/",
+                fileid=parent_id,
+                type="dir",
+            )
+            target_name = path.name
+            for item in self.list(parent):
+                if item.name == target_name:
+                    return item
+            # 父目录遍历成功但没有该名称 → 服务端确认不存在
+            return None
+        except (FileNotFoundError, NotADirectoryError):
+            # 父路径确认不存在 → 目标文件同样确认不存在
+            return None
+        except Exception as err:
+            raise StorageQueryError(
+                f"【夸克网盘】查询文件 {path} 失败，无法确认目标状态: {err}"
+            ) from err
 
     def get_parent(self, fileitem: schemas.FileItem) -> Optional[schemas.FileItem]:
         """
