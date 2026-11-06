@@ -36,9 +36,9 @@ class VueQuarkDisk(_PluginBase):
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/vuequarkdisk.png"
     # 插件版本
-    plugin_version = "3.0.0"
+    plugin_version = "3.1.0"
     # 插件作者
-    plugin_author = "xijin285,KoWming"
+    plugin_author = "xijin285"
     # 作者主页
     author_url = "https://github.com/xijin285"
     # 插件配置项 ID 前缀
@@ -879,6 +879,7 @@ class VueQuarkDisk(_PluginBase):
         获取插件模块声明，暴露存储操作方法。
         """
         return {
+            "storage_manage": self.storage_manage,
             "list_files": self.list_files,
             "any_files": self.any_files,
             "download_file": self.download_file,
@@ -891,6 +892,7 @@ class VueQuarkDisk(_PluginBase):
             "storage_usage": self.storage_usage,
             "support_transtype": self.support_transtype,
             "create_folder": self.create_folder,
+            "get_folder": self.get_folder,
             "exists": self.exists,
             "get_item": self.get_item,
         }
@@ -1108,6 +1110,60 @@ class VueQuarkDisk(_PluginBase):
             return {}
         _snapshot(root_item)
         return files_info
+
+    def storage_manage(
+        self, storage: str, action: str, **params: Any
+    ) -> Optional[Dict[str, Any]]:
+        """
+        处理 MoviePilot V3 统一存储管理动作（存储页配置/用量/整理方式）。
+
+        :param storage (str): 存储类型
+        :param action (str): 存储管理动作
+        :param params (Any): 动作参数
+
+        :return Dict: 统一存储管理响应，存储不匹配返回 None
+        """
+        if storage != self._disk_name:
+            return None
+
+        if action in ("save_config", "reset_config"):
+            # 配置由插件自身配置页管理，这里直接确认成功
+            return {"success": True, "message": "", "data": None}
+        if action == "support_transtype":
+            return {
+                "success": True,
+                "message": "",
+                "data": {"transtype": {"move": "移动", "copy": "复制"}},
+            }
+        if action == "usage":
+            if not self._quark_api:
+                return {
+                    "success": False,
+                    "message": "插件未启用或未初始化",
+                    "data": None,
+                }
+            usage = self._quark_api.usage()
+            if not usage:
+                return {"success": False, "message": "获取存储用量失败", "data": None}
+            return {"success": True, "message": "", "data": usage.model_dump()}
+        return {
+            "success": False,
+            "message": f"夸克网盘 不支持 {action}",
+            "data": None,
+        }
+
+    def get_folder(self, storage: str, path: Path) -> Optional[schemas.FileItem]:
+        """
+        获取目录，不存在时递归创建（整理链使用）。
+
+        :param storage (str): 存储类型
+        :param path (Path): 目录路径
+
+        :return FileItem: 目录文件项，存储不匹配或插件未就绪时返回 None
+        """
+        if storage != self._disk_name or not self._quark_api:
+            return None
+        return self._quark_api.get_folder(path)
 
     def storage_usage(self, storage: str) -> Optional[schemas.StorageUsage]:
         """
