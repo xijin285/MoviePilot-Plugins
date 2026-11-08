@@ -36,15 +36,16 @@
   },
   "IkuaiRouterBackup": {
     "name": "爱快路由时光机",
-    "description": "轻松配置您的爱快路由，让路由管理更简单",
-    "labels": "备份,路由器",
-    "version": "3.0.0",
+    "description": "轻松配置您的爱快路由，Vue 仪表盘实时监控负载/设备/日志，备份支持本地/WebDAV/网盘",
+    "labels": "备份,路由器,监控",
+    "version": "3.1.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",
     "author": "xijin285",
     "level": 1,
     "release": true,
     "system_version": ">=3.0.0",
     "history": {
+      "v3.1.0": "本次更新\n• 🖥️ 全新 Vue 前端：配置页 / 状态页 / 侧边仪表盘重做，分区可折叠\n• 📊 侧边仪表盘实时监控：负载、线路、12 种监控视图（流量分布 / 性能负载 / 网络负载 / 分流 / IPv4·IPv6 终端 / 摄像头 / DHCP 终端 / 黑名单 / DNS 设置 / 路由表 / UPnP）、协议流量、系统日志，卡片支持自定义排序\n• 💾 备份目标统一为「存储备份」：本地磁盘、WebDAV、网盘（夸克 / 115 / OpenList 等）可同时多目标依次备份，目录可视化选择\n• ♻️ 恢复支持本地 / WebDAV / 网盘来源，恢复前自动创建恢复点\n• ⚡ 配置无变化自动跳过保存，CPU / 内存负载超限可推送告警\n• 🧭 操作更顺手：卡片可拖拽排序与隐藏、刷新间隔 10/30/60 秒或手动暂停、终端与路由表支持搜索并导出 CSV、备份文件可下载 / 删除\n• 🧩 IP 分组同步保留并适配新配置页",
       "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本，保留 V2 分支兼容\n• 📌 V2 最新为 1.4.1，已适配爱快 OS 4.X 架构与 API 令牌认证"
     }
   },

@@ -1,4 +1,7 @@
+import os
 import threading
+import time
+from pathlib import Path
 from typing import Any, List, Dict, Tuple, Optional
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -10,6 +13,7 @@ from app.plugins import _PluginBase
 from app.schemas import NotificationType
 
 from .ip_group.manager import IPGroupManager
+from .monitor.monitor_service import MonitorService
 from .ui.form_builder import FormBuilder
 from .notification.service import NotificationManager
 from .notification.ikuai_message_handler import IkuaiMessageHandler
@@ -33,11 +37,11 @@ class IkuaiRouterBackup(_PluginBase):
     # 插件名称
     plugin_name = "爱快路由时光机"
     # 插件描述
-    plugin_desc = "轻松配置您的爱快路由，让路由管理更简单"
+    plugin_desc = "轻松配置您的爱快路由，Vue 仪表盘实时监控负载/设备/日志，备份支持本地/WebDAV/网盘"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本
-    plugin_version = "3.0.0"
+    plugin_version = "3.1.0"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -104,12 +108,36 @@ class IkuaiRouterBackup(_PluginBase):
     _restore_file: str = ""  # 要恢复的文件
     _restore_now: bool = False  # 立即恢复开关
 
+    # Vue 仪表盘/侧边栏开关
+    _monitor_enable: bool = True
+
+    # 备份增强：变更检测 / 恢复点 / 统一存储备份目标
+    _skip_unchanged_backup: bool = True
+    _restore_point_enable: bool = True
+    _enable_cloud_backup: bool = False   # 引擎属性：由统一存储字段推导
+    _cloud_storage: str = ""
+    _cloud_path: str = "ikuai_backups"
+    _cloud_keep_backup_num: int = 7
+    # 统一存储备份（本地磁盘 + MP 网盘存储合并为多个目标，可同时启用本地+网盘）
+    _storage_backup_enable: bool = True
+    _storage_type: str = "local"         # local 或 MP 存储类型（quark/u115/openlist...）— 兼容旧字段（第一个目标）
+    _storage_path: str = ""              # 本地路径或远端目录 — 兼容旧字段
+    _storage_keep_backup_num: int = 7
+    _storage_targets: list = []          # 多目标列表：[{'type': 'local'|'quark'|..., 'path': str, 'keep_backup_num': int}]
+
+    # 负载告警
+    _load_warn_enable: bool = False
+    _load_cpu_threshold: float = 90
+    _load_mem_threshold: float = 90
+    _load_warn_times: int = 3
+
     _original_ikuai_url: str = ""
     _last_config_hash: str = ""  # 配置哈希值，用于判断是否需要重新初始化
 
     def init_plugin(self, config: Optional[dict] = None):
         self._lock = threading.Lock()
         # 初始化管理器
+        self._monitor_service = MonitorService(self)  # 初始化监控服务
         self._form_builder = FormBuilder(self)  # 初始化表单构建器
         self._notification_manager = NotificationManager(self)  # 初始化通知管理器
         self._ikuai_message_handler = IkuaiMessageHandler(self)  # 初始化爱快消息处理器
@@ -143,6 +171,18 @@ class IkuaiRouterBackup(_PluginBase):
         self._scheduler_manager.setup_scheduler()
         self._scheduler_manager.setup_ip_group_scheduler()
 
+        # 启动后立即采样一次监控趋势（后台线程，不阻塞插件加载）
+        if getattr(self, '_monitor_enable', True) and getattr(self, '_enabled', False):
+            threading.Thread(target=self._initial_sample, daemon=True).start()
+
+    def _initial_sample(self):
+        """首次加载延迟几秒后采样一次趋势，让仪表盘尽快有数据"""
+        try:
+            time.sleep(5)
+            self._monitor_service.sample_trend()
+        except Exception as e:
+            logger.debug(f"{self.plugin_name} 初始趋势采样失败: {e}")
+
     def _load_backup_history(self) -> List[Dict[str, Any]]:
         return self._history_manager.load_backup_history()
 
@@ -170,35 +210,159 @@ class IkuaiRouterBackup(_PluginBase):
         return get_api_routes(self)
 
     def get_service(self) -> List[Dict[str, Any]]:
+        services = []
         if self._enabled and self._cron:
             try:
                 if str(self._cron).strip().count(" ") == 4:
-                    return [{
+                    services.append({
                         "id": "IkuaiRouterBackupService",
                         "name": f"{self.plugin_name}定时服务",
                         "trigger": CronTrigger.from_crontab(self._cron, timezone=settings.TZ),
                         "func": self.run_backup_job,
                         "kwargs": {}
-                    }]
+                    })
                 else:
                     logger.error(f"{self.plugin_name} cron表达式格式错误: {self._cron}")
-                    return []
             except Exception as err:
                 logger.error(f"{self.plugin_name} 定时任务配置错误：{str(err)}")
-                return []
-        return []
+        # 监控采样 + 负载告警：每 5 分钟一次
+        if self._enabled or self._load_warn_enable or self._monitor_enable:
+            try:
+                from apscheduler.triggers.interval import IntervalTrigger
+                services.append({
+                    "id": "IkuaiRouterMonitorService",
+                    "name": f"{self.plugin_name}监控采样服务",
+                    "trigger": IntervalTrigger(minutes=5, timezone=settings.TZ),
+                    "func": self.run_monitor_job,
+                    "kwargs": {}
+                })
+            except Exception as err:
+                logger.error(f"{self.plugin_name} 监控采样任务配置错误：{str(err)}")
+        return services
+
+    @staticmethod
+    def get_render_mode() -> Tuple[str, Optional[str]]:
+        """声明 Vue 联邦渲染模式（与 RandomPic/VueQuarkDisk 一致）"""
+        return 'vue', 'dist/assets'
+
+    def get_sidebar_nav(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        注册主界面左侧导航「爱快路由」入口，
+        前端跳转 #/plugin-app/IkuaiRouterBackup/main 并加载 ./AppPage 组件。
+        「监控仪表盘」关闭时同步隐藏。
+        """
+        if not getattr(self, '_monitor_enable', True):
+            return None
+        return [
+            {
+                'nav_key': 'main',
+                'title': '爱快路由',
+                'icon': 'mdi-router-network',
+                'section': 'start',
+                'permission': 'manage',
+                'order': 16,
+            }
+        ]
 
     def get_form(self) -> Tuple[List[dict], Dict[str, Any]]:
-        """使用FormBuilder构建表单"""
-        return self._form_builder.build_form()
+        """Vue 渲染模式：form 为 None，由前端 Config 组件接管"""
+        return None, self.get_vue_config()
 
     def get_page(self) -> List[dict]:
-        """使用PageBuilder构建页面"""
-        return self._page_builder.build_page()
-    
+        """Vue 渲染模式：插件页由前端 Page 组件接管"""
+        return []
+
+    def get_dashboard_meta(self) -> Optional[List[Dict[str, str]]]:
+        """注册仪表盘小组件"""
+        if not getattr(self, '_monitor_enable', True):
+            return None
+        return [{'key': 'ikuai_monitor', 'name': '爱快路由状态'}]
+
     def get_dashboard(self, key: str = None, **kwargs) -> Optional[Tuple[Dict[str, Any], Dict[str, Any], List[dict]]]:
-        """构建仪表盘 - 显示系统概况和线路监控"""
-        return self._dashboard_builder.build_dashboard(**kwargs)
+        """仪表盘小组件由前端 Dashboard 组件渲染"""
+        if key not in (None, 'ikuai_monitor') or not getattr(self, '_monitor_enable', True):
+            return None
+        return {
+            'cols': 12,
+            'md': 6,
+        }, {
+            'refresh': 30,
+            'border': True,
+            'title': '爱快路由状态',
+            'subtitle': '实时负载 / 在线设备 / 流量',
+        }, None
+
+    def get_vue_config(self) -> Dict[str, Any]:
+        """输出 Vue 配置页所需的完整配置"""
+        return {
+            "enabled": self._enabled,
+            "cron": self._cron,
+            "notify": self._notify,
+            "notification_style": self._notification_style,
+            "retry_count": self._retry_count,
+            "retry_interval": self._retry_interval,
+            "ikuai_url": self._original_ikuai_url,
+            "ikuai_username": self._ikuai_username,
+            "ikuai_auth_mode": self._ikuai_auth_mode,
+            "ikuai_api_token": self._ikuai_api_token,
+            "storage_backup_enable": self._storage_backup_enable,
+            "storage_type": self._storage_type,
+            "storage_path": self._storage_path,
+            "storage_keep_backup_num": self._storage_keep_backup_num,
+            "storage_targets": self._storage_targets or [],
+            "delete_after_backup": self._delete_after_backup,
+            "enable_webdav": self._enable_webdav,
+            "webdav_url": self._webdav_url,
+            "webdav_username": self._webdav_username,
+            "webdav_password": self._webdav_password,
+            "webdav_path": self._webdav_path,
+            "webdav_keep_backup_num": self._webdav_keep_backup_num,
+            "skip_unchanged_backup": self._skip_unchanged_backup,
+            "restore_point_enable": self._restore_point_enable,
+            "enable_restore": self._enable_restore,
+            "restore_force": self._restore_force,
+            "monitor_enable": self._monitor_enable,
+            "load_warn_enable": self._load_warn_enable,
+            "load_cpu_threshold": self._load_cpu_threshold,
+            "load_mem_threshold": self._load_mem_threshold,
+            "load_warn_times": self._load_warn_times,
+            "enable_ip_group": self._enable_ip_group,
+            "ip_group_province": self._ip_group_province,
+            "ip_group_city": self._ip_group_city,
+            "ip_group_isp": self._ip_group_isp,
+            "ip_group_prefix": self._ip_group_prefix,
+            "ip_group_address_pool": self._ip_group_address_pool,
+        }
+
+    def save_vue_config(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """保存 Vue 配置页提交的完整配置（复用 ConfigLoader 逻辑）"""
+        try:
+            data = dict(data or {})
+            # 密码字段不回传前端：为空时保留已存储的值，避免意外清空
+            if not str(data.get('ikuai_password') or ''):
+                data['ikuai_password'] = self._ikuai_password
+            if not str(data.get('webdav_password') or ''):
+                data['webdav_password'] = self._webdav_password
+            self._config_loader.load_config(data)
+            if self._clear_history:
+                self._clear_backup_history()
+                self._clear_history = False
+            self._config_manager.update_config()
+            self._scheduler_manager.setup_scheduler()
+            self._scheduler_manager.setup_ip_group_scheduler()
+            return {'success': True, 'msg': '配置保存成功'}
+        except Exception as err:
+            logger.error(f"{self.plugin_name} 保存配置失败: {err}")
+            return {'success': False, 'msg': f'保存配置失败: {str(err)}'}
+
+    def run_monitor_job(self):
+        """监控采样 + 负载告警（每 5 分钟）"""
+        try:
+            if getattr(self, '_monitor_enable', True) or self._enabled:
+                self._monitor_service.sample_trend()
+            self._monitor_service.run_load_check()
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 监控任务执行失败: {e}")
     
     @eventmanager.register(EventType.PluginAction)
     def handle_ikuai_command(self, event: Event = None):
@@ -376,11 +540,14 @@ class IkuaiRouterBackup(_PluginBase):
                     is_clear_history=True
                 )
 
-    def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None, is_clear_history: bool = False):
+    def _send_notification(self, success: bool, message: str = "", filename: Optional[str] = None,
+                           is_clear_history: bool = False, targets: Optional[List[Dict[str, Any]]] = None,
+                           failed: Optional[List[str]] = None,
+                           size: Any = 0, elapsed: Any = 0):
         """发送通知"""
         if is_clear_history:
             self._notification_manager.send_clear_history_notification(
-                success=success, 
+                success=success,
                 message=message,
                 notification_style=self._notification_style,
                 notify=self._notify
@@ -391,7 +558,11 @@ class IkuaiRouterBackup(_PluginBase):
                 message=message,
                 filename=filename,
                 notification_style=self._notification_style,
-                notify=self._notify
+                notify=self._notify,
+                targets=targets or [],
+                failed=failed or [],
+                size=size,
+                elapsed=elapsed
             )
 
     def _load_restore_history(self) -> List[Dict[str, Any]]:
@@ -406,19 +577,198 @@ class IkuaiRouterBackup(_PluginBase):
         """获取可用的备份文件列表"""
         return self._backup_manager.get_available_backups()
 
-    def run_restore_job(self, filename: str, source: str = "本地备份"):
+    def run_restore_job(self, filename: str, source: str = "本地备份",
+                        storage: str = "", remote_dir: str = ""):
         """执行恢复任务（使用RestoreExecutor）"""
-        self._restore_executor.run_restore_job(filename, source)
+        self._restore_executor.run_restore_job(filename, source, storage, remote_dir)
+
+    # ---------- 仪表盘布局 ----------
+    LAYOUT_KEY = "dashboard_layout"
+    HIDDEN_KEY = "dashboard_hidden"
+    LAYOUT_VER_KEY = "dashboard_layout_version"
+
+    def get_dashboard_layout_version(self) -> int:
+        try:
+            return int(self.get_data(self.LAYOUT_VER_KEY) or 1)
+        except Exception:
+            return 1
+
+    def save_dashboard_layout_version(self, version) -> bool:
+        try:
+            self.save_data(self.LAYOUT_VER_KEY, int(version or 1))
+            return True
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 保存布局版本失败: {e}")
+            return False
+
+    def get_dashboard_layout(self) -> List[str]:
+        """仪表盘卡片顺序（存储于插件数据）"""
+        try:
+            layout = self.get_data(self.LAYOUT_KEY)
+            if isinstance(layout, list) and layout:
+                return [str(x) for x in layout]
+        except Exception:
+            pass
+        return []
+
+    def get_dashboard_hidden(self) -> List[str]:
+        """仪表盘隐藏的卡片"""
+        try:
+            hidden = self.get_data(self.HIDDEN_KEY)
+            if isinstance(hidden, list):
+                return [str(x) for x in hidden]
+        except Exception:
+            pass
+        return []
+
+    def save_dashboard_layout(self, layout) -> bool:
+        """保存仪表盘卡片顺序"""
+        try:
+            clean = []
+            for x in (layout if isinstance(layout, list) else []):
+                s = str(x).strip()
+                if s and s not in clean:
+                    clean.append(s)
+            self.save_data(self.LAYOUT_KEY, clean)
+            return True
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 保存仪表盘布局失败: {e}")
+            return False
+
+    def save_dashboard_hidden(self, hidden) -> bool:
+        """保存仪表盘隐藏卡片（与顺序一起持久化，跨设备一致）"""
+        try:
+            clean = []
+            for x in (hidden if isinstance(hidden, list) else []):
+                s = str(x).strip()
+                if s and s not in clean:
+                    clean.append(s)
+            self.save_data(self.HIDDEN_KEY, clean)
+            return True
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 保存仪表盘隐藏卡片失败: {e}")
+            return False
+
+    # ---------- 备份文件下载 / 删除 ----------
+    @staticmethod
+    def _safe_backup_name(filename: str) -> str:
+        """只允许纯文件名，防止目录穿越"""
+        name = os.path.basename(str(filename or "").strip().replace("\\", "/"))
+        if not name or name.startswith("."):
+            raise ValueError("非法文件名")
+        return name
+
+    def load_backup_bytes(self, filename: str, source: str = "本地备份",
+                          storage: str = "", remote_dir: str = "") -> Tuple[Optional[bytes], Optional[str]]:
+        """
+        读取备份文件的原始内容（本地 / WebDAV / 网盘），供前端直接下载
+        :return: (文件字节, 错误信息)
+        """
+        try:
+            name = self._safe_backup_name(filename)
+        except ValueError as e:
+            return None, str(e)
+
+        src = str(source or "本地备份")
+        if src == "本地备份":
+            path = Path(self._backup_path or "") / name
+            if not path.is_file():
+                return None, f"本地备份文件不存在: {name}"
+            try:
+                return path.read_bytes(), None
+            except Exception as e:
+                return None, f"读取备份文件失败: {e}"
+
+        tmp_path = Path(self.get_data_path()) / "temp" / name
+        tmp_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if src == "WebDAV备份":
+                ok, err = self._download_from_webdav(name, str(tmp_path))
+                if not ok:
+                    return None, f"从 WebDAV 下载失败: {err}"
+            elif "网盘" in src and storage:
+                from .backup import cloud_storage
+                ok, err = cloud_storage.download_backup_file(
+                    storage, remote_dir or "ikuai_backups", name, str(tmp_path))
+                if not ok:
+                    return None, f"从网盘下载失败: {err}"
+            else:
+                return None, f"不支持的备份来源: {src}"
+            try:
+                return tmp_path.read_bytes(), None
+            except Exception as e:
+                return None, f"读取备份文件失败: {e}"
+        finally:
+            try:
+                if tmp_path.exists():
+                    tmp_path.unlink()
+            except OSError:
+                pass
+
+    def delete_backup_file(self, filename: str, source: str = "本地备份",
+                           storage: str = "", remote_dir: str = "") -> Tuple[bool, Optional[str]]:
+        """删除备份文件（本地 / WebDAV / 网盘）"""
+        try:
+            name = self._safe_backup_name(filename)
+        except ValueError as e:
+            return False, str(e)
+
+        src = str(source or "本地备份")
+        try:
+            if src == "本地备份":
+                path = Path(self._backup_path or "") / name
+                if not path.is_file():
+                    return False, f"本地备份文件不存在: {name}"
+                path.unlink()
+                logger.info(f"{self.plugin_name} 已删除本地备份: {name}")
+                return True, None
+
+            if src == "WebDAV备份":
+                from .webdav.webdav_client import WebDAVClient
+                client = WebDAVClient(
+                    url=self._webdav_url,
+                    username=self._webdav_username,
+                    password=self._webdav_password,
+                    path=self._webdav_path,
+                    skip_dir_check=True,
+                    logger=logger,
+                    plugin_name=self.plugin_name,
+                )
+                try:
+                    ok, err = client.delete_file(name)
+                finally:
+                    client.close()
+                if not ok:
+                    return False, f"删除 WebDAV 备份失败: {err}"
+                logger.info(f"{self.plugin_name} 已删除 WebDAV 备份: {name}")
+                return True, None
+
+            if "网盘" in src and storage:
+                from .backup import cloud_storage
+                ok, err = cloud_storage.delete_cloud_backup(
+                    storage, remote_dir or "ikuai_backups", name)
+                if not ok:
+                    return False, f"删除网盘备份失败: {err}"
+                logger.info(f"{self.plugin_name} 已删除网盘备份: {storage}/{name}")
+                return True, None
+            return False, f"不支持的备份来源: {src}"
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 删除备份 {name} 失败: {e}")
+            return False, str(e)
 
 
-    def _send_restore_notification(self, success: bool, message: str = "", filename: str = "", is_clear_history: bool = False):
+    def _send_restore_notification(self, success: bool, message: str = "", filename: str = "", is_clear_history: bool = False,
+                                   source: str = "", elapsed: Any = 0, restore_point: str = ""):
         """发送恢复通知"""
         self._notification_manager.send_restore_notification(
             success=success,
             message=message,
             filename=filename,
             notification_style=self._notification_style,
-            notify=self._notify
+            notify=self._notify,
+            source=source,
+            elapsed=elapsed,
+            restore_point=restore_point
         )
 
 

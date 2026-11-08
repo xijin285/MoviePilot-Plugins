@@ -119,7 +119,40 @@ class BackupManager:
                         
             except Exception as e:
                 logger.error(f"{self.plugin_name} 获取WebDAV备份文件列表时发生错误: {str(e)}")
-        
+
+        # 获取网盘（MP 存储）备份：遍历所有启用的网盘目标
+        try:
+            from ..backup import cloud_storage
+            storage_names = {s.get('type'): s.get('name') for s in (cloud_storage.list_mp_storages() or [])}
+            seen = set()
+            targets = list(getattr(self.plugin, '_storage_targets', None) or [])
+            # 兼容旧单目标配置
+            if not targets and getattr(self.plugin, '_storage_backup_enable', False) \
+                    and (getattr(self.plugin, '_storage_type', 'local') or 'local') != 'local':
+                targets = [{
+                    'type': getattr(self.plugin, '_storage_type', ''),
+                    'path': getattr(self.plugin, '_storage_path', ''),
+                    'keep_backup_num': getattr(self.plugin, '_storage_keep_backup_num', 7),
+                }]
+            for t in targets:
+                t_type = str(t.get('type') or '').strip()
+                if not t_type or t_type == 'local' or t_type in seen:
+                    continue
+                seen.add(t_type)
+                remote_dir = str(t.get('path') or '').strip() or 'ikuai_backups'
+                cloud_files = cloud_storage.list_cloud_backups(t_type, remote_dir)
+                display_name = storage_names.get(t_type) or t_type
+                for fi in cloud_files:
+                    backups.append({
+                        'filename': fi['filename'],
+                        'source': f'{display_name}网盘',
+                        'storage': t_type,
+                        'remote_dir': remote_dir,
+                        'time': fi.get('time') or 0,
+                    })
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 获取网盘备份文件列表时发生错误: {str(e)}")
+
         # 按时间排序
         backups.sort(key=lambda x: x['time'], reverse=True)
         return backups

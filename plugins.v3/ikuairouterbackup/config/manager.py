@@ -53,9 +53,13 @@ class ConfigManager:
             critical_keys = {
                 'enabled', 'notify', 'onlyonce', 'retry_count', 'retry_interval', 'notification_style',
                 'ikuai_url', 'ikuai_username', 'ikuai_password', 'ikuai_auth_mode', 'ikuai_api_token',
-                'enable_local_backup', 'backup_path', 'keep_backup_num',
+                'storage_backup_enable', 'storage_type', 'storage_path', 'storage_keep_backup_num',
+                'storage_targets',
                 'enable_webdav', 'webdav_url', 'webdav_username', 'webdav_password', 'webdav_path', 'webdav_keep_backup_num',
                 'clear_history', 'delete_after_backup',
+                'monitor_enable',
+                'skip_unchanged_backup', 'restore_point_enable',
+                'load_warn_enable', 'load_cpu_threshold', 'load_mem_threshold', 'load_warn_times',
                 'enable_restore', 'restore_force', 'restore_file', 'restore_now',
                 'enable_ip_group', 'ip_group_province', 'ip_group_city', 'ip_group_isp', 'ip_group_prefix', 'ip_group_address_pool', 'ip_group_sync_now',
                 'cron'
@@ -83,9 +87,12 @@ class ConfigManager:
             "ikuai_password": self.plugin._ikuai_password,
             "ikuai_auth_mode": self.plugin._ikuai_auth_mode,
             "ikuai_api_token": self.plugin._ikuai_api_token,
-            "enable_local_backup": self.plugin._enable_local_backup,
-            "backup_path": self.plugin._backup_path,
-            "keep_backup_num": self.plugin._keep_backup_num,
+            # 统一存储备份目标（多目标）
+            "storage_backup_enable": self.plugin._storage_backup_enable,
+            "storage_type": self.plugin._storage_type,
+            "storage_path": self.plugin._storage_path,
+            "storage_keep_backup_num": self.plugin._storage_keep_backup_num,
+            "storage_targets": self.plugin._storage_targets or [],
             "notification_style": self.plugin._notification_style,
             "enable_webdav": self.plugin._enable_webdav,
             "webdav_url": self.plugin._webdav_url,
@@ -95,6 +102,16 @@ class ConfigManager:
             "webdav_keep_backup_num": self.plugin._webdav_keep_backup_num,
             "clear_history": self.plugin._clear_history,
             "delete_after_backup": self.plugin._delete_after_backup,
+            # Vue 仪表盘/侧边栏开关
+            "monitor_enable": self.plugin._monitor_enable,
+            # 备份增强
+            "skip_unchanged_backup": self.plugin._skip_unchanged_backup,
+            "restore_point_enable": self.plugin._restore_point_enable,
+            # 负载告警
+            "load_warn_enable": self.plugin._load_warn_enable,
+            "load_cpu_threshold": self.plugin._load_cpu_threshold,
+            "load_mem_threshold": self.plugin._load_mem_threshold,
+            "load_warn_times": self.plugin._load_warn_times,
             "enable_restore": self.plugin._enable_restore,
             "restore_force": self.plugin._restore_force,
             "restore_file": self.plugin._restore_file,

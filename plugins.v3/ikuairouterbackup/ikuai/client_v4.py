@@ -117,6 +117,85 @@ class IkuaiClientV4:
         path = f"/system/backup?srcfile={quote(filename)}"
         return self._request("DELETE", path)
 
+    def get_online_users(self, page_size: int = 200) -> Optional[List[Dict]]:
+        """
+        获取在线用户/设备列表。v4: GET /auth/users?page_size=N
+        （端点参考 ikuaios/ikuai-cli internal/cmd/users/command.go）
+        :return: 设备记录列表；失败返回 None
+        """
+        results = self._request("GET", f"/auth/users?page={1}&page_size={page_size}")
+        if not results or results.get("_error"):
+            return None
+        # 兼容 results: {"users": [...]} / {"data": [...]} / 直接是列表
+        items = None
+        if isinstance(results, dict):
+            for key in ("users", "data", "items", "list"):
+                if isinstance(results.get(key), list):
+                    items = results[key]
+                    break
+            if items is None:
+                # 信封兜底：_request 无 results 时返回完整响应
+                if isinstance(results.get("results"), list):
+                    items = results["results"]
+        elif isinstance(results, list):
+            items = results
+        if items is None:
+            return None
+        normalized = []
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            entry = dict(it)
+            # 统一常用字段名，便于前端展示
+            if not entry.get("ip") and entry.get("userip"):
+                entry["ip"] = entry.get("userip")
+            if not entry.get("mac") and entry.get("usermac"):
+                entry["mac"] = entry.get("usermac")
+            if not entry.get("username") and entry.get("user_name"):
+                entry["username"] = entry.get("user_name")
+            normalized.append(entry)
+        return normalized
+
+    def get_logs(self, log_type: str = "system", page_size: int = 100) -> Optional[List[Dict]]:
+        """
+        获取系统日志。v4: GET /log/{type}?page_size=N
+        （端点参考 ikuaios/ikuai-cli internal/cmd/log/command.go）
+        :param log_type: system/pppoe/dhcp/auth/arp/ddns/notice/wireless/web
+        :return: 日志记录列表；失败返回 None
+        """
+        # 日志类型 → v4 路径（参考 ikuaios/ikuai-cli internal/cmd/log/command.go）
+        log_paths = {
+            "system": "log/system",
+            "pppoe": "log/pppoe",
+            "dhcp": "log/dhcp",
+            "auth": "log/auth",
+            "arp": "log/arp",
+            "ddns": "log/ddns",
+            "notice": "log/notice",
+            "wireless": "log/wireless",
+            "web": "log/web_activity",
+        }
+        v4_path = log_paths.get((log_type or "system").lower())
+        if not v4_path:
+            logger.error(f"{self.plugin_name} 不支持的日志类型: {log_type}")
+            return None
+        results = self._request("GET", f"/{v4_path}?page={1}&page_size={page_size}")
+        if not results or results.get("_error"):
+            return None
+        items = None
+        if isinstance(results, dict):
+            for key in ("logs", "data", "items", "list"):
+                if isinstance(results.get(key), list):
+                    items = results[key]
+                    break
+            if items is None and isinstance(results.get("results"), list):
+                items = results["results"]
+        elif isinstance(results, list):
+            items = results
+        if items is None:
+            return None
+        return [it for it in items if isinstance(it, dict)]
+
     def get_system_info(self) -> Optional[Dict]:
         """获取系统状态（CPU/内存/在线用户/流量/版本）。v4: GET /monitoring/system"""
         results = self._request("GET", "/monitoring/system")

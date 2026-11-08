@@ -514,9 +514,16 @@ class IkuaiClient:
                 system_info = {}
                 cpu_list = data.get("cpu", [])
                 if cpu_list:
-                    latest_cpu = cpu_list[-1] if cpu_list else "0%"
-                    cpu_value = float(latest_cpu.replace("%", ""))
-                    system_info["cpu_usage"] = cpu_value
+                    # 全核平均利用率
+                    core_values = []
+                    for c in cpu_list:
+                        try:
+                            if c:
+                                core_values.append(float(str(c).replace("%", "")))
+                        except (TypeError, ValueError):
+                            continue
+                    if core_values:
+                        system_info["cpu_usage"] = round(sum(core_values) / len(core_values), 1)
                 memory = data.get("memory", {})
                 if memory:
                     mem_used = memory.get("used", "0%")
@@ -539,6 +546,44 @@ class IkuaiClient:
                 if verinfo:
                     system_info["version"] = verinfo.get("verstring", "")
                     system_info["hostname"] = data.get("hostname", "")
+                    # 系统概览：型号 / 架构 / 构建时间 / 企业版标记
+                    system_info["model"] = verinfo.get("modelname", "") or ""
+                    system_info["arch"] = verinfo.get("arch", "") or ""
+                    system_info["sysbit"] = verinfo.get("sysbit", "") or ""
+                    system_info["version_short"] = verinfo.get("version", "") or ""
+                    system_info["build_date"] = verinfo.get("build_date", 0) or 0
+                    system_info["enterprise"] = bool(verinfo.get("is_enterprise"))
+                # CPU 核心数（sysstat 的 freq 数组长度才是真实核心数，cpu 数组含汇总项）/
+                # 温度（部分机型无温度传感器，返回空数组）
+                freq_list = data.get("freq")
+                if isinstance(freq_list, list) and freq_list:
+                    system_info["cpu_cores"] = len(freq_list)
+                elif isinstance(cpu_list, list):
+                    system_info["cpu_cores"] = len(cpu_list)
+                temp = data.get("cputemp")
+                if isinstance(temp, list) and temp:
+                    try:
+                        system_info["cpu_temp"] = round(float(str(temp[0]).replace("C", "").replace("℃", "")), 1)
+                    except (TypeError, ValueError):
+                        system_info["cpu_temp"] = None
+                else:
+                    system_info["cpu_temp"] = None
+                # 内存总量 / 已用（爱快返回的是 KB，统一换算成字节）
+                if memory:
+                    try:
+                        system_info["memory_total"] = int(memory.get("total", 0) or 0) * 1024
+                    except (TypeError, ValueError):
+                        system_info["memory_total"] = 0
+                    try:
+                        total_b = system_info["memory_total"]
+                        used_pct = float(str(memory.get("used", "0%")).replace("%", ""))
+                        system_info["memory_used"] = int(total_b * used_pct / 100)
+                    except (TypeError, ValueError):
+                        system_info["memory_used"] = 0
+                # 累计流量（字节）
+                if stream:
+                    system_info["total_up"] = stream.get("total_up", 0) or 0
+                    system_info["total_down"] = stream.get("total_down", 0) or 0
                 logger.debug(f"{self.plugin_name} 成功获取系统信息")
                 return system_info
             else:
@@ -556,44 +601,352 @@ class IkuaiClient:
     
     def get_monitor_info(self) -> Optional[Dict]:
         """
-        获取爱快路由器监控信息（CPU使用率、内存使用率等）
-        
-        :return: 监控信息字典或None
+        获取爱快路由器监控信息（CPU使用率、内存使用率、在线用户数）
+
+        注：旧固件的 func "monitor" 在 3.7.x 已不存在，实测 sysstat（TYPE=all）
+        返回 cpu 数组 / memory.used / online_user.count，此处统一走 sysstat。
+
+        :return: {'cpu_usage': float, 'mem_usage': float, 'online_users': int} 或 None
         """
-        monitor_url = urljoin(self.url, "/Action/call")
-        monitor_data = {"func_name": "monitor", "action": "show"}
-        
         try:
-            logger.debug(f"{self.plugin_name} 尝试从 {self.url} 获取监控信息...")
-            request_headers = {
-                'Content-Type': 'application/json',
-                'Accept': '*/*',
-                'Origin': self.url.rstrip('/'),
-                'Referer': self.url.rstrip('/') + '/'
-            }
-            response = self.session.post(monitor_url, data=json.dumps(monitor_data), 
-                                       headers=request_headers, timeout=10)
-            response.raise_for_status()
-            
-            res_json = response.json()
-            if res_json.get("Result") == 30000 and res_json.get("ErrMsg", "").lower() == "success":
-                data = res_json.get("Data", {})
-                logger.debug(f"{self.plugin_name} 成功获取监控信息")
-                return data
-            else:
-                logger.error(f"{self.plugin_name} 获取监控信息失败: {res_json}")
+            system_info = self.get_system_info()
+            if not system_info:
                 return None
-                
-        except requests.exceptions.RequestException as e:
-            logger.error(f"{self.plugin_name} 获取监控信息请求失败: {e}")
-            return None
-        except json.JSONDecodeError:
-            logger.error(f"{self.plugin_name} 获取监控信息响应非JSON格式")
-            return None
+            return {
+                'cpu_usage': system_info.get('cpu_usage'),
+                'mem_usage': system_info.get('mem_usage'),
+                'online_users': system_info.get('online_users'),
+            }
         except Exception as e:
-            logger.error(f"{self.plugin_name} 获取监控信息过程中发生未知错误: {e}")
+            logger.warning(f"{self.plugin_name} 获取监控信息失败: {e}")
             return None
     
+    def get_online_devices(self) -> Optional[List[Dict]]:
+        """
+        获取在线设备/用户列表。
+        - v4 令牌可用时走 REST /auth/users（参考 ikuai-cli）
+        - v3 密码会话走 monitor_lanip（实测 3.7.x 可用，参考 beck-8/ikuai-mcp）
+        :return: 设备记录列表；无法获取返回 None
+        """
+        # v4 优先
+        if self._use_v4() and self._v4 is not None:
+            try:
+                devices = self._v4.get_online_users()
+                if devices is not None:
+                    return devices
+            except Exception as e:
+                logger.warning(f"{self.plugin_name} v4 获取在线设备失败: {e}")
+        # v3 兜底：monitor_lanip
+        try:
+            call_url = urljoin(self.url, "/Action/call")
+            payload = {"func_name": "monitor_lanip", "action": "show",
+                       "param": {"TYPE": "data,total", "limit": "0,500",
+                                 "ORDER_BY": "connect_num", "ORDER": "desc"}}
+            resp = self.session.post(call_url, data=json.dumps(payload),
+                                     headers={'Content-Type': 'application/json'}, timeout=10)
+            resp.raise_for_status()
+            res_json = resp.json()
+            if res_json.get("Result") == 30000:
+                data = res_json.get("Data", {}) or {}
+                items = data.get("data")
+                if isinstance(items, list):
+                    normalized = []
+                    for it in items:
+                        if not isinstance(it, dict):
+                            continue
+                        entry = dict(it)
+                        # 统一常用字段名，便于前端展示（v3 monitor_lanip 用 ip_addr）
+                        if not entry.get("ip") and entry.get("ip_addr"):
+                            entry["ip"] = entry.get("ip_addr")
+                        if not entry.get("mac") and entry.get("usermac"):
+                            entry["mac"] = entry.get("usermac")
+                        if not entry.get("hostname") and entry.get("username"):
+                            entry["hostname"] = entry.get("username")
+                        normalized.append(entry)
+                    return normalized
+                return []
+        except Exception as e:
+            logger.warning(f"{self.plugin_name} v3 获取在线设备失败: {e}")
+        return None
+
+    # 插件日志类型 → v3 syslog-{type}（实测 3.7.x 仅支持这 4 类）
+    _V3_LOG_TYPES = {
+        "system": "sysevent",
+        "pppoe": "wanpppoe",
+        "dhcp": "dhcpd",
+        "ddns": "ddns",
+    }
+
+    def get_logs(self, log_type: str = "system", page_size: int = 100) -> Optional[List[Dict]]:
+        """
+        获取系统日志。
+        - v4 令牌可用时走 REST /log/{type}（参考 ikuai-cli）
+        - v3 密码会话走 Action/call syslog-{type}（system/pppoe/dhcp/ddns 四类）
+        :return: 日志记录列表；无法获取返回 None
+        """
+        if self._use_v4() and self._v4 is not None:
+            try:
+                return self._v4.get_logs(log_type, page_size=page_size)
+            except Exception as e:
+                logger.warning(f"{self.plugin_name} v4 获取日志失败: {e}")
+                return None
+        # v3 兜底：syslog-{type}
+        log_type = (log_type or "system").lower()
+        v3_type = self._V3_LOG_TYPES.get(log_type)
+        if not v3_type:
+            logger.warning(f"{self.plugin_name} v3 密码模式暂不支持日志类型: {log_type}")
+            return None
+        try:
+            call_url = urljoin(self.url, "/Action/call")
+            payload = {"func_name": f"syslog-{v3_type}", "action": "show",
+                       "param": {"TYPE": "total,data", "ORDER": "desc",
+                                 "ORDER_BY": "timestamp", "limit": f"0,{int(page_size)}"}}
+            resp = self.session.post(call_url, data=json.dumps(payload),
+                                     headers={'Content-Type': 'application/json'}, timeout=10)
+            resp.raise_for_status()
+            res_json = resp.json()
+            if res_json.get("Result") != 30000:
+                logger.warning(f"{self.plugin_name} v3 获取日志失败: {res_json.get('ErrMsg')}")
+                return None
+            items = (res_json.get("Data", {}) or {}).get("data") or []
+            normalized = []
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                entry = dict(it)
+                # 统一可读内容：sysevent/wanpppoe 有 content；dhcpd 是结构化字段
+                content = entry.get("content")
+                if not content and entry.get("msgtype"):
+                    content = f"{entry.get('msgtype')} {entry.get('ip_addr', '')} [{entry.get('mac', '')}] {entry.get('interface', '')}".strip()
+                if content:
+                    entry["msg"] = content
+                normalized.append(entry)
+            return normalized
+        except Exception as e:
+            logger.warning(f"{self.plugin_name} v3 获取日志失败: {e}")
+            return None
+
+    def get_protocol_flow(self) -> Optional[List[Dict]]:
+        """
+        获取协议流量分布（对应爱快「系统设置 → 协议监控」页面）
+        v3: monitor_app_flow TYPE=flow，返回各协议当前流量与会话数：
+            app_name/upload/download(KB)/total(KB)/connect_num/total_up/total_down(字节)
+        :return: 协议记录列表；无法获取返回 None
+        """
+        try:
+            call_url = urljoin(self.url, "/Action/call")
+            payload = {"func_name": "monitor_app_flow", "action": "show",
+                       "param": {"TYPE": "flow"}}
+            resp = self.session.post(call_url, data=json.dumps(payload),
+                                     headers={'Content-Type': 'application/json'}, timeout=10)
+            resp.raise_for_status()
+            res_json = resp.json()
+            if res_json.get("Result") != 30000:
+                logger.debug(f"{self.plugin_name} 获取协议流量失败: {res_json.get('ErrMsg')}")
+                return None
+            items = (res_json.get("Data", {}) or {}).get("data") or []
+            return [it for it in items if isinstance(it, dict)]
+        except Exception as e:
+            logger.debug(f"{self.plugin_name} 获取协议流量失败: {e}")
+            return None
+
+    def _v3_call(self, func_name: str, action: str = "show",
+                 param: Optional[Dict] = None, timeout: int = 15) -> Optional[Dict]:
+        """v3 通用 Action/call 调用，Result==30000 时返回 Data，否则返回 None"""
+        try:
+            call_url = urljoin(self.url, "/Action/call")
+            payload = {"func_name": func_name, "action": action, "param": param or {}}
+            resp = self.session.post(call_url, data=json.dumps(payload),
+                                     headers={'Content-Type': 'application/json'}, timeout=timeout)
+            resp.raise_for_status()
+            res_json = resp.json()
+            if res_json.get("Result") != 30000:
+                logger.debug(f"{self.plugin_name} {func_name} 调用失败: {res_json.get('ErrMsg')}")
+                return None
+            return res_json.get("Data", {}) or {}
+        except Exception as e:
+            logger.debug(f"{self.plugin_name} {func_name} 调用异常: {e}")
+            return None
+
+    def get_system_history(self, datetype: str = "hour") -> Optional[Dict]:
+        """
+        获取性能负载历史（对应爱快「系统监控」页性能负载图）
+        monitor_system TYPE=cpu,memory,on_terminal,conn_num datetype=hour|day|week|month math=avg
+        :return: {'cpu': [...], 'memory': [...], 'on_terminal': [...], 'conn_num': [...]}；失败返回 None
+        """
+        data = self._v3_call("monitor_system", "show",
+                             {"TYPE": "cpu,memory,on_terminal,conn_num",
+                              "datetype": datetype, "math": "avg"}, timeout=20)
+        if not isinstance(data, dict):
+            return None
+        result = {}
+        for key in ("cpu", "memory", "on_terminal", "conn_num"):
+            series = data.get(key)
+            result[key] = [pt for pt in series if isinstance(pt, dict)] if isinstance(series, list) else []
+        return result
+
+    def get_network_history(self, datetype: str = "hour") -> Optional[List[Dict]]:
+        """
+        获取网络负载历史（上下行速率/包数，monitor_system TYPE=rate_stat）
+        :return: [{'timestamp':..., 'max_upload':..., 'max_download':..., 'rx_packages':..., 'tx_packages':...}]；失败返回 None
+        """
+        data = self._v3_call("monitor_system", "show",
+                             {"TYPE": "rate_stat", "datetype": datetype, "math": "avg"}, timeout=20)
+        series = data.get("rate_stat") if isinstance(data, dict) else None
+        if not isinstance(series, list):
+            return None
+        return [pt for pt in series if isinstance(pt, dict)]
+
+    def get_flow_split(self) -> Optional[Dict]:
+        """
+        获取分流监控统计（对应爱快「系统设置 → 分流监控」，cflow show）
+        :return: {'today': {...}, 'yesterday': {...}, 'week': {...}}，各含
+                 port_cnt/proto_cnt/domain_cnt/conn_cnt/llb_cnt；失败返回 None
+        """
+        data = self._v3_call("cflow", "show")
+        if not isinstance(data, dict):
+            return None
+        rows = data.get("data")
+        return rows if isinstance(rows, dict) else None
+
+    def get_devices_v6(self) -> Optional[List[Dict]]:
+        """
+        获取 IPv6 在线终端（monitor_lanipv6）
+        :return: 设备记录列表；失败返回 None
+        """
+        data = self._v3_call("monitor_lanipv6", "show",
+                             {"TYPE": "data,total", "limit": "0,500",
+                              "ORDER_BY": "ip_addr_int", "orderType": "IP"})
+        items = data.get("data") if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            return None
+        normalized = []
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            entry = dict(it)
+            if not entry.get("ip") and entry.get("ip_addr"):
+                entry["ip"] = entry.get("ip_addr")
+            if not entry.get("hostname") and entry.get("username"):
+                entry["hostname"] = entry.get("username")
+            if not entry.get("mac") and entry.get("usermac"):
+                entry["mac"] = entry.get("usermac")
+            normalized.append(entry)
+        return normalized
+
+    def get_cameras(self) -> Optional[List[Dict]]:
+        """
+        获取摄像头监控列表（func camera，需路由器绑定爱快云平台后自动发现）
+        :return: [{'ip':..., 'name':..., 'last_time':...}]；失败返回 None
+        """
+        data = self._v3_call("camera", "show", {"TYPE": "total,data"})
+        items = data.get("data") if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            return None
+        normalized = []
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            entry = dict(it)
+            if not entry.get("ip") and entry.get("ip_addr"):
+                entry["ip"] = entry.get("ip_addr")
+            normalized.append(entry)
+        return normalized
+
+    def get_dhcp_leases(self) -> Optional[List[Dict]]:
+        """
+        获取 DHCP 终端列表（dhcp_lease show TYPE=total,data）
+        :return: [{'hostname':..., 'ip':..., 'mac':..., 'interface':..., 'start_time':..., 'end_time':..., 'comment':...}]；失败返回 None
+        """
+        if self._use_v4():
+            return None
+        data = self._v3_call("dhcp_lease", "show", {"TYPE": "total,data", "limit": "0,500"})
+        items = data.get("data") if isinstance(data, dict) else None
+        if not isinstance(items, list):
+            return None
+        normalized = []
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            entry = dict(it)
+            if not entry.get("ip") and entry.get("ip_addr"):
+                entry["ip"] = entry.get("ip_addr")
+            normalized.append(entry)
+        return normalized
+
+    def get_blacklist(self) -> Optional[Dict]:
+        """
+        获取终端接入控制黑名单（acl_mac show TYPE=total,data）
+        :return: {'total': int, 'items': [{'mac':..., 'comment':..., ...}]}；失败返回 None
+        """
+        if self._use_v4():
+            return None
+        data = self._v3_call("acl_mac", "show", {"TYPE": "total,data"})
+        if not isinstance(data, dict):
+            return None
+        items = data.get("data")
+        return {
+            "total": data.get("total", 0),
+            "items": [it for it in items if isinstance(it, dict)] if isinstance(items, list) else [],
+        }
+
+    def get_dns_settings(self) -> Optional[Dict]:
+        """
+        获取 DNS 设置（dns show TYPE=dns_config 全局配置 + TYPE=dns_proxy_total,dns_proxy 解析规则）
+        :return: {'config': {...}, 'rules': [...], 'rules_total': int}；失败返回 None
+        """
+        if self._use_v4():
+            return None
+        config = self._v3_call("dns", "show", {"TYPE": "dns_config"})
+        if config is None:
+            return None
+        cfg_items = config.get("data") if isinstance(config, dict) else None
+        cfg = cfg_items[0] if isinstance(cfg_items, list) and cfg_items and isinstance(cfg_items[0], dict) else {}
+        rules_data = self._v3_call("dns", "show", {"TYPE": "dns_proxy_total,dns_proxy"})
+        rules = rules_data.get("data") if isinstance(rules_data, dict) else None
+        return {
+            "config": cfg,
+            "rules": [it for it in rules if isinstance(it, dict)] if isinstance(rules, list) else [],
+            "rules_total": rules_data.get("total", 0) if isinstance(rules_data, dict) else 0,
+        }
+
+    def get_route_table(self) -> Optional[Dict]:
+        """
+        获取当前路由表（static_rt_table，IPv4: TYPE=total,data / IPv6: TYPE=data6,total6）
+        :return: {'v4': [...], 'v6': [...]}；失败返回 None
+        """
+        if self._use_v4():
+            return None
+        v4_data = self._v3_call("static_rt_table", "show", {"TYPE": "total,data"})
+        if v4_data is None:
+            return None
+        v4_items = v4_data.get("data")
+        v6_data = self._v3_call("static_rt_table", "show", {"TYPE": "data6,total6"})
+        v6_items = v6_data.get("data") if isinstance(v6_data, dict) else []
+        return {
+            "v4": [it for it in v4_items if isinstance(it, dict)] if isinstance(v4_items, list) else [],
+            "v6": [it for it in v6_items if isinstance(it, dict)] if isinstance(v6_items, list) else [],
+        }
+
+    def get_upnp(self) -> Optional[Dict]:
+        """
+        获取 UPnP 状态（upnpd 设置 + upnpd_leases 租约列表）
+        :return: {'config': {...}, 'leases': [...]}；失败返回 None
+        """
+        if self._use_v4():
+            return None
+        cfg_data = self._v3_call("upnpd", "show")
+        if cfg_data is None:
+            return None
+        cfg_items = cfg_data.get("data") if isinstance(cfg_data, dict) else None
+        cfg = cfg_items[0] if isinstance(cfg_items, list) and cfg_items and isinstance(cfg_items[0], dict) else {}
+        lease_data = self._v3_call("upnpd_leases", "show")
+        leases = lease_data.get("data") if isinstance(lease_data, dict) else None
+        return {
+            "config": cfg,
+            "leases": [it for it in leases if isinstance(it, dict)] if isinstance(leases, list) else [],
+        }
+
     def get_interface_info(self) -> Optional[Dict]:
         """
         获取爱快路由器接口信息（兼容4.x及3.x/2.x老版本）
