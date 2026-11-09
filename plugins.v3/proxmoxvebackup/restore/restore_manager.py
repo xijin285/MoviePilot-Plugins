@@ -51,7 +51,7 @@ class RestoreManager:
             # 1. 获取备份文件
             backup_file_path = None
             if source == "本地备份":
-                backup_file_path = os.path.join(self.plugin._backup_path, filename)
+                backup_file_path = os.path.join(self.plugin._backup_manager.get_local_backup_settings()["path"], filename)
                 if not os.path.exists(backup_file_path):
                     return False, f"本地备份文件不存在: {backup_file_path}", None
             elif source == "WebDAV备份":
@@ -59,18 +59,41 @@ class RestoreManager:
                 temp_dir = Path(self.plugin.get_data_path()) / "temp"
                 temp_dir.mkdir(parents=True, exist_ok=True)
                 backup_file_path = str(temp_dir / filename)
-                
+
                 self.plugin._restore_activity = f"下载WebDAV中: {filename}"
                 download_success, download_error = self.plugin._backup_manager.download_from_webdav(filename, backup_file_path)
                 if not download_success:
                     self.plugin._restore_activity = "空闲"
                     return False, f"从WebDAV下载备份文件失败: {download_error}", None
+            elif source.endswith("网盘"):
+                # 从 MP 存储网盘下载备份文件到临时目录
+                target = None
+                try:
+                    for t in self.plugin._backup_manager.get_cloud_targets():
+                        if source in (f"{t['name']}网盘", t["name"], t["type"]):
+                            target = t
+                            break
+                except Exception as e:
+                    logger.error(f"{self.plugin_name} 匹配网盘目标失败: {e}")
+                if not target:
+                    return False, f"未找到网盘来源: {source}", None
+                temp_dir = Path(self.plugin.get_data_path()) / "temp"
+                temp_dir.mkdir(parents=True, exist_ok=True)
+                backup_file_path = str(temp_dir / filename)
+
+                from ..storage import cloud_storage
+                self.plugin._restore_activity = f"下载网盘 {target['name']} 中: {filename}"
+                download_success, download_error = cloud_storage.download_backup_file(
+                    target["type"], target["path"] or "/pve_backups", filename, backup_file_path)
+                if not download_success:
+                    self.plugin._restore_activity = "空闲"
+                    return False, f"从网盘 {target['name']} 下载备份文件失败: {download_error}", None
             else:
                 return False, f"不支持的备份来源: {source}", None
 
-            # 2. 上传备份文件到PVE
+            # 2. 上传备份文件到PVE（远程统一用文件名，避免子文件夹路径带到 /tmp 下）
             sftp = ssh.open_sftp()
-            remote_backup_path = f"/tmp/{filename}"
+            remote_backup_path = f"/tmp/{os.path.basename(filename)}"
             
             self.plugin._restore_activity = f"上传PVE中: {filename}"
             logger.info(f"{self.plugin_name} 开始上传备份文件到PVE...")
@@ -156,8 +179,8 @@ class RestoreManager:
             except Exception as e:
                 logger.warning(f"{self.plugin_name} 删除远程临时文件失败: {str(e)}")
             
-            # 如果是WebDAV备份，删除本地临时文件
-            if source == "WebDAV备份":
+            # 如果是非本地备份（WebDAV/网盘），删除本地临时文件
+            if source != "本地备份":
                 try:
                     os.remove(backup_file_path)
                     logger.info(f"{self.plugin_name} 已删除本地临时文件: {backup_file_path}")

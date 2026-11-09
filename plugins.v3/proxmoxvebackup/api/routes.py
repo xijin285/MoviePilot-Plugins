@@ -124,6 +124,41 @@ def get_api_routes(plugin_instance) -> List[Dict[str, Any]]:
             "summary": "获取API令牌"
         },
         {
+            "path": "/monitor",
+            "endpoint": api_handler._get_monitor_api,
+            "methods": ["GET"],
+            "auth": "bear",
+            "summary": "PVE节点监控数据"
+        },
+        {
+            "path": "/guest_monitor",
+            "endpoint": api_handler._get_guest_monitor_api,
+            "methods": ["GET"],
+            "auth": "bear",
+            "summary": "单虚机/容器监控数据"
+        },
+        {
+            "path": "/terminal",
+            "endpoint": api_handler._terminal_api,
+            "methods": ["POST"],
+            "auth": "bear",
+            "summary": "宿主机控制台（SSH执行单条命令）"
+        },
+        {
+            "path": "/vm_screen",
+            "endpoint": api_handler._vm_screen_api,
+            "methods": ["GET"],
+            "auth": "bear",
+            "summary": "虚机实时画面（screendump PNG）"
+        },
+        {
+            "path": "/list_dir",
+            "endpoint": api_handler._list_dir,
+            "methods": ["GET"],
+            "auth": "bear",
+            "summary": "浏览本地或MP存储目录（目录选择器）"
+        },
+        {
             "path": "/container_action",
             "endpoint": api_handler._container_action_api,
             "methods": ["POST"],

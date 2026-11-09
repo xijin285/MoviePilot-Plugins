@@ -6529,436 +6529,795 @@ axios.default = axios;
 // this module should only have a default export
 const axios$1 = axios;
 
-var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+const AppPage_vue_vue_type_style_index_0_scoped_ecb8b42c_lang = '';
 
-function getDefaultExportFromCjs (x) {
-	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
-}
-
-var dayjs_min = {exports: {}};
-
-(function (module, exports) {
-	!function(t,e){module.exports=e();}(commonjsGlobal,(function(){var t=1e3,e=6e4,n=36e5,r="millisecond",i="second",s="minute",u="hour",a="day",o="week",c="month",f="quarter",h="year",d="date",l="Invalid Date",$=/^(\d{4})[-/]?(\d{1,2})?[-/]?(\d{0,2})[Tt\s]*(\d{1,2})?:?(\d{1,2})?:?(\d{1,2})?[.:]?(\d+)?$/,y=/\[([^\]]+)]|YYYY|YY|M{1,4}|D{1,2}|d{1,4}|H{1,2}|h{1,2}|a|A|m{1,2}|s{1,2}|Z{1,2}|SSS/g,M={name:"en",weekdays:"Sunday_Monday_Tuesday_Wednesday_Thursday_Friday_Saturday".split("_"),months:"January_February_March_April_May_June_July_August_September_October_November_December".split("_"),ordinal:function(t){var e=["th","st","nd","rd"],n=t%100;return "["+t+(e[(n-20)%10]||e[n]||e[0])+"]"}},m=function(t,e,n){var r=String(t);return !r||r.length>=e?t:""+Array(e+1-r.length).join(n)+t},v={s:m,z:function(t){var e=-t.utcOffset(),n=Math.abs(e),r=Math.floor(n/60),i=n%60;return (e<=0?"+":"-")+m(r,2,"0")+":"+m(i,2,"0")},m:function t(e,n){if(e.date()<n.date())return -t(n,e);var r=12*(n.year()-e.year())+(n.month()-e.month()),i=e.clone().add(r,c),s=n-i<0,u=e.clone().add(r+(s?-1:1),c);return +(-(r+(n-i)/(s?i-u:u-i))||0)},a:function(t){return t<0?Math.ceil(t)||0:Math.floor(t)},p:function(t){return {M:c,y:h,w:o,d:a,D:d,h:u,m:s,s:i,ms:r,Q:f}[t]||String(t||"").toLowerCase().replace(/s$/,"")},u:function(t){return void 0===t}},g="en",D={};D[g]=M;var p="$isDayjsObject",S=function(t){return t instanceof _||!(!t||!t[p])},w=function t(e,n,r){var i;if(!e)return g;if("string"==typeof e){var s=e.toLowerCase();D[s]&&(i=s),n&&(D[s]=n,i=s);var u=e.split("-");if(!i&&u.length>1)return t(u[0])}else {var a=e.name;D[a]=e,i=a;}return !r&&i&&(g=i),i||!r&&g},O=function(t,e){if(S(t))return t.clone();var n="object"==typeof e?e:{};return n.date=t,n.args=arguments,new _(n)},b=v;b.l=w,b.i=S,b.w=function(t,e){return O(t,{locale:e.$L,utc:e.$u,x:e.$x,$offset:e.$offset})};var _=function(){function M(t){this.$L=w(t.locale,null,!0),this.parse(t),this.$x=this.$x||t.x||{},this[p]=!0;}var m=M.prototype;return m.parse=function(t){this.$d=function(t){var e=t.date,n=t.utc;if(null===e)return new Date(NaN);if(b.u(e))return new Date;if(e instanceof Date)return new Date(e);if("string"==typeof e&&!/Z$/i.test(e)){var r=e.match($);if(r){var i=r[2]-1||0,s=(r[7]||"0").substring(0,3);return n?new Date(Date.UTC(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)):new Date(r[1],i,r[3]||1,r[4]||0,r[5]||0,r[6]||0,s)}}return new Date(e)}(t),this.init();},m.init=function(){var t=this.$d;this.$y=t.getFullYear(),this.$M=t.getMonth(),this.$D=t.getDate(),this.$W=t.getDay(),this.$H=t.getHours(),this.$m=t.getMinutes(),this.$s=t.getSeconds(),this.$ms=t.getMilliseconds();},m.$utils=function(){return b},m.isValid=function(){return !(this.$d.toString()===l)},m.isSame=function(t,e){var n=O(t);return this.startOf(e)<=n&&n<=this.endOf(e)},m.isAfter=function(t,e){return O(t)<this.startOf(e)},m.isBefore=function(t,e){return this.endOf(e)<O(t)},m.$g=function(t,e,n){return b.u(t)?this[e]:this.set(n,t)},m.unix=function(){return Math.floor(this.valueOf()/1e3)},m.valueOf=function(){return this.$d.getTime()},m.startOf=function(t,e){var n=this,r=!!b.u(e)||e,f=b.p(t),l=function(t,e){var i=b.w(n.$u?Date.UTC(n.$y,e,t):new Date(n.$y,e,t),n);return r?i:i.endOf(a)},$=function(t,e){return b.w(n.toDate()[t].apply(n.toDate("s"),(r?[0,0,0,0]:[23,59,59,999]).slice(e)),n)},y=this.$W,M=this.$M,m=this.$D,v="set"+(this.$u?"UTC":"");switch(f){case h:return r?l(1,0):l(31,11);case c:return r?l(1,M):l(0,M+1);case o:var g=this.$locale().weekStart||0,D=(y<g?y+7:y)-g;return l(r?m-D:m+(6-D),M);case a:case d:return $(v+"Hours",0);case u:return $(v+"Minutes",1);case s:return $(v+"Seconds",2);case i:return $(v+"Milliseconds",3);default:return this.clone()}},m.endOf=function(t){return this.startOf(t,!1)},m.$set=function(t,e){var n,o=b.p(t),f="set"+(this.$u?"UTC":""),l=(n={},n[a]=f+"Date",n[d]=f+"Date",n[c]=f+"Month",n[h]=f+"FullYear",n[u]=f+"Hours",n[s]=f+"Minutes",n[i]=f+"Seconds",n[r]=f+"Milliseconds",n)[o],$=o===a?this.$D+(e-this.$W):e;if(o===c||o===h){var y=this.clone().set(d,1);y.$d[l]($),y.init(),this.$d=y.set(d,Math.min(this.$D,y.daysInMonth())).$d;}else l&&this.$d[l]($);return this.init(),this},m.set=function(t,e){return this.clone().$set(t,e)},m.get=function(t){return this[b.p(t)]()},m.add=function(r,f){var d,l=this;r=Number(r);var $=b.p(f),y=function(t){var e=O(l);return b.w(e.date(e.date()+Math.round(t*r)),l)};if($===c)return this.set(c,this.$M+r);if($===h)return this.set(h,this.$y+r);if($===a)return y(1);if($===o)return y(7);var M=(d={},d[s]=e,d[u]=n,d[i]=t,d)[$]||1,m=this.$d.getTime()+r*M;return b.w(m,this)},m.subtract=function(t,e){return this.add(-1*t,e)},m.format=function(t){var e=this,n=this.$locale();if(!this.isValid())return n.invalidDate||l;var r=t||"YYYY-MM-DDTHH:mm:ssZ",i=b.z(this),s=this.$H,u=this.$m,a=this.$M,o=n.weekdays,c=n.months,f=n.meridiem,h=function(t,n,i,s){return t&&(t[n]||t(e,r))||i[n].slice(0,s)},d=function(t){return b.s(s%12||12,t,"0")},$=f||function(t,e,n){var r=t<12?"AM":"PM";return n?r.toLowerCase():r};return r.replace(y,(function(t,r){return r||function(t){switch(t){case"YY":return String(e.$y).slice(-2);case"YYYY":return b.s(e.$y,4,"0");case"M":return a+1;case"MM":return b.s(a+1,2,"0");case"MMM":return h(n.monthsShort,a,c,3);case"MMMM":return h(c,a);case"D":return e.$D;case"DD":return b.s(e.$D,2,"0");case"d":return String(e.$W);case"dd":return h(n.weekdaysMin,e.$W,o,2);case"ddd":return h(n.weekdaysShort,e.$W,o,3);case"dddd":return o[e.$W];case"H":return String(s);case"HH":return b.s(s,2,"0");case"h":return d(1);case"hh":return d(2);case"a":return $(s,u,!0);case"A":return $(s,u,!1);case"m":return String(u);case"mm":return b.s(u,2,"0");case"s":return String(e.$s);case"ss":return b.s(e.$s,2,"0");case"SSS":return b.s(e.$ms,3,"0");case"Z":return i}return null}(t)||i.replace(":","")}))},m.utcOffset=function(){return 15*-Math.round(this.$d.getTimezoneOffset()/15)},m.diff=function(r,d,l){var $,y=this,M=b.p(d),m=O(r),v=(m.utcOffset()-this.utcOffset())*e,g=this-m,D=function(){return b.m(y,m)};switch(M){case h:$=D()/12;break;case c:$=D();break;case f:$=D()/3;break;case o:$=(g-v)/6048e5;break;case a:$=(g-v)/864e5;break;case u:$=g/n;break;case s:$=g/e;break;case i:$=g/t;break;default:$=g;}return l?$:b.a($)},m.daysInMonth=function(){return this.endOf(c).$D},m.$locale=function(){return D[this.$L]},m.locale=function(t,e){if(!t)return this.$L;var n=this.clone(),r=w(t,e,!0);return r&&(n.$L=r),n},m.clone=function(){return b.w(this.$d,this)},m.toDate=function(){return new Date(this.valueOf())},m.toJSON=function(){return this.isValid()?this.toISOString():null},m.toISOString=function(){return this.$d.toISOString()},m.toString=function(){return this.$d.toUTCString()},M}(),Y=_.prototype;return O.prototype=Y,[["$ms",r],["$s",i],["$m",s],["$H",u],["$W",a],["$M",c],["$y",h],["$D",d]].forEach((function(t){Y[t[1]]=function(e){return this.$g(e,t[0],t[1])};})),O.extend=function(t,e){return t.$i||(t(e,_,O),t.$i=!0),O},O.locale=w,O.isDayjs=S,O.unix=function(t){return O(1e3*t)},O.en=D[g],O.Ls=D,O.p={},O})); 
-} (dayjs_min));
-
-var dayjs_minExports = dayjs_min.exports;
-const dayjs = /*@__PURE__*/getDefaultExportFromCjs(dayjs_minExports);
-
-var duration$1 = {exports: {}};
-
-(function (module, exports) {
-	!function(t,s){module.exports=s();}(commonjsGlobal,(function(){var t,s,n=1e3,i=6e4,e=36e5,r=864e5,o=31536e6,u=2628e6,d=/^(-|\+)?P(?:([-+]?[0-9,.]*)Y)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)W)?(?:([-+]?[0-9,.]*)D)?(?:T(?:([-+]?[0-9,.]*)H)?(?:([-+]?[0-9,.]*)M)?(?:([-+]?[0-9,.]*)S)?)?$/,a=/\[([^\]]+)]|YYYY|YY|Y|M{1,2}|D{1,2}|H{1,2}|m{1,2}|s{1,2}|SSS/g,h={years:o,months:u,days:r,hours:e,minutes:i,seconds:n,milliseconds:1,weeks:6048e5},c=function(t){return t instanceof g},f=function(t,s,n){return new g(t,n,s.$l)},m=function(t){return s.p(t)+"s"},l=function(t){return t<0},$=function(t){return l(t)?Math.ceil(t):Math.floor(t)},y=function(t){return Math.abs(t)},v=function(t,s){return t?l(t)?{negative:!0,format:""+y(t)+s}:{negative:!1,format:""+t+s}:{negative:!1,format:""}},g=function(){function l(t,s,n){var i=this;if(this.$d={},this.$l=n,void 0===t&&(this.$ms=0,this.parseFromMilliseconds()),s)return f(t*h[m(s)],this);if("number"==typeof t)return this.$ms=t,this.parseFromMilliseconds(),this;if("object"==typeof t)return Object.keys(t).forEach((function(s){i.$d[m(s)]=t[s];})),this.calMilliseconds(),this;if("string"==typeof t){var e=t.match(d);if(e){var r=e.slice(2).map((function(t){return null!=t?Number(t):0}));return this.$d.years=r[0],this.$d.months=r[1],this.$d.weeks=r[2],this.$d.days=r[3],this.$d.hours=r[4],this.$d.minutes=r[5],this.$d.seconds=r[6],this.calMilliseconds(),this}}return this}var y=l.prototype;return y.calMilliseconds=function(){var t=this;this.$ms=Object.keys(this.$d).reduce((function(s,n){return s+(t.$d[n]||0)*h[n]}),0);},y.parseFromMilliseconds=function(){var t=this.$ms;this.$d.years=$(t/o),t%=o,this.$d.months=$(t/u),t%=u,this.$d.days=$(t/r),t%=r,this.$d.hours=$(t/e),t%=e,this.$d.minutes=$(t/i),t%=i,this.$d.seconds=$(t/n),t%=n,this.$d.milliseconds=t;},y.toISOString=function(){var t=v(this.$d.years,"Y"),s=v(this.$d.months,"M"),n=+this.$d.days||0;this.$d.weeks&&(n+=7*this.$d.weeks);var i=v(n,"D"),e=v(this.$d.hours,"H"),r=v(this.$d.minutes,"M"),o=this.$d.seconds||0;this.$d.milliseconds&&(o+=this.$d.milliseconds/1e3,o=Math.round(1e3*o)/1e3);var u=v(o,"S"),d=t.negative||s.negative||i.negative||e.negative||r.negative||u.negative,a=e.format||r.format||u.format?"T":"",h=(d?"-":"")+"P"+t.format+s.format+i.format+a+e.format+r.format+u.format;return "P"===h||"-P"===h?"P0D":h},y.toJSON=function(){return this.toISOString()},y.format=function(t){var n=t||"YYYY-MM-DDTHH:mm:ss",i={Y:this.$d.years,YY:s.s(this.$d.years,2,"0"),YYYY:s.s(this.$d.years,4,"0"),M:this.$d.months,MM:s.s(this.$d.months,2,"0"),D:this.$d.days,DD:s.s(this.$d.days,2,"0"),H:this.$d.hours,HH:s.s(this.$d.hours,2,"0"),m:this.$d.minutes,mm:s.s(this.$d.minutes,2,"0"),s:this.$d.seconds,ss:s.s(this.$d.seconds,2,"0"),SSS:s.s(this.$d.milliseconds,3,"0")};return n.replace(a,(function(t,s){return s||String(i[t])}))},y.as=function(t){return this.$ms/h[m(t)]},y.get=function(t){var s=this.$ms,n=m(t);return "milliseconds"===n?s%=1e3:s="weeks"===n?$(s/h[n]):this.$d[n],s||0},y.add=function(t,s,n){var i;return i=s?t*h[m(s)]:c(t)?t.$ms:f(t,this).$ms,f(this.$ms+i*(n?-1:1),this)},y.subtract=function(t,s){return this.add(t,s,!0)},y.locale=function(t){var s=this.clone();return s.$l=t,s},y.clone=function(){return f(this.$ms,this)},y.humanize=function(s){return t().add(this.$ms,"ms").locale(this.$l).fromNow(!s)},y.valueOf=function(){return this.asMilliseconds()},y.milliseconds=function(){return this.get("milliseconds")},y.asMilliseconds=function(){return this.as("milliseconds")},y.seconds=function(){return this.get("seconds")},y.asSeconds=function(){return this.as("seconds")},y.minutes=function(){return this.get("minutes")},y.asMinutes=function(){return this.as("minutes")},y.hours=function(){return this.get("hours")},y.asHours=function(){return this.as("hours")},y.days=function(){return this.get("days")},y.asDays=function(){return this.as("days")},y.weeks=function(){return this.get("weeks")},y.asWeeks=function(){return this.as("weeks")},y.months=function(){return this.get("months")},y.asMonths=function(){return this.as("months")},y.years=function(){return this.get("years")},y.asYears=function(){return this.as("years")},l}(),p=function(t,s,n){return t.add(s.years()*n,"y").add(s.months()*n,"M").add(s.days()*n,"d").add(s.hours()*n,"h").add(s.minutes()*n,"m").add(s.seconds()*n,"s").add(s.milliseconds()*n,"ms")};return function(n,i,e){t=e,s=e().$utils(),e.duration=function(t,s){var n=e.locale();return f(t,{$l:n},s)},e.isDuration=c;var r=i.prototype.add,o=i.prototype.subtract;i.prototype.add=function(t,s){return c(t)?p(this,t,1):r.bind(this)(t,s)},i.prototype.subtract=function(t,s){return c(t)?p(this,t,-1):o.bind(this)(t,s)};}})); 
-} (duration$1));
-
-var durationExports = duration$1.exports;
-const duration = /*@__PURE__*/getDefaultExportFromCjs(durationExports);
-
-const Page_vue_vue_type_style_index_0_scoped_1382b90e_lang = '';
-
-const {createTextVNode:_createTextVNode,resolveComponent:_resolveComponent,withCtx:_withCtx,createVNode:_createVNode,createElementVNode:_createElementVNode,openBlock:_openBlock,createBlock:_createBlock,createCommentVNode:_createCommentVNode,toDisplayString:_toDisplayString,createElementBlock:_createElementBlock,mergeProps:_mergeProps,normalizeStyle:_normalizeStyle,normalizeClass:_normalizeClass,renderList:_renderList,Fragment:_Fragment} = await importShared('vue');
+const {createTextVNode:_createTextVNode,resolveComponent:_resolveComponent,withCtx:_withCtx,createVNode:_createVNode,createElementVNode:_createElementVNode,toDisplayString:_toDisplayString,openBlock:_openBlock,createBlock:_createBlock,createCommentVNode:_createCommentVNode,mergeProps:_mergeProps,withModifiers:_withModifiers,Fragment:_Fragment,createElementBlock:_createElementBlock,renderList:_renderList,normalizeClass:_normalizeClass,normalizeStyle:_normalizeStyle,withKeys:_withKeys} = await importShared('vue');
 
 
-const _hoisted_1 = { class: "status-page-container" };
-const _hoisted_2 = { class: "card-header-modern" };
-const _hoisted_3 = { class: "card-header-left" };
-const _hoisted_4 = { class: "card-icon-wrapper card-icon-success" };
-const _hoisted_5 = { class: "pve-header-info" };
-const _hoisted_6 = { class: "pve-header-info-item" };
-const _hoisted_7 = { class: "pve-header-value" };
-const _hoisted_8 = { class: "pve-header-info-item" };
-const _hoisted_9 = { class: "pve-header-value" };
-const _hoisted_10 = { class: "pve-header-info-item" };
-const _hoisted_11 = { class: "pve-header-value" };
-const _hoisted_12 = { class: "pve-header-info-item" };
-const _hoisted_13 = { class: "pve-header-value" };
-const _hoisted_14 = {
-  key: 0,
-  class: "pve-header-info-item"
-};
-const _hoisted_15 = { class: "pve-header-value text-caption" };
-const _hoisted_16 = { class: "host-action-btns-modern" };
-const _hoisted_17 = { class: "card-body-modern" };
-const _hoisted_18 = {
-  key: 0,
-  class: "pve-info-grid"
-};
-const _hoisted_19 = { class: "pve-info-right" };
-const _hoisted_20 = { class: "status-item-modern" };
-const _hoisted_21 = { class: "status-item-header" };
-const _hoisted_22 = { class: "resource-info" };
-const _hoisted_23 = { class: "resource-text-compact" };
-const _hoisted_24 = { class: "resource-model" };
-const _hoisted_25 = { class: "resource-progress-wrapper" };
-const _hoisted_26 = { class: "resource-percent" };
-const _hoisted_27 = { class: "status-item-modern" };
-const _hoisted_28 = { class: "status-item-header" };
-const _hoisted_29 = { class: "resource-info" };
-const _hoisted_30 = { class: "resource-text-compact" };
-const _hoisted_31 = { class: "resource-model" };
-const _hoisted_32 = { class: "resource-progress-wrapper" };
-const _hoisted_33 = { class: "resource-percent" };
-const _hoisted_34 = { class: "status-item-modern" };
-const _hoisted_35 = { class: "status-item-header" };
-const _hoisted_36 = { class: "resource-info" };
-const _hoisted_37 = { class: "resource-text-compact" };
-const _hoisted_38 = { class: "resource-model" };
-const _hoisted_39 = { class: "resource-progress-wrapper" };
-const _hoisted_40 = { class: "resource-percent" };
-const _hoisted_41 = {
-  key: 0,
-  class: "status-item-modern"
-};
-const _hoisted_42 = { class: "status-item-header" };
-const _hoisted_43 = { class: "resource-info" };
-const _hoisted_44 = { class: "resource-text-compact" };
-const _hoisted_45 = { class: "resource-model" };
-const _hoisted_46 = { class: "resource-progress-wrapper" };
-const _hoisted_47 = { class: "resource-percent" };
-const _hoisted_48 = {
+const _hoisted_1 = { class: "app-page" };
+const _hoisted_2 = { class: "page-header d-flex align-center flex-wrap ga-3 mb-4" };
+const _hoisted_3 = { class: "text-caption text-medium-emphasis mb-2" };
+const _hoisted_4 = { class: "d-flex justify-space-between text-body-2 mt-1" };
+const _hoisted_5 = { class: "text-medium-emphasis" };
+const _hoisted_6 = { class: "d-flex justify-space-between text-body-2 mt-1" };
+const _hoisted_7 = { class: "text-medium-emphasis" };
+const _hoisted_8 = { class: "d-flex align-center flex-wrap ga-2" };
+const _hoisted_9 = { class: "text-body-2" };
+const _hoisted_10 = { class: "text-caption text-medium-emphasis" };
+const _hoisted_11 = {
   key: 1,
-  class: "status-item-modern"
+  class: "chart-grid"
 };
-const _hoisted_49 = { class: "status-item-header" };
-const _hoisted_50 = { class: "resource-info" };
-const _hoisted_51 = { class: "resource-text-compact" };
-const _hoisted_52 = { class: "resource-model" };
-const _hoisted_53 = { class: "resource-progress-wrapper" };
-const _hoisted_54 = { class: "resource-percent" };
-const _hoisted_55 = {
-  key: 1,
-  class: "offline-state"
+const _hoisted_12 = { class: "d-flex justify-space-between text-caption mb-1" };
+const _hoisted_13 = {
+  class: "mini-chart",
+  viewBox: "0 0 300 64",
+  preserveAspectRatio: "none"
 };
-const _hoisted_56 = { class: "offline-error text-caption" };
-const _hoisted_57 = { class: "card-header-modern" };
-const _hoisted_58 = { class: "card-header-left" };
-const _hoisted_59 = { class: "card-icon-wrapper card-icon-info" };
-const _hoisted_60 = { class: "container-header-summary" };
-const _hoisted_61 = { class: "header-summary-item" };
-const _hoisted_62 = { class: "header-summary-item" };
-const _hoisted_63 = { class: "header-summary-item" };
-const _hoisted_64 = { class: "header-summary-item" };
-const _hoisted_65 = { class: "header-summary-item" };
-const _hoisted_66 = { class: "card-body-modern" };
-const _hoisted_67 = { key: 0 };
-const _hoisted_68 = { key: 0 };
-const _hoisted_69 = ["innerHTML"];
-const _hoisted_70 = {
-  class: "d-flex justify-end align-center",
-  style: {"gap":"4px"}
+const _hoisted_14 = ["points", "fill"];
+const _hoisted_15 = ["points", "stroke"];
+const _hoisted_16 = {
+  key: 2,
+  class: "text-caption text-medium-emphasis text-center py-4"
 };
-const _hoisted_71 = { key: 1 };
-const _hoisted_72 = { class: "d-flex align-center mb-1" };
-const _hoisted_73 = {
-  class: "font-weight-bold",
-  style: {"font-size":"1.1em"}
-};
-const _hoisted_74 = {
-  class: "d-flex align-center mb-1",
-  style: {"font-size":"0.95em","color":"#90caf9"}
-};
-const _hoisted_75 = {
-  class: "d-flex align-center mb-1",
-  style: {"font-size":"0.95em"}
-};
-const _hoisted_76 = ["innerHTML"];
-const _hoisted_77 = {
-  class: "mobile-actions d-flex align-center",
-  style: {"gap":"8px","flex-wrap":"wrap"}
-};
-const _hoisted_78 = { class: "mb-2" };
-const _hoisted_79 = {
-  class: "font-weight-bold",
-  style: {"color":"#d32f2f"}
-};
-const _hoisted_80 = { key: 0 };
-const _hoisted_81 = { class: "grey--text text--darken-1" };
-const _hoisted_82 = {
-  class: "d-flex align-center",
-  style: {"gap":"4px"}
-};
-const _hoisted_83 = { style: {"font-size":"1.1em"} };
-const _hoisted_84 = {
+const _hoisted_17 = { class: "d-flex align-center flex-wrap ga-2" };
+const _hoisted_18 = { class: "font-weight-medium" };
+const _hoisted_19 = { class: "text-caption text-medium-emphasis" };
+const _hoisted_20 = {
   key: 0,
-  style: {"color":"#d32f2f"}
+  class: "text-caption text-medium-emphasis"
 };
-const _hoisted_85 = {
+const _hoisted_21 = { class: "d-flex ga-1" };
+const _hoisted_22 = { class: "d-flex align-center flex-wrap ga-2" };
+const _hoisted_23 = ["title"];
+const _hoisted_24 = { class: "text-caption text-medium-emphasis" };
+const _hoisted_25 = { class: "d-flex ga-1" };
+const _hoisted_26 = { class: "d-flex align-center flex-wrap ga-2" };
+const _hoisted_27 = ["title"];
+const _hoisted_28 = { class: "text-caption text-medium-emphasis" };
+const _hoisted_29 = { class: "text-subtitle-1" };
+const _hoisted_30 = { class: "screen-wrap" };
+const _hoisted_31 = {
+  key: 0,
+  class: "text-caption text-error pa-4 text-center"
+};
+const _hoisted_32 = ["src"];
+const _hoisted_33 = { class: "text-subtitle-1" };
+const _hoisted_34 = {
+  key: 0,
+  class: "text-grey text-caption pa-3"
+};
+const _hoisted_35 = {
   key: 1,
-  style: {"color":"#1976d2"}
+  class: "terminal-pre"
 };
+const _hoisted_36 = {
+  key: 2,
+  class: "text-caption text-warning pa-2"
+};
+const _hoisted_37 = { class: "pa-2 d-flex flex-wrap ga-1 quick-cmds" };
+const _hoisted_38 = { class: "d-flex align-center ga-2" };
+const _hoisted_39 = { class: "text-caption text-medium-emphasis" };
+const _hoisted_40 = {
+  key: 0,
+  class: "chart-grid"
+};
+const _hoisted_41 = { class: "d-flex justify-space-between text-caption mb-1" };
+const _hoisted_42 = {
+  class: "mini-chart",
+  viewBox: "0 0 300 64",
+  preserveAspectRatio: "none"
+};
+const _hoisted_43 = ["points", "fill"];
+const _hoisted_44 = ["points", "stroke"];
+const _hoisted_45 = {
+  key: 1,
+  class: "text-caption text-medium-emphasis text-center py-6"
+};
+const _hoisted_46 = ["title"];
+const _hoisted_47 = { class: "text-caption text-medium-emphasis" };
 
-const {ref,onMounted,watch} = await importShared('vue');
+const {computed,nextTick,onBeforeUnmount,onMounted,reactive,ref,watch} = await importShared('vue');
+
+const CACHE_PREFIX = 'pveCache_';
+const CACHE_TTL = 2 * 3600 * 1000;
+
 
 const _sfc_main = {
-  __name: 'Page',
-  props: { api: { type: [Object, Function], required: true } },
-  emits: ['switch', 'close'],
-  setup(__props, { emit: __emit }) {
+  __name: 'AppPage',
+  props: {
+  api: { type: [Object, Function], required: true },
+  pluginId: { type: String, default: 'ProxmoxVEBackup' },
+},
+  setup(__props) {
 
-dayjs.extend(duration);
-// PVE标签色数组（可根据实际PVE配色调整）
-const pveTagColors = [
-  '#e573b7', // 粉
-  '#bdb76b', // 黄褐
-  '#81c784', // 绿
-  '#ba68c8', // 紫
-  '#ffd54f', // 黄
-  '#64b5f6', // 蓝
-  '#4db6ac', // 青
-  '#f06292', // 粉2
-  '#9575cd', // 紫2
-  '#90caf9'  // 浅蓝
-];
-function getPveTagColor(tag) {
-  // 简单hash算法，将标签内容hash到颜色数组
-  let hash = 0;
-  for (let i = 0; i < tag.length; i++) {
-    hash = ((hash << 5) - hash) + tag.charCodeAt(i);
-    hash |= 0;
-  }
-  const idx = Math.abs(hash) % pveTagColors.length;
-  return pveTagColors[idx];
-}
 const props = __props;
 
+const pluginId = computed(() => props.pluginId || 'ProxmoxVEBackup');
+const API_BASE = computed(() => `plugin/${pluginId.value}`);
+
+// ---------- 状态 ----------
+const refreshing = ref(false);
+const refreshInterval = ref(30);
+const refreshOptions = [
+  { title: '10 秒', value: 10 },
+  { title: '30 秒', value: 30 },
+  { title: '60 秒', value: 60 },
+  { title: '手动', value: 0 },
+];
+const collapsed = reactive({ host: false, vm: false, files: false, mon: false, tasks: false });
+
+const pve = ref({});
 const status = ref({});
+const vmList = ref([]);
 const backupFiles = ref([]);
-const history = ref([]);
-// 轮询定时器引用
-const statusPollTimer = ref(null);
-const pveStatusPollTimer = ref(null);
-const containerStatusPollTimer = ref(null);
-const loadingBackup = ref(false);
-const loadingRestore = ref(false);
-const loadingClear = ref(false);
-const loadingStopTasks = ref(false);
-const showRestoreDialog = ref(false);
-const selectedRestoreFile = ref(null);
-const restoreVmid = ref('');
-const restoreForce = ref(false);
-const restoreSkipExisting = ref(true);
-const restoreDisk = ref('');
-const snackbar = ref({ show: false, text: '', color: 'success', timeout: 3000 });
-const deleteLoading = ref(null);
-const showDeleteDialog = ref(false);
-const deleteTarget = ref(null);
-const showHistoryDialog = ref(false);
-const pveStatus = ref({});
-const containerStatus = ref([]);
-const containerHeaders = [
-  { text: 'ID', value: 'vmid' },
-  { text: '名称', value: 'displayName' },
-  { text: '类型', value: 'type' },
-  { text: '状态', value: 'status' },
-  { text: '标签', value: 'tags' },
-  { text: '运行时间', value: 'uptime' },
-  { text: '操作', value: 'actions', sortable: false },
-];
-const showBackupFilesDialog = ref(false);
-const backupFileHeaders = [
-  { text: '文件名', value: 'filename' },
-  { text: '类型', value: 'source' },
-  { text: '大小(MB)', value: 'size_mb' },
-  { text: '日期', value: 'date' },
-  { text: '时间', value: 'time' },
-  { text: '备份路径', value: 'path' },
-  { text: '操作', value: 'actions', sortable: false }
-];
+
+// ---------- PVE 监控（RRD） ----------
+const monitorData = ref(null);
+const monitorLoading = ref(false);
+const monitorTf = ref('hour');
+const guestDialog = reactive({ show: false, vmid: null, type: 'qemu', name: '' });
+const guestTf = ref('hour');
+const guestData = ref(null);
+const guestLoading = ref(false);
+
+const vmSearch = ref('');
+const fileSearch = ref('');
+const fileSource = ref('全部');
+
+// ---------- 宿主机终端 ----------
+const termDialog = ref(false);
+const termOutput = ref('');
+const termInput = ref('');
+const termBusy = ref(false);
+const termHistory = ref([]);
+const termHistIdx = ref(-1);
+const termBox = ref(null);
+const quickCmds = ['qm list', 'pct list', 'df -h', 'free -h', 'uptime', 'pveversion -v | head -20'];
+
+function termHistoryNav(dir) {
+  if (!termHistory.value.length) return;
+  let idx = termHistIdx.value + dir;
+  if (idx < -1) idx = -1;
+  if (idx >= termHistory.value.length) idx = termHistory.value.length - 1;
+  termHistIdx.value = idx;
+  termInput.value = idx === -1 ? '' : termHistory.value[idx];
+}
+
+async function runCommand(cmd) {
+  const command = (cmd || termInput.value).trim();
+  if (!command || termBusy.value) return;
+  termBusy.value = true;
+  if (!cmd) {
+    termHistory.value.push(command);
+    if (termHistory.value.length > 50) termHistory.value.shift();
+    termHistIdx.value = -1;
+    termInput.value = '';
+  }
+  termOutput.value += `\nroot@pve:~# ${command}\n`;
+  await nextTick(() => {
+    if (termBox.value) termBox.value.scrollTop = termBox.value.scrollHeight;
+  });
+  try {
+    const res = await props.api.post(`${API_BASE.value}/terminal`, { command });
+    if (res?.success) {
+      termOutput.value += (res.output || '') + (res.exit_code ? `\n[退出码 ${res.exit_code}]\n` : '\n');
+    } else {
+      termOutput.value += `${res?.message || res?.error || '执行失败'}\n`;
+    }
+  } catch (e) {
+    termOutput.value += `${e?.message || '请求失败'}\n`;
+  }
+  await nextTick(() => {
+    if (termBox.value) termBox.value.scrollTop = termBox.value.scrollHeight;
+  });
+  termBusy.value = false;
+}
+
+// ---------- 虚机控制台 ----------
+// noVNC 需要浏览器持有 PVE 登录 cookie（SameSite 限制 iframe 内不可用，且 MP 插件 API 无 WebSocket 无法转发画面流）。
+// 故 QEMU 虚机走 screendump 实时画面（后端 API+SSH，无需登录 PVE）；完整图形控制台仍用 noVNC 独立小窗。
+const screenDialog = reactive({ show: false, vmid: null, name: '' });
+const screenTick = ref(0);
+const screenRate = ref(2);
+const screenTimer = ref(null);
+const screenError = ref(false);
+
+const screenSrc = computed(() => {
+  if (!screenDialog.show || !screenDialog.vmid) return '';
+  const apikey = window.API_TOKEN || localStorage.getItem('api_token') || '';
+  return `/api/v1/${API_BASE.value}/vm_screen?vmid=${screenDialog.vmid}&type=qemu`
+    + `&apikey=${encodeURIComponent(apikey)}&t=${screenTick.value}`;
+});
+
+function startScreenTimer() {
+  stopScreenTimer();
+  if (screenRate.value > 0) {
+    screenTimer.value = setInterval(() => { screenTick.value++; }, screenRate.value * 1000);
+  }
+}
+function stopScreenTimer() {
+  if (screenTimer.value) { clearInterval(screenTimer.value); screenTimer.value = null; }
+}
+watch(screenRate, startScreenTimer);
+
+function openConsole(vm) {
+  const isLxc = String(vm.type || '').toUpperCase() === 'LXC';
+  if (!isLxc) {
+    screenDialog.vmid = vm.vmid;
+    screenDialog.name = vm.displayName || vm.name || vm.vmid;
+    screenError.value = false;
+    screenDialog.show = true;
+    nextTick(startScreenTimer);
+    return;
+  }
+  openNovnc(vm);
+}
+
+function consoleUrl(vm) {
+  const m = monitorData.value || {};
+  const apiHost = m.api_host || host.value.ip || window.location.hostname;
+  const ctype = String(vm?.type || '').toUpperCase() === 'LXC' ? 'lxc' : 'kvm';
+  const node = m.node ? `&node=${encodeURIComponent(m.node)}` : '';
+  return `https://${apiHost}:8006/?console=${ctype}&novnc=1&vmid=${vm?.vmid}${node}&resize=off`;
+}
+
+function openNovnc(vm) {
+  const m = monitorData.value || {};
+  const apiHost = m.api_host || host.value.ip || window.location.hostname;
+  const feat = 'popup=yes,width=1100,height=760,menubar=no,toolbar=no,location=no,status=no';
+
+  let ticketTs = 0;
+  try { ticketTs = parseInt(localStorage.getItem('pveWebLoginTs') || '0', 10) || 0; } catch {}
+  const loggedIn = ticketTs && (Date.now() - ticketTs) < 2 * 3600 * 1000; // 与 PVE ticket 有效期对齐
+
+  if (loggedIn) {
+    window.open(consoleUrl(vm), `pvenovnc-${vm.vmid}`, feat);
+    return;
+  }
+  // 首次（或超过2小时）：弹 PVE 登录页，登录后再次点击控制台直达
+  try { localStorage.setItem('pveWebLoginTs', String(Date.now())); } catch {}
+  window.open(`https://${apiHost}:8006/`, 'pvelogin', feat);
+  showTip('已弹出 PVE 登录窗口，请先登录；登录后回到本页再次点击控制台即可打开 noVNC', 'info');
+}
+
+// ---------- 镜像模板 ----------
+const tplDialog = ref(false);
+const tplList = ref([]);
+const tplLoading = ref(false);
+const tplCounts = computed(() => ({
+  iso: tplList.value.filter((f) => f.type === 'iso').length,
+  ct: tplList.value.filter((f) => f.type !== 'iso').length,
+}));
+
+async function fetchTplImages() {
+  tplLoading.value = true;
+  try {
+    const files = await props.api.get(`${API_BASE.value}/template_images`);
+    tplList.value = Array.isArray(files)
+      ? files.map((f) => ({ ...f, filenameWithType: `${f.filename}_${f.type}` }))
+      : [];
+  } catch {
+    tplList.value = [];
+  }
+  tplLoading.value = false;
+}
+
+function openTplDialog() {
+  tplDialog.value = true;
+  fetchTplImages();
+}
+
+const busy = reactive({ backup: false, restore: false, del: null, dl: null, stopAll: false, cleanupLogs: false, cleanupTmp: false, clearHistory: false });
+
+const snackbar = ref({ show: false, text: '', color: 'success' });
+let timer = null;
 
 function showTip(text, color = 'success') {
-  snackbar.value.text = text;
-  snackbar.value.color = color;
-  snackbar.value.show = true;
+  snackbar.value = { show: true, text, color };
 }
 
-function formatTime(ts) {
-  if (!ts) return '-';
-  const d = new Date(ts * 1000);
-  return d.toLocaleString();
+// ---------- 计算属性 ----------
+// 主机信息：REST 监控数据优先，SSH pve_status 兜底
+const host = computed(() => {
+  const p = pve.value || {};
+  const m = monitorData.value || {};
+  return {
+    online: p.online !== false,
+    error: p.error || '',
+    hostname: m.node || p.hostname || '',
+    pve_version: m.pveversion || p.pve_version || '',
+    cpu_model: m.cpu_model || p.cpu_model || '',
+    cpu_cores: m.cpu_cores || p.cpu_cores || '',
+    ip: p.ip && p.ip !== '-' ? p.ip : '',
+    kernel: p.kernel || m.kversion || '',
+  };
+});
+
+const hostBars = computed(() => {
+  const p = pve.value || {};
+  const m = monitorData.value || {};
+  const mem = m.memory || {};
+  const root = m.rootfs || {};
+  const swap = m.swap || {};
+  const fmtGB = (v) => (v == null || isNaN(v) ? '-' : (v / 1073741824).toFixed(1) + ' GB');
+  const pct = (u, t) => (u != null && t > 0 ? Math.round((u / t) * 1000) / 10 : 0);
+  // REST（bytes）优先；SSH pve_status 容量单位为 MB，换算为 bytes
+  const cpuVal = m.cpu != null ? Math.round(m.cpu * 1000) / 10 : (p.cpu_usage ?? null);
+  const toB = (v) => (v == null ? null : v * 1048576);
+  const memUsed = mem.used ?? toB(p.mem_used);
+  const memTotal = mem.total ?? toB(p.mem_total);
+  const rootUsed = root.used ?? toB(p.disk_used);
+  const rootTotal = root.total ?? toB(p.disk_total);
+  const swapUsed = swap.used ?? toB(p.swap_used);
+  const swapTotal = swap.total ?? toB(p.swap_total);
+  // 温度合理值过滤（SSH 解析可能出垃圾值）
+  const okTemp = (t) => (t != null && t >= 10 && t <= 110 ? t : null);
+  const cpuTemp = okTemp(p.cpu_temp);
+  return [
+    {
+      label: 'CPU',
+      percent: cpuVal ?? 0,
+      value: cpuVal != null ? cpuVal + '%' : '-',
+      extra: cpuTemp != null ? cpuTemp + '°C' : '',
+    },
+    {
+      label: '内存',
+      percent: pct(memUsed, memTotal),
+      value: `${fmtGB(memUsed)} / ${fmtGB(memTotal)}`,
+    },
+    {
+      label: '根分区',
+      percent: pct(rootUsed, rootTotal),
+      value: `${fmtGB(rootUsed)} / ${fmtGB(rootTotal)}`,
+    },
+    {
+      label: 'Swap',
+      percent: pct(swapUsed, swapTotal),
+      value: swapTotal ? `${fmtGB(swapUsed)} / ${fmtGB(swapTotal)}` : '未启用',
+    },
+  ];
+});
+
+function barColor(v) {
+  if (v == null) return 'grey';
+  if (v >= 90) return 'error';
+  if (v >= 75) return 'warning';
+  return 'success';
 }
 
+const vmRunning = computed(() => vmList.value.filter((v) => v.status === 'running').length);
+const vmStopped = computed(() => vmList.value.filter((v) => v.status !== 'running').length);
+
+const filteredVms = computed(() => {
+  const kw = (vmSearch.value || '').trim().toLowerCase();
+  if (!kw) return vmList.value;
+  return vmList.value.filter((v) =>
+    [v.vmid, v.displayName, v.name, v.tags].some((x) => String(x ?? '').toLowerCase().includes(kw))
+  );
+});
+
+const backupCounts = computed(() => ({
+  local: backupFiles.value.filter((f) => f.source === '本地备份').length,
+  webdav: backupFiles.value.filter((f) => f.source === 'WebDAV备份').length,
+}));
+
+// 存储使用（来自 PVE API）
+const storageBars = computed(() => {
+  const fmtGB = (v) => (v == null ? '-' : (v / 1073741824).toFixed(1) + ' GB');
+  return (monitorData.value?.storages || [])
+    .filter((s) => s.total > 0)
+    .map((s) => ({
+      label: `存储 · ${s.storage} (${s.type})`,
+      percent: Math.round((s.used_fraction || 0) * 100),
+      value: `${fmtGB(s.used)} / ${fmtGB(s.total)}`,
+    }));
+});
+
+// 最近任务列表
+const taskList = computed(() => (monitorData.value?.tasks || []).map((t) => {
+  const st = String(t.status || '');
+  const ok = st.toUpperCase() === 'OK';
+  const running = !st;
+  const d = t.starttime ? new Date(t.starttime * 1000) : null;
+  const timeText = d
+    ? `${d.getMonth() + 1}-${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    : '';
+  return { ...t, ok, running, timeText, statusText: running ? '运行中' : (ok ? 'OK' : '失败') };
+}));
+
+// ---------- SVG 图表 ----------
+function chartSeries(values, color, w = 300, h = 64, maxV = null) {
+  const pts = values.map((v) => Number(v) || 0);
+  if (!pts.length) return null;
+  const max = maxV || Math.max(...pts, 1e-9);
+  const stepX = pts.length > 1 ? w / (pts.length - 1) : 0;
+  const coords = pts.map((v, i) => [i * stepX, h - Math.max(0, Math.min(1, v / max)) * (h - 4) - 2]);
+  const points = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  return { points, areaPoints: `${points} ${w},${h} 0,${h}`, color };
+}
+
+function fmtChartNum(v) {
+  return v >= 100 ? Math.round(v).toString() : String(Math.round(v * 10) / 10);
+}
+
+// 节点监控 6 图：CPU / 内存 / 网络进出 / 根分区 / Swap / IO等待
+const monCharts = computed(() => {
+  const rrd = monitorData.value?.rrd || [];
+  if (!rrd.length) return [];
+  const gb = 1 / 1073741824;
+  const mb = 1 / 1048576;
+  const num = (r, f) => Number(r[f]) || 0;
+  const maxOf = (f) => Math.max(...rrd.map((r) => num(r, f)));
+  const defs = [
+    { key: 'cpu', title: 'CPU 使用率', unit: '%', fixedMax: 100,
+      fields: [{ f: 'cpu', color: '#4f8cff', scale: 100 }] },
+    { key: 'mem', title: '内存使用', unit: ' GB', fixedMax: maxOf('memtotal') * gb,
+      fields: [{ f: 'memused', color: '#43b581', scale: gb }] },
+    { key: 'net', title: '网络 进/出', unit: ' MB/s',
+      fields: [{ f: 'netin', color: '#ef6b6b', scale: mb }, { f: 'netout', color: '#43b581', scale: mb }] },
+    { key: 'root', title: '根分区已用', unit: ' GB',
+      fields: [{ f: 'rootused', color: '#f59e0b', scale: gb }] },
+    { key: 'swap', title: 'Swap 使用', unit: ' GB',
+      fields: [{ f: 'swapused', color: '#9c27b0', scale: gb }] },
+    { key: 'iowait', title: 'IO 等待', unit: '%', fixedMax: 100,
+      fields: [{ f: 'iowait', color: '#e91e63', scale: 100 }] },
+  ];
+  return defs.map((d) => {
+    const lines = [];
+    for (const fd of d.fields) {
+      const values = rrd.map((r) => num(r, fd.f) * fd.scale);
+      const ln = chartSeries(values, fd.color, 300, 64, d.fixedMax);
+      if (!ln) return null;
+      lines.push(ln);
+    }
+    const lastVals = d.fields.map((fd) => (rrd.length ? num(rrd[rrd.length - 1], fd.f) * fd.scale : 0));
+    const last = `${lastVals.map(fmtChartNum).join(' / ')}${d.unit}`;
+    return { key: d.key, title: d.title, lines, last };
+  }).filter(Boolean);
+});
+
+// 单虚机监控 4 图：CPU / 内存 / 网络 / 磁盘IO
+const guestCharts = computed(() => {
+  const rrd = guestData.value?.rrd || [];
+  if (!rrd.length) return [];
+  const gb = 1 / 1073741824;
+  const mb = 1 / 1048576;
+  const num = (r, f) => Number(r[f]) || 0;
+  const maxOf = (f) => Math.max(...rrd.map((r) => num(r, f)));
+  const defs = [
+    { key: 'cpu', title: 'CPU 使用率', unit: '%', fixedMax: 100,
+      fields: [{ f: 'cpu', color: '#4f8cff', scale: 100 }] },
+    { key: 'mem', title: '内存使用', unit: ' GB', fixedMax: maxOf('maxmem') * gb,
+      fields: [{ f: 'mem', color: '#43b581', scale: gb }] },
+    { key: 'net', title: '网络 进/出', unit: ' MB/s',
+      fields: [{ f: 'netin', color: '#ef6b6b', scale: mb }, { f: 'netout', color: '#43b581', scale: mb }] },
+    { key: 'disk', title: '磁盘 读/写', unit: ' MB/s',
+      fields: [{ f: 'diskread', color: '#f59e0b', scale: mb }, { f: 'diskwrite', color: '#e91e63', scale: mb }] },
+  ];
+  return defs.map((d) => {
+    const lines = [];
+    for (const fd of d.fields) {
+      const values = rrd.map((r) => num(r, fd.f) * fd.scale);
+      const ln = chartSeries(values, fd.color, 300, 64, d.fixedMax);
+      if (!ln) return null;
+      lines.push(ln);
+    }
+    const lastVals = d.fields.map((fd) => (rrd.length ? num(rrd[rrd.length - 1], fd.f) * fd.scale : 0));
+    const last = `${lastVals.map(fmtChartNum).join(' / ')}${d.unit}`;
+    return { key: d.key, title: d.title, lines, last };
+  }).filter(Boolean);
+});
+
+const filteredFiles = computed(() => {
+  let list = backupFiles.value;
+  if (fileSource.value !== '全部') list = list.filter((f) => f.source === fileSource.value);
+  const kw = (fileSearch.value || '').trim().toLowerCase();
+  if (kw) list = list.filter((f) => String(f.filename || '').toLowerCase().includes(kw));
+  return list;
+});
+
+function vmActions(vm) {
+  if (vm.status === 'running') {
+    return [
+      { action: 'reboot', label: '重启', icon: 'mdi-restart', color: 'warning' },
+      { action: 'stop', label: '停止', icon: 'mdi-stop', color: 'error' },
+      { action: 'snapshot', label: '快照', icon: 'mdi-camera-outline', color: 'teal' },
+    ];
+  }
+  return [{ action: 'start', label: '启动', icon: 'mdi-play', color: 'success' }];
+}
+
+function fmtUptime(sec) {
+  const d = Math.floor(sec / 86400);
+  const h = Math.floor((sec % 86400) / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (d) return `${d}天${h}小时`;
+  if (h) return `${h}小时${m}分`;
+  return `${m}分钟`;
+}
+
+// ---------- 数据拉取 ----------
+// 本地缓存：上次数据立即呈现、后台静默刷新（stale-while-revalidate）
+function loadCache(key) {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + key);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || Date.now() - (obj.ts || 0) > CACHE_TTL) return null;
+    return obj.data;
+  } catch {
+    return null;
+  }
+}
+
+function saveCache(key, data) {
+  try {
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ ts: Date.now(), data }));
+  } catch {
+    /* 存储失败忽略 */
+  }
+}
+
+async function fetchPveStatus() {
+  try {
+    const data = await props.api.get(`${API_BASE.value}/pve_status`);
+    pve.value = data || {};
+    saveCache('pve', pve.value);
+  } catch (e) {
+    if (!Object.keys(pve.value).length) pve.value = loadCache('pve') || { online: false, error: e?.message || '获取失败' };
+  }
+}
+
+async function fetchVmList() {
+  try {
+    const data = await props.api.get(`${API_BASE.value}/container_status`);
+    vmList.value = Array.isArray(data) ? data : [];
+    saveCache('vmlist', vmList.value);
+  } catch {
+    if (!vmList.value.length) vmList.value = loadCache('vmlist') || [];
+    /* 请求失败保留当前数据，下次刷新重试 */
+  }
+}
 
 async function fetchStatus() {
   try {
-    const oldStatusPollInterval = status.value?.status_poll_interval;
-    const oldContainerPollInterval = status.value?.container_poll_interval;
-    
-    status.value = await props.api.get('plugin/ProxmoxVEBackup/status');
-    
-    // 新增：同步镜像模板开关
-    if (status.value && typeof status.value.cleanup_template_images !== 'undefined') {
-      cleanupTemplateImagesEnabled.value = !!status.value.cleanup_template_images;
-    } else {
-      // 兼容老后端
-      cleanupTemplateImagesEnabled.value = false;
-    }
-    
-    // 检查轮询间隔是否改变，如果改变则更新定时器
-    if (oldStatusPollInterval !== status.value?.status_poll_interval) {
-      const newInterval = status.value?.status_poll_interval || 30000;
-      console.log(`[轮询配置更新] 状态轮询间隔从 ${oldStatusPollInterval || 30000}ms 更新为 ${newInterval}ms`);
-      if (statusPollTimer.value) clearInterval(statusPollTimer.value);
-      if (pveStatusPollTimer.value) clearInterval(pveStatusPollTimer.value);
-      statusPollTimer.value = setInterval(fetchStatus, newInterval);
-      pveStatusPollTimer.value = setInterval(fetchPveStatus, newInterval);
-    }
-    
-    if (oldContainerPollInterval !== status.value?.container_poll_interval) {
-      const newInterval = status.value?.container_poll_interval || 30000;
-      console.log(`[轮询配置更新] 容器状态轮询间隔从 ${oldContainerPollInterval || 30000}ms 更新为 ${newInterval}ms`);
-      if (containerStatusPollTimer.value) clearInterval(containerStatusPollTimer.value);
-      containerStatusPollTimer.value = setInterval(fetchContainerStatus, newInterval);
-    }
-  } catch (e) {
-    showTip('获取状态失败: ' + (e?.message || '未知错误'), 'error');
-    cleanupTemplateImagesEnabled.value = false;
+    status.value = (await props.api.get(`${API_BASE.value}/status`)) || {};
+    saveCache('status', status.value);
+  } catch {
+    if (!Object.keys(status.value).length) status.value = loadCache('status') || {};
   }
-}
-
-async function fetchHistory() {
-  try {
-    const [backup, restore] = await Promise.all([
-      props.api.get('plugin/ProxmoxVEBackup/backup_history'),
-      props.api.get('plugin/ProxmoxVEBackup/restore_history')
-    ]);
-    // 合并并加类型
-    const backupList = Array.isArray(backup) ? backup.map(item => ({ ...item, type: '备份' })) : [];
-    const restoreList = Array.isArray(restore) ? restore.map(item => ({ ...item, type: '恢复' })) : [];
-    // 合并并按时间倒序
-    history.value = [...backupList, ...restoreList].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-  } catch (e) {
-    showTip('获取历史记录失败: ' + (e?.message || '未知错误'), 'error');
-  }
-}
-
-// fetchPveStatus 成功后写入 localStorage
-async function fetchPveStatus() {
-  try {
-    const data = await props.api.get('plugin/ProxmoxVEBackup/pve_status');
-    pveStatus.value = data;
-    localStorage.setItem('pveStatus', JSON.stringify(data));
-  } catch (e) {
-    pveStatus.value = { online: false, error: e?.message || '获取失败' };
-  }
-}
-
-// fetchContainerStatus 成功后写入 localStorage
-async function fetchContainerStatus() {
-  try {
-    const data = await props.api.get('plugin/ProxmoxVEBackup/container_status');
-    containerStatus.value = data;
-    localStorage.setItem('containerStatus', JSON.stringify(data));
-  } catch (e) {
-    containerStatus.value = [{ error: e?.message || '获取失败' }];
-  }
-}
-
-async function runBackup() {
-  loadingBackup.value = true;
-  try {
-    const res = await props.api.post('plugin/ProxmoxVEBackup/run_backup');
-    if (res.success) {
-      showTip(res.message || '备份任务已启动');
-    await fetchStatus();
-    await fetchHistory();
-    } else {
-      showTip(res.message || '备份失败', 'error');
-    }
-  } catch (e) {
-    showTip('备份失败: ' + (e?.message || '未知错误'), 'error');
-  }
-  loadingBackup.value = false;
-}
-
-function openRestoreDialog(file) {
-  if (file && file.filename && file.source) selectedRestoreFile.value = file.filename;
-  else selectedRestoreFile.value = null;
-  if (!restoreDisk.value) restoreDisk.value = 'local';
-  showRestoreDialog.value = true;
-}
-
-async function runRestore() {
-  const fileObj = backupFiles.value.find(f => f.filename === selectedRestoreFile.value);
-  if (!fileObj || !fileObj.filename || !fileObj.source) {
-    return showTip('请选择备份文件', 'error');
-  }
-  loadingRestore.value = true;
-  try {
-    const res = await props.api.post('plugin/ProxmoxVEBackup/restore', {
-      filename: fileObj.filename,
-      source: fileObj.source,
-      restore_vmid: restoreVmid.value,
-      restore_force: restoreForce.value,
-      restore_skip_existing: restoreSkipExisting.value,
-      restore_storage: restoreDisk.value
-    });
-    if (res.success) {
-      showTip(res.message || '恢复任务已启动');
-      await fetchStatus();
-      await fetchHistory();
-    } else {
-      showTip(res.message || '恢复失败', 'error');
-    }
-  } catch (e) {
-    showTip('恢复失败: ' + (e?.message || '未知错误'), 'error');
-  }
-  loadingRestore.value = false;
-  showRestoreDialog.value = false;
-}
-
-async function clearHistory() {
-  loadingClear.value = true;
-  try {
-    await props.api.post('plugin/ProxmoxVEBackup/clear_history');
-    showTip('历史已清理');
-    await fetchHistory();
-  } catch (e) {
-    showTip('清理失败: ' + (e?.message || '未知错误'), 'error');
-  }
-  loadingClear.value = false;
-}
-
-function openBackupFilesDialog() {
-  fetchBackupFiles();
-  showBackupFilesDialog.value = true;
 }
 
 async function fetchBackupFiles() {
   try {
-    // 直接请求 available_backups 接口，获取备份文件列表
-    const files = await props.api.get('plugin/ProxmoxVEBackup/available_backups');
-    if (Array.isArray(files)) {
-      backupFiles.value = files.map(f => ({
-        ...f,
-        filenameWithSource: f.filename + '_' + f.source
-      }));
-    } else {
-      backupFiles.value = [];
-    }
-  } catch (e) {
-    backupFiles.value = [];
+    const files = await props.api.get(`${API_BASE.value}/available_backups`);
+    backupFiles.value = Array.isArray(files) ? files : [];
+    saveCache('files', backupFiles.value);
+  } catch {
+    if (!backupFiles.value.length) backupFiles.value = loadCache('files') || [];
   }
 }
 
+async function fetchMonitor() {
+  monitorLoading.value = true;
+  try {
+    const data = await props.api.get(`${API_BASE.value}/monitor?timeframe=${monitorTf.value}`);
+    if (data && !data.error) {
+      monitorData.value = data;
+      saveCache('monitor', data);
+    }
+  } catch {
+    if (!monitorData.value) monitorData.value = loadCache('monitor');
+  }
+  monitorLoading.value = false;
+}
+
+async function fetchGuest() {
+  if (!guestDialog.vmid) return;
+  guestLoading.value = true;
+  try {
+    const data = await props.api.get(
+      `${API_BASE.value}/guest_monitor?type=${guestDialog.type}&vmid=${guestDialog.vmid}&timeframe=${guestTf.value}`);
+    guestData.value = data && !data.error ? data : null;
+  } catch {
+    guestData.value = null;
+  }
+  guestLoading.value = false;
+}
+
+async function openGuest(vm) {
+  guestDialog.vmid = vm.vmid;
+  guestDialog.type = vm.type === 'LXC' ? 'lxc' : 'qemu';
+  guestDialog.name = vm.displayName || vm.name || vm.vmid;
+  guestData.value = null;
+  guestDialog.show = true;
+  await fetchGuest();
+}
+
+async function refreshAll() {
+  refreshing.value = true;
+  await Promise.all([fetchStatus(), fetchPveStatus(), fetchVmList(), fetchBackupFiles(), fetchMonitor()]);
+  refreshing.value = false;
+}
+
+function setupTimer() {
+  if (timer) clearInterval(timer);
+  if (refreshInterval.value > 0) timer = setInterval(refreshAll, refreshInterval.value * 1000);
+}
+watch(refreshInterval, setupTimer);
+watch(monitorTf, fetchMonitor);
+watch(guestTf, () => { if (guestDialog.show) fetchGuest(); });
+
+// ---------- 交互 ----------
+const confirmDialog = reactive({ show: false, title: '', text: '', confirm: null });
+function askConfirm(key, title, text, item = null) {
+  const acts = {
+    delete: () => doDelete(item),
+    stopAll: doStopAll,
+    clearHistory: doClearHistory,
+    hostReboot: () => doHostAction('reboot'),
+    hostShutdown: () => doHostAction('shutdown'),
+  };
+  confirmDialog.title = title;
+  confirmDialog.text = text;
+  confirmDialog.confirm = acts[key] || null;
+  confirmDialog.show = true;
+}
+
+async function runBackup() {
+  busy.backup = true;
+  try {
+    const res = await props.api.post(`${API_BASE.value}/run_backup`, {});
+    showTip(res.message || '备份任务已启动', res.success === false ? 'error' : 'success');
+    await fetchStatus();
+  } catch (e) {
+    showTip('启动失败: ' + (e?.message || '未知错误'), 'error');
+  }
+  busy.backup = false;
+}
+
+async function onVmAction(vm, action) {
+  if (action === 'snapshot') {
+    vm._actionLoading = 'snapshot';
+    try {
+      const res = await props.api.post(`${API_BASE.value}/container_snapshot`, { vmid: vm.vmid, type: vm.type });
+      showTip(res.message || '快照操作完成', res.success ? 'success' : 'error');
+    } catch (e) {
+      showTip('快照失败: ' + (e?.message || '未知错误'), 'error');
+    }
+    vm._actionLoading = null;
+    return;
+  }
+  vm._actionLoading = action;
+  try {
+    const res = await props.api.post(`${API_BASE.value}/container_action`, {
+      vmid: vm.vmid,
+      type: vm.type,
+      action,
+    });
+    showTip(res.message || `${action} 操作完成`, res.success ? 'success' : 'error');
+    await fetchVmList();
+  } catch (e) {
+    showTip('操作失败: ' + (e?.message || '未知错误'), 'error');
+  }
+  vm._actionLoading = null;
+}
+
+async function doDelete(item) {
+  confirmDialog.show = false;
+  if (!item) return;
+  busy.del = item.filename;
+  try {
+    const payload = { filename: item.filename, source: item.source };
+    if (item.storage) payload.storage = item.storage;
+    if (item.remote_dir) payload.remote_dir = item.remote_dir;
+    const res = await props.api.post(`${API_BASE.value}/delete_backup`, payload);
+    showTip(res.message || '删除完成', res.success ? 'success' : 'error');
+    await fetchBackupFiles();
+  } catch (e) {
+    showTip('删除失败: ' + (e?.message || '未知错误'), 'error');
+  }
+  busy.del = null;
+}
+
+async function doStopAll() {
+  confirmDialog.show = false;
+  busy.stopAll = true;
+  try {
+    const res = await props.api.post(`${API_BASE.value}/stop_all_tasks`, {});
+    showTip(res.message || '已停止所有任务', res.success ? 'success' : 'error');
+    await fetchVmList();
+  } catch (e) {
+    showTip('操作失败: ' + (e?.message || '未知错误'), 'error');
+  }
+  busy.stopAll = false;
+}
+
+async function doClearHistory() {
+  confirmDialog.show = false;
+  busy.clearHistory = true;
+  try {
+    await props.api.post(`${API_BASE.value}/clear_history`, {});
+    showTip('历史记录已清空');
+  } catch (e) {
+    showTip('清空失败: ' + (e?.message || '未知错误'), 'error');
+  }
+  busy.clearHistory = false;
+}
+
+async function doHostAction(action) {
+  confirmDialog.show = false;
+  try {
+    const res = await props.api.post(`${API_BASE.value}/host_action`, { action });
+    showTip(res.msg || res.message || '指令已下发', res.success ? 'warning' : 'error');
+  } catch (e) {
+    showTip('操作失败: ' + (e?.message || '未知错误'), 'error');
+  }
+}
+
+async function doCleanup(path, okText) {
+  const key = path === 'cleanup_logs' ? 'cleanupLogs' : 'cleanupTmp';
+  busy[key] = true;
+  try {
+    const res = await props.api.post(`${API_BASE.value}/${path}`, {});
+    showTip(res.message || okText, res.success ? 'success' : 'error');
+  } catch (e) {
+    showTip('清理失败: ' + (e?.message || '未知错误'), 'error');
+  }
+  busy[key] = false;
+}
+
+// ---------- 恢复与下载 ----------
+const restoreDialog = reactive({ show: false, item: null, vmid: '' });
+function askRestore(item) {
+  restoreDialog.item = item;
+  restoreDialog.vmid = '';
+  restoreDialog.show = true;
+}
+
+async function doRestore() {
+  restoreDialog.show = false;
+  busy.restore = true;
+  try {
+    const payload = { filename: restoreDialog.item.filename, source: restoreDialog.item.source };
+    if (restoreDialog.vmid) payload.vmid = restoreDialog.vmid;
+    const res = await props.api.post(`${API_BASE.value}/restore`, payload);
+    showTip(res.message || '恢复任务已启动', res.success === false ? 'error' : 'success');
+    await fetchStatus();
+  } catch (e) {
+    showTip('恢复失败: ' + (e?.message || '未知错误'), 'error');
+  }
+  busy.restore = false;
+}
+
 async function downloadBackup(item) {
-  // 获取 apikey（假设登录后已存到 localStorage 或 window 变量）
+  busy.dl = item.filename;
+  try {
+    const res = await props.api.get(`${API_BASE.value}/token`);
+    if (res && res.api_token) {
+      window.API_TOKEN = res.api_token;
+      localStorage.setItem('api_token', res.api_token);
+    }
+  } catch {
+    /* 已有 token 则忽略 */
+  }
   const apikey = window.API_TOKEN || localStorage.getItem('api_token') || '';
   const params = new URLSearchParams({ filename: item.filename, source: item.source });
-  if (apikey) params.append('apikey', apikey); // 新增 apikey
-  const url = '/api/v1/plugin/ProxmoxVEBackup/download_backup?' + params.toString();
+  if (apikey) params.append('apikey', apikey);
+  if (item.storage) params.append('storage', item.storage);
+  if (item.remote_dir) params.append('remote_dir', item.remote_dir);
   try {
-    const res = await axios$1.get(
-      url,
-      { responseType: 'blob' }
-    );
-    // 处理文件名
+    const resp = await axios$1.get(`/api/v1/${API_BASE.value}/download_backup?` + params.toString(), {
+      responseType: 'blob',
+    });
     let filename = item.filename || 'backup.dat';
-    const disposition = res.headers['content-disposition'];
+    const disposition = resp.headers['content-disposition'];
     if (disposition) {
       const match = disposition.match(/filename="?([^";]+)"?/);
       if (match) filename = decodeURIComponent(match[1]);
     }
-    // 创建blob下载
-    const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+    const blobUrl = window.URL.createObjectURL(new Blob([resp.data]));
     const link = document.createElement('a');
     link.href = blobUrl;
     link.download = filename;
@@ -6966,1310 +7325,1141 @@ async function downloadBackup(item) {
     link.click();
     document.body.removeChild(link);
     window.URL.revokeObjectURL(blobUrl);
-  } catch (error) {
-    alert('下载失败: ' + (error.message || '未知错误'));
-  }
-}
-
-function confirmDelete(item) {
-  deleteTarget.value = item;
-  showDeleteDialog.value = true;
-}
-
-async function handleDeleteConfirm() {
-  if (!deleteTarget.value) return;
-  deleteLoading.value = deleteTarget.value.filename + deleteTarget.value.source;
-  try {
-    await props.api.post('plugin/ProxmoxVEBackup/delete_backup', {
-      filename: deleteTarget.value.filename,
-      source: deleteTarget.value.source
-    });
-    showTip('删除成功');
-    await fetchBackupFiles();
+    showTip('已开始下载: ' + filename);
   } catch (e) {
-    showTip('删除失败: ' + (e?.message || '未知错误'), 'error');
+    showTip('下载失败: ' + (e?.message || '未知错误'), 'error');
   }
-  deleteLoading.value = null;
-  showDeleteDialog.value = false;
+  busy.dl = null;
 }
 
-
-// 3. onMounted 时先从 localStorage 读取缓存
+// ---------- 生命周期 ----------
 onMounted(async () => {
-  // 自动获取API_TOKEN
-  try {
-    const res = await props.api.get('plugin/ProxmoxVEBackup/token');
-    if (res && res.api_token) {
-      window.API_TOKEN = res.api_token;
-      localStorage.setItem('api_token', res.api_token);
-    }
-  } catch (e) {
-    // console.warn('获取API令牌失败', e);
-  }
-  // 先读缓存
-  try {
-    const cachePve = localStorage.getItem('pveStatus');
-    if (cachePve) pveStatus.value = JSON.parse(cachePve);
-  } catch {}
-  try {
-    const cacheContainer = localStorage.getItem('containerStatus');
-    if (cacheContainer) containerStatus.value = JSON.parse(cacheContainer);
-  } catch {}
-  // 再异步刷新
-  await fetchStatus();
-  fetchHistory();
-  fetchPveStatus();
-  fetchContainerStatus();
-  fetchBackupFiles();
-  
-  // 使用配置的轮询间隔设置定时器
-  const statusInterval = status.value?.status_poll_interval || 30000; // 默认30秒
-  const containerInterval = status.value?.container_poll_interval || 30000; // 默认30秒
-  
-  // 调试信息（可在浏览器控制台查看）
-  console.log(`[轮询配置] 状态轮询间隔: ${statusInterval}ms (${statusInterval/1000}秒)`);
-  console.log(`[轮询配置] 容器状态轮询间隔: ${containerInterval}ms (${containerInterval/1000}秒)`);
-  
-  // 清除旧的定时器（如果存在）
-  if (statusPollTimer.value) clearInterval(statusPollTimer.value);
-  if (pveStatusPollTimer.value) clearInterval(pveStatusPollTimer.value);
-  if (containerStatusPollTimer.value) clearInterval(containerStatusPollTimer.value);
-  
-  // 设置新的定时器
-  statusPollTimer.value = setInterval(fetchStatus, statusInterval);
-  pveStatusPollTimer.value = setInterval(fetchPveStatus, statusInterval); // 使用相同的状态轮询间隔
-  containerStatusPollTimer.value = setInterval(fetchContainerStatus, containerInterval);
-  
-  // 监听配置变化，动态更新轮询间隔
-  watch(() => status.value?.status_poll_interval, (newVal) => {
-    if (newVal && newVal > 0) {
-      if (statusPollTimer.value) clearInterval(statusPollTimer.value);
-      if (pveStatusPollTimer.value) clearInterval(pveStatusPollTimer.value);
-      statusPollTimer.value = setInterval(fetchStatus, newVal);
-      pveStatusPollTimer.value = setInterval(fetchPveStatus, newVal);
-    }
-  });
-  
-  watch(() => status.value?.container_poll_interval, (newVal) => {
-    if (newVal && newVal > 0) {
-      if (containerStatusPollTimer.value) clearInterval(containerStatusPollTimer.value);
-      containerStatusPollTimer.value = setInterval(fetchContainerStatus, newVal);
-    }
-  });
+  // 先用上次缓存立即呈现（2小时内有效），随后后台静默刷新
+  pve.value = loadCache('pve') || {};
+  status.value = loadCache('status') || {};
+  vmList.value = loadCache('vmlist') || [];
+  backupFiles.value = loadCache('files') || [];
+  monitorData.value = loadCache('monitor');
+  await refreshAll();
+  setupTimer();
 });
 
-async function handleVmAction(item, action) {
-  item._actionLoading = action;
-  try {
-    const res = await props.api.post('plugin/ProxmoxVEBackup/container_action', {
-      vmid: item.vmid,
-      type: item.type,
-      action
-    });
-    showTip(res.message || (action + '操作完成'), res.success ? 'success' : 'error');
-    await fetchContainerStatus();
-  } catch (e) {
-    showTip('操作失败: ' + (e?.message || '未知错误'), 'error');
-  }
-  item._actionLoading = null;
-}
-
-async function handleVmSnapshot(item) {
-  item._actionLoading = 'snapshot';
-  try {
-    const res = await props.api.post('plugin/ProxmoxVEBackup/container_snapshot', {
-      vmid: item.vmid,
-      type: item.type
-    });
-    showTip(res.message || '快照操作完成', res.success ? 'success' : 'error');
-    await fetchContainerStatus();
-  } catch (e) {
-    showTip('快照失败: ' + (e?.message || '未知错误'), 'error');
-  }
-  item._actionLoading = null;
-}
-
-function formatUptime(uptime) {
-  const sec = Number(uptime);
-  if (!sec || isNaN(sec) || sec <= 0) return '<span style="color:#888;">未运行</span>';
-  if (sec < 60) return '<span style="color:#4caf50;font-weight:600;">刚启动</span>';
-  const days = Math.floor(sec / 86400);
-  const hours = Math.floor((sec % 86400) / 3600);
-  const mins = Math.floor((sec % 3600) / 60);
-  let parts = [];
-  if (days > 0) parts.push(days + '天');
-  if (hours > 0) parts.push(hours + '小时');
-  if (mins > 0) parts.push(mins + '分');
-  return `<span style="color:#4caf50;font-weight:600;">运行${parts.join('')}</span>`;
-}
-
-const isMobile = ref(false);
-onMounted(() => {
-  const check = () => isMobile.value = window.innerWidth < 600;
-  check();
-  window.addEventListener('resize', check);
+onBeforeUnmount(() => {
+  if (timer) clearInterval(timer);
 });
-
-// 辅助函数：获取使用率颜色
-function getUsageColor(usage) {
-  if (usage >= 80) return 'error';
-  if (usage >= 50) return 'warning';
-  return 'success';
-}
-
-// 辅助函数：获取磁盘使用率颜色
-function getDiskUsageColor(usage) {
-  if (usage >= 90) return 'error';
-  if (usage >= 70) return 'warning';
-  return 'success';
-}
-
-// 辅助函数：获取温度颜色
-function getTempColor(temp) {
-  if (temp >= 80) return 'error';
-  if (temp >= 60) return 'warning';
-  return 'success';
-}
-
-// 辅助函数：获取温度颜色的实际值（用于内联样式）
-function getTempColorValue(temp) {
-  if (temp >= 80) return '#f44336'; // 红色 - 高温
-  if (temp >= 60) return '#ff9800'; // 橙色 - 警告
-  return '#4caf50'; // 绿色 - 正常
-}
-
-// 辅助函数：格式化IO延迟
-function formatIODelay(delay) {
-  if (!delay && delay !== 0) return '-';
-  if (delay < 1) return '< 1ms';
-  return `${delay.toFixed(1)}ms`;
-}
-
-// 辅助函数：获取IO延迟颜色
-function getIODelayColor(delay) {
-  if (delay >= 50) return 'error'; // 红色 - 严重延迟
-  if (delay >= 10) return 'warning'; // 橙色 - 警告
-  return 'success'; // 绿色 - 正常
-}
-
-// 辅助函数：获取IO延迟进度条值（将毫秒映射到0-100）
-function getIODelayProgress(delay) {
-  // 将0-100ms映射到0-100%，超过100ms显示为100%
-  return Math.min((delay / 100) * 100, 100);
-}
-
-const showHostActionDialog = ref(false);
-const pendingHostAction = ref(''); // reboot/shutdown
-const hostActionLoading = ref('');
-const handleHostActionClick = (action) => {
-  if (hostActionLoading.value) return;
-  pendingHostAction.value = action;
-  showHostActionDialog.value = true;
-};
-const doHostAction = async () => {
-  const action = pendingHostAction.value;
-  if (!action) return;
-  hostActionLoading.value = action;
-  try {
-    const actionText = action === 'reboot' ? '重启' : '关机';
-    const res = await props.api.post('plugin/ProxmoxVEBackup/host_action', { action });
-    if (res.success) {
-      showTip(res.msg || `${actionText}命令已发送`);
-      setTimeout(fetchPveStatus, 2000);
-    } else {
-      showTip(res.msg || `${actionText}失败`);
-    }
-  } catch (e) {
-    showTip(e.message || '操作失败');
-  }
-  hostActionLoading.value = '';
-  showHostActionDialog.value = false;
-  pendingHostAction.value = '';
-};
-
-const loadingCleanupLogs = ref(false);
-const loadingCleanupTempSpace = ref(false); // 新增临时空间清理loading
-async function handleCleanupLogs() {
-  if (!status.value.enabled || !status.value.enable_log_cleanup) return;
-  loadingCleanupLogs.value = true;
-  try {
-    const res = await props.api.post('plugin/ProxmoxVEBackup/cleanup_logs');
-    let detail = '';
-    if (res.result && typeof res.result === 'object') {
-      detail = Object.entries(res.result).map(([k, v]) => {
-        const [count, err] = v;
-        if (err) return `${k}：失败（${err}）`;
-        if (count === null || typeof count === 'undefined') return `${k}：已清理`;
-        return `${k}：已清理${count}个`;
-      }).join('\n');
-    }
-    showTip((res.msg || '系统日志清理完成') + (detail ? '\n' + detail : ''), res.success ? 'success' : 'error');
-  } catch (e) {
-    showTip(e?.msg || e?.message || '系统日志清理失败', 'error');
-  }
-  loadingCleanupLogs.value = false;
-}
-
-// 新增：清理临时空间方法
-async function handleCleanupTempSpace() {
-  if (!status.value.enabled) return;
-  if (status.value.backup_activity && status.value.backup_activity !== '空闲') {
-    showTip('当前有备份任务进行中，请稍后再清理临时空间', 'warning');
-    return;
-  }
-  loadingCleanupTempSpace.value = true;
-  try {
-    const res = await props.api.post('plugin/ProxmoxVEBackup/cleanup_tmp');
-    let detail = '';
-    if (res.result && typeof res.result === 'object') {
-      detail = Object.entries(res.result).map(([k, v]) => {
-        const [count, err] = v;
-        if (err) return `${k}：失败（${err}）`;
-        if (count === null || typeof count === 'undefined') return `${k}：已清理`;
-        return `${k}：已清理${count}个`;
-      }).join('\n');
-    }
-    showTip((res.msg || '临时空间清理完成') + (detail ? '\n' + detail : ''), res.success ? 'success' : 'error');
-  } catch (e) {
-    showTip(e?.msg || e?.message || '临时空间清理失败', 'error');
-  }
-  loadingCleanupTempSpace.value = false;
-}
-
-// 新增：停止所有任务方法
-async function stopAllTasks() {
-  loadingStopTasks.value = true;
-  try {
-    const res = await props.api.post('plugin/ProxmoxVEBackup/stop_all_tasks');
-    showTip(res.msg || '任务已停止', res.success ? 'success' : 'error');
-    if (res.success) {
-      await fetchStatus(); // 刷新状态
-    }
-  } catch (e) {
-    showTip(e?.msg || e?.message || '停止任务失败', 'error');
-  }
-  loadingStopTasks.value = false;
-}
-
-const cleanupTemplateImagesEnabled = ref(false); // 镜像模板开关联动
-const showTemplateImagesDialog = ref(false);
-const templateImages = ref([]);
-const templateImageHeaders = [
-  { text: '文件名', value: 'filename' },
-  { text: '类型', value: 'type' },
-  { text: '大小(MB)', value: 'size_mb' },
-  { text: '日期', value: 'date' }
-  // 不再有操作列
-];
-function openTemplateImagesDialog() {
-  fetchTemplateImages();
-  showTemplateImagesDialog.value = true;
-}
-async function fetchTemplateImages() {
-  try {
-    const files = await props.api.get('plugin/ProxmoxVEBackup/template_images');
-    if (Array.isArray(files)) {
-      templateImages.value = files.map(f => ({
-        ...f,
-        filenameWithType: f.filename + '_' + f.type
-      }));
-    } else {
-      templateImages.value = [];
-    }
-  } catch (e) {
-    templateImages.value = [];
-  }
-}
 
 return (_ctx, _cache) => {
   const _component_v_icon = _resolveComponent("v-icon");
+  const _component_v_chip = _resolveComponent("v-chip");
   const _component_v_spacer = _resolveComponent("v-spacer");
   const _component_v_btn = _resolveComponent("v-btn");
-  const _component_v_card_title = _resolveComponent("v-card-title");
   const _component_v_tooltip = _resolveComponent("v-tooltip");
+  const _component_v_select = _resolveComponent("v-select");
+  const _component_v_alert = _resolveComponent("v-alert");
+  const _component_v_card_title = _resolveComponent("v-card-title");
   const _component_v_progress_linear = _resolveComponent("v-progress-linear");
+  const _component_v_divider = _resolveComponent("v-divider");
+  const _component_v_card_text = _resolveComponent("v-card-text");
   const _component_v_card = _resolveComponent("v-card");
   const _component_v_col = _resolveComponent("v-col");
-  const _component_v_row = _resolveComponent("v-row");
-  const _component_v_chip = _resolveComponent("v-chip");
-  const _component_v_data_table = _resolveComponent("v-data-table");
-  const _component_v_card_actions = _resolveComponent("v-card-actions");
-  const _component_v_select = _resolveComponent("v-select");
+  const _component_v_list_item = _resolveComponent("v-list-item");
+  const _component_v_list_item_title = _resolveComponent("v-list-item-title");
+  const _component_v_list = _resolveComponent("v-list");
+  const _component_v_btn_toggle = _resolveComponent("v-btn-toggle");
   const _component_v_text_field = _resolveComponent("v-text-field");
-  const _component_v_switch = _resolveComponent("v-switch");
-  const _component_v_card_text = _resolveComponent("v-card-text");
+  const _component_v_row = _resolveComponent("v-row");
   const _component_v_dialog = _resolveComponent("v-dialog");
+  const _component_v_card_actions = _resolveComponent("v-card-actions");
   const _component_v_snackbar = _resolveComponent("v-snackbar");
 
-  return (_openBlock(), _createElementBlock(_Fragment, null, [
-    _createVNode(_component_v_card, {
-      flat: "",
-      class: "plugin-page glass-card"
-    }, {
-      default: _withCtx(() => [
-        _createVNode(_component_v_card_title, {
-          class: "section-title d-flex align-center mb-1 header-title-row",
-          style: {"padding":"10px 0 6px 0","min-height":"unset"}
+  return (_openBlock(), _createElementBlock("div", _hoisted_1, [
+    _createElementVNode("div", _hoisted_2, [
+      _createVNode(_component_v_icon, {
+        color: "primary",
+        size: "28"
+      }, {
+        default: _withCtx(() => [...(_cache[50] || (_cache[50] = [
+          _createTextVNode("mdi-server", -1)
+        ]))]),
+        _: 1
+      }),
+      _cache[55] || (_cache[55] = _createElementVNode("span", { class: "text-h5 font-weight-bold" }, "PVE 守护神", -1)),
+      _createVNode(_component_v_chip, {
+        color: host.value.online ? 'success' : 'error',
+        size: "small",
+        variant: "tonal"
+      }, {
+        default: _withCtx(() => [
+          _createTextVNode(_toDisplayString(host.value.online ? '已连接' : '未连接'), 1)
+        ]),
+        _: 1
+      }, 8, ["color"]),
+      (host.value.pve_version)
+        ? (_openBlock(), _createBlock(_component_v_chip, {
+            key: 0,
+            size: "small",
+            variant: "tonal",
+            class: "text-caption"
+          }, {
+            default: _withCtx(() => [
+              _createTextVNode(" PVE " + _toDisplayString(host.value.pve_version), 1)
+            ]),
+            _: 1
+          }))
+        : _createCommentVNode("", true),
+      _createVNode(_component_v_spacer),
+      _createVNode(_component_v_tooltip, {
+        text: "查看 PVE 上的 ISO 镜像与 CT 模板",
+        location: "bottom"
+      }, {
+        activator: _withCtx(({ props: tip }) => [
+          _createVNode(_component_v_btn, _mergeProps(tip, {
+            size: "small",
+            variant: "tonal",
+            color: "deep-purple",
+            disabled: !status.value.cleanup_template_images,
+            onClick: openTplDialog
+          }), {
+            default: _withCtx(() => [
+              _createVNode(_component_v_icon, {
+                size: "16",
+                class: "mr-1"
+              }, {
+                default: _withCtx(() => [...(_cache[51] || (_cache[51] = [
+                  _createTextVNode("mdi-cube-outline", -1)
+                ]))]),
+                _: 1
+              }),
+              _cache[52] || (_cache[52] = _createTextVNode("镜像模板 ", -1))
+            ]),
+            _: 1
+          }, 16, ["disabled"])
+        ]),
+        _: 1
+      }),
+      _createVNode(_component_v_select, {
+        modelValue: refreshInterval.value,
+        "onUpdate:modelValue": _cache[0] || (_cache[0] = $event => ((refreshInterval).value = $event)),
+        items: refreshOptions,
+        density: "compact",
+        variant: "outlined",
+        "hide-details": "",
+        label: "刷新间隔",
+        style: {"max-width":"130px"}
+      }, null, 8, ["modelValue"]),
+      _createVNode(_component_v_btn, {
+        size: "small",
+        variant: "tonal",
+        color: "primary",
+        loading: refreshing.value,
+        onClick: refreshAll
+      }, {
+        default: _withCtx(() => [
+          _createVNode(_component_v_icon, {
+            size: "16",
+            class: "mr-1"
+          }, {
+            default: _withCtx(() => [...(_cache[53] || (_cache[53] = [
+              _createTextVNode("mdi-refresh", -1)
+            ]))]),
+            _: 1
+          }),
+          _cache[54] || (_cache[54] = _createTextVNode(" 刷新 ", -1))
+        ]),
+        _: 1
+      }, 8, ["loading"])
+    ]),
+    (!host.value.online && host.value.error)
+      ? (_openBlock(), _createBlock(_component_v_alert, {
+          key: 0,
+          type: "error",
+          variant: "tonal",
+          density: "compact",
+          class: "mb-4"
         }, {
           default: _withCtx(() => [
-            _createVNode(_component_v_icon, {
-              class: "mr-1",
-              color: "primary",
-              size: "26"
+            _createTextVNode(_toDisplayString(host.value.error), 1)
+          ]),
+          _: 1
+        }))
+      : _createCommentVNode("", true),
+    _createVNode(_component_v_row, null, {
+      default: _withCtx(() => [
+        _createVNode(_component_v_col, {
+          cols: "12",
+          md: "6"
+        }, {
+          default: _withCtx(() => [
+            _createVNode(_component_v_card, {
+              class: _normalizeClass([{ 'card-collapsed': collapsed.host }, collapsed.host ? '' : 'fill-height'])
             }, {
-              default: _withCtx(() => [...(_cache[24] || (_cache[24] = [
-                _createTextVNode("mdi-server", -1)
-              ]))]),
-              _: 1
-            }),
-            _cache[26] || (_cache[26] = _createElementVNode("span", { style: {"font-size":"1.15rem","font-weight":"600","letter-spacing":"1px"} }, "PVE虚拟机守护神", -1)),
-            _createVNode(_component_v_spacer, { style: { flexGrow: 0.5 } }),
-            _cache[27] || (_cache[27] = _createElementVNode("span", { class: "cache-notice-text" }, "提示：本界面数据可能存在延迟 最终数据请以Proxmox VE控制台为准", -1)),
-            _createVNode(_component_v_spacer, { style: { flexGrow: 1.0 } }),
-            (isMobile.value)
-              ? (_openBlock(), _createBlock(_component_v_btn, {
-                  key: 0,
-                  icon: "",
-                  class: "close-btn",
-                  onClick: _cache[0] || (_cache[0] = $event => (_ctx.$emit('close'))),
-                  style: {"margin-left":"auto","background":"transparent","box-shadow":"none","min-width":"unset","width":"auto","height":"auto"}
+              default: _withCtx(() => [
+                _createVNode(_component_v_card_title, {
+                  class: "d-flex align-center flex-wrap ga-1 cursor-pointer",
+                  onClick: _cache[6] || (_cache[6] = $event => (collapsed.host = !collapsed.host))
                 }, {
                   default: _withCtx(() => [
                     _createVNode(_component_v_icon, {
-                      size: "28",
-                      style: {"color":"#999"}
+                      color: "info",
+                      size: "22",
+                      class: "mr-2"
                     }, {
-                      default: _withCtx(() => [...(_cache[25] || (_cache[25] = [
-                        _createTextVNode("mdi-close", -1)
+                      default: _withCtx(() => [...(_cache[56] || (_cache[56] = [
+                        _createTextVNode("mdi-cpu-64-bit", -1)
                       ]))]),
+                      _: 1
+                    }),
+                    _cache[57] || (_cache[57] = _createElementVNode("span", null, "主机概况", -1)),
+                    (host.value.hostname)
+                      ? (_openBlock(), _createBlock(_component_v_chip, {
+                          key: 0,
+                          size: "x-small",
+                          variant: "tonal",
+                          color: "info",
+                          class: "ml-2"
+                        }, {
+                          default: _withCtx(() => [
+                            _createTextVNode(_toDisplayString(host.value.hostname), 1)
+                          ]),
+                          _: 1
+                        }))
+                      : _createCommentVNode("", true),
+                    _createVNode(_component_v_spacer),
+                    _createVNode(_component_v_tooltip, {
+                      text: "清理系统日志",
+                      location: "top"
+                    }, {
+                      activator: _withCtx(({ props: tip }) => [
+                        _createVNode(_component_v_btn, _mergeProps(tip, {
+                          size: "small",
+                          variant: "text",
+                          color: "teal",
+                          icon: "mdi-broom",
+                          loading: busy.cleanupLogs,
+                          onClick: _cache[1] || (_cache[1] = _withModifiers($event => (doCleanup('cleanup_logs', '系统日志清理完成')), ["stop"]))
+                        }), null, 16, ["loading"])
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_tooltip, {
+                      text: "清理临时空间",
+                      location: "top"
+                    }, {
+                      activator: _withCtx(({ props: tip }) => [
+                        _createVNode(_component_v_btn, _mergeProps(tip, {
+                          size: "small",
+                          variant: "text",
+                          color: "teal",
+                          icon: "mdi-delete-sweep-outline",
+                          loading: busy.cleanupTmp,
+                          onClick: _cache[2] || (_cache[2] = _withModifiers($event => (doCleanup('cleanup_tmp', '临时空间清理完成')), ["stop"]))
+                        }), null, 16, ["loading"])
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_tooltip, {
+                      text: "重启主机",
+                      location: "top"
+                    }, {
+                      activator: _withCtx(({ props: tip }) => [
+                        _createVNode(_component_v_btn, _mergeProps(tip, {
+                          size: "small",
+                          variant: "text",
+                          color: "warning",
+                          icon: "mdi-restart",
+                          onClick: _cache[3] || (_cache[3] = _withModifiers($event => (askConfirm('hostReboot', '重启 PVE 主机', '确认重启 PVE 主机？所有虚拟机将受影响！')), ["stop"]))
+                        }), null, 16)
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_tooltip, {
+                      text: "关闭主机",
+                      location: "top"
+                    }, {
+                      activator: _withCtx(({ props: tip }) => [
+                        _createVNode(_component_v_btn, _mergeProps(tip, {
+                          size: "small",
+                          variant: "text",
+                          color: "error",
+                          icon: "mdi-power",
+                          onClick: _cache[4] || (_cache[4] = _withModifiers($event => (askConfirm('hostShutdown', '关闭 PVE 主机', '确认关闭 PVE 主机？所有虚拟机将关机！')), ["stop"]))
+                        }), null, 16)
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_tooltip, {
+                      text: "宿主机终端",
+                      location: "top"
+                    }, {
+                      activator: _withCtx(({ props: tip }) => [
+                        _createVNode(_component_v_btn, _mergeProps(tip, {
+                          size: "small",
+                          variant: "text",
+                          color: "deep-purple",
+                          icon: "mdi-console",
+                          onClick: _cache[5] || (_cache[5] = _withModifiers($event => (termDialog.value = true), ["stop"]))
+                        }), null, 16)
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_icon, {
+                      size: "18",
+                      class: "ml-1"
+                    }, {
+                      default: _withCtx(() => [
+                        _createTextVNode(_toDisplayString(collapsed.host ? 'mdi-chevron-down' : 'mdi-chevron-up'), 1)
+                      ]),
                       _: 1
                     })
                   ]),
                   _: 1
-                }))
-              : _createCommentVNode("", true)
+                }),
+                (!collapsed.host)
+                  ? (_openBlock(), _createBlock(_component_v_card_text, { key: 0 }, {
+                      default: _withCtx(() => [
+                        _createElementVNode("div", _hoisted_3, [
+                          _createTextVNode(_toDisplayString(host.value.cpu_model || 'CPU 未知') + " · " + _toDisplayString(host.value.cpu_cores || '?') + " 核 ", 1),
+                          (host.value.ip)
+                            ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [
+                                _createTextVNode(" · " + _toDisplayString(host.value.ip), 1)
+                              ], 64))
+                            : _createCommentVNode("", true),
+                          (host.value.kernel)
+                            ? (_openBlock(), _createElementBlock(_Fragment, { key: 1 }, [
+                                _createTextVNode(" · " + _toDisplayString(host.value.kernel), 1)
+                              ], 64))
+                            : _createCommentVNode("", true)
+                        ]),
+                        (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(hostBars.value, (bar) => {
+                          return (_openBlock(), _createElementBlock(_Fragment, {
+                            key: bar.label
+                          }, [
+                            _createElementVNode("div", _hoisted_4, [
+                              _createElementVNode("span", null, [
+                                _createTextVNode(_toDisplayString(bar.label), 1),
+                                (bar.extra)
+                                  ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [
+                                      _createTextVNode(" · " + _toDisplayString(bar.extra), 1)
+                                    ], 64))
+                                  : _createCommentVNode("", true)
+                              ]),
+                              _createElementVNode("span", _hoisted_5, _toDisplayString(bar.value), 1)
+                            ]),
+                            _createVNode(_component_v_progress_linear, {
+                              "model-value": bar.percent,
+                              rounded: "",
+                              height: "8",
+                              class: "mt-1",
+                              color: barColor(bar.percent)
+                            }, null, 8, ["model-value", "color"])
+                          ], 64))
+                        }), 128)),
+                        (storageBars.value.length)
+                          ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [
+                              _createVNode(_component_v_divider, { class: "my-2" }),
+                              (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(storageBars.value, (bar) => {
+                                return (_openBlock(), _createElementBlock(_Fragment, {
+                                  key: bar.label
+                                }, [
+                                  _createElementVNode("div", _hoisted_6, [
+                                    _createElementVNode("span", null, _toDisplayString(bar.label), 1),
+                                    _createElementVNode("span", _hoisted_7, _toDisplayString(bar.value), 1)
+                                  ]),
+                                  _createVNode(_component_v_progress_linear, {
+                                    "model-value": bar.percent,
+                                    rounded: "",
+                                    height: "8",
+                                    class: "mt-1",
+                                    color: barColor(bar.percent)
+                                  }, null, 8, ["model-value", "color"])
+                                ], 64))
+                              }), 128))
+                            ], 64))
+                          : _createCommentVNode("", true)
+                      ]),
+                      _: 1
+                    }))
+                  : _createCommentVNode("", true)
+              ]),
+              _: 1
+            }, 8, ["class"])
           ]),
           _: 1
         }),
-        _createElementVNode("div", _hoisted_1, [
-          _createVNode(_component_v_row, { class: "status-main-row" }, {
-            default: _withCtx(() => [
-              _createVNode(_component_v_col, {
-                cols: "12",
-                class: "status-col"
-              }, {
-                default: _withCtx(() => [
-                  _createVNode(_component_v_card, {
-                    class: "modern-status-card",
-                    elevation: "0"
-                  }, {
-                    default: _withCtx(() => [
-                      _createElementVNode("div", _hoisted_2, [
-                        _createElementVNode("div", _hoisted_3, [
-                          _createElementVNode("div", _hoisted_4, [
-                            _createVNode(_component_v_icon, {
-                              size: "24",
-                              color: "success"
-                            }, {
-                              default: _withCtx(() => [...(_cache[28] || (_cache[28] = [
-                                _createTextVNode("mdi-server", -1)
-                              ]))]),
-                              _: 1
-                            })
-                          ]),
-                          _cache[29] || (_cache[29] = _createElementVNode("div", null, [
-                            _createElementVNode("div", { class: "card-title-modern" }, "PVE主机状态"),
-                            _createElementVNode("div", { class: "card-subtitle-modern" }, "Host Status")
-                          ], -1))
-                        ]),
-                        _createElementVNode("div", _hoisted_5, [
-                          _createElementVNode("div", _hoisted_6, [
-                            _createVNode(_component_v_icon, {
-                              size: "16",
-                              color: "primary",
-                              class: "mr-1"
-                            }, {
-                              default: _withCtx(() => [...(_cache[30] || (_cache[30] = [
-                                _createTextVNode("mdi-server-network", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[31] || (_cache[31] = _createElementVNode("span", { class: "pve-header-label" }, "主机名", -1)),
-                            _createElementVNode("span", _hoisted_7, _toDisplayString(pveStatus.value.hostname || '-'), 1)
-                          ]),
-                          _createElementVNode("div", _hoisted_8, [
-                            _createVNode(_component_v_icon, {
-                              size: "16",
-                              color: "cyan",
-                              class: "mr-1"
-                            }, {
-                              default: _withCtx(() => [...(_cache[32] || (_cache[32] = [
-                                _createTextVNode("mdi-ip-network", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[33] || (_cache[33] = _createElementVNode("span", { class: "pve-header-label" }, "主机IP", -1)),
-                            _createElementVNode("span", _hoisted_9, _toDisplayString(pveStatus.value.ip || '-'), 1)
-                          ]),
-                          _createElementVNode("div", _hoisted_10, [
-                            _createVNode(_component_v_icon, {
-                              size: "16",
-                              color: "cyan",
-                              class: "mr-1"
-                            }, {
-                              default: _withCtx(() => [...(_cache[34] || (_cache[34] = [
-                                _createTextVNode("mdi-chart-line", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[35] || (_cache[35] = _createElementVNode("span", { class: "pve-header-label" }, "负载", -1)),
-                            _createElementVNode("span", _hoisted_11, _toDisplayString(pveStatus.value.load_avg?.join(' / ') || '-'), 1)
-                          ]),
-                          _createElementVNode("div", _hoisted_12, [
-                            _createVNode(_component_v_icon, {
-                              size: "16",
-                              color: "grey",
-                              class: "mr-1"
-                            }, {
-                              default: _withCtx(() => [...(_cache[36] || (_cache[36] = [
-                                _createTextVNode("mdi-cog", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[37] || (_cache[37] = _createElementVNode("span", { class: "pve-header-label" }, "内核", -1)),
-                            _createElementVNode("span", _hoisted_13, _toDisplayString(pveStatus.value.kernel || '-'), 1)
-                          ]),
-                          (pveStatus.value.pve_version)
-                            ? (_openBlock(), _createElementBlock("div", _hoisted_14, [
-                                _createVNode(_component_v_icon, {
-                                  size: "16",
-                                  color: "blue",
-                                  class: "mr-1"
-                                }, {
-                                  default: _withCtx(() => [...(_cache[38] || (_cache[38] = [
-                                    _createTextVNode("mdi-tag", -1)
-                                  ]))]),
-                                  _: 1
-                                }),
-                                _cache[39] || (_cache[39] = _createElementVNode("span", { class: "pve-header-label" }, "PVE版本", -1)),
-                                _createElementVNode("span", _hoisted_15, _toDisplayString(pveStatus.value.pve_version), 1)
-                              ]))
-                            : _createCommentVNode("", true)
-                        ]),
-                        _createElementVNode("div", _hoisted_16, [
-                          _createVNode(_component_v_tooltip, {
-                            text: "重启主机",
-                            location: "bottom"
-                          }, {
-                            activator: _withCtx(({ props }) => [
-                              _createVNode(_component_v_btn, _mergeProps({ icon: "" }, props, {
-                                class: "modern-action-btn reboot-btn",
-                                loading: hostActionLoading.value === 'reboot',
-                                onClick: _cache[1] || (_cache[1] = $event => (handleHostActionClick('reboot'))),
-                                size: "small"
-                              }), {
-                                default: _withCtx(() => [
-                                  _createVNode(_component_v_icon, { size: "20" }, {
-                                    default: _withCtx(() => [...(_cache[40] || (_cache[40] = [
-                                      _createTextVNode("mdi-restart", -1)
-                                    ]))]),
-                                    _: 1
-                                  })
-                                ]),
-                                _: 1
-                              }, 16, ["loading"])
-                            ]),
-                            _: 1
-                          }),
-                          _createVNode(_component_v_tooltip, {
-                            text: "关闭主机",
-                            location: "bottom"
-                          }, {
-                            activator: _withCtx(({ props }) => [
-                              _createVNode(_component_v_btn, _mergeProps({ icon: "" }, props, {
-                                class: "modern-action-btn shutdown-btn",
-                                loading: hostActionLoading.value === 'shutdown',
-                                onClick: _cache[2] || (_cache[2] = $event => (handleHostActionClick('shutdown'))),
-                                size: "small"
-                              }), {
-                                default: _withCtx(() => [
-                                  _createVNode(_component_v_icon, { size: "20" }, {
-                                    default: _withCtx(() => [...(_cache[41] || (_cache[41] = [
-                                      _createTextVNode("mdi-power", -1)
-                                    ]))]),
-                                    _: 1
-                                  })
-                                ]),
-                                _: 1
-                              }, 16, ["loading"])
-                            ]),
-                            _: 1
-                          }),
-                          _createVNode(_component_v_tooltip, {
-                            text: "刷新状态",
-                            location: "bottom"
-                          }, {
-                            activator: _withCtx(({ props }) => [
-                              _createVNode(_component_v_btn, _mergeProps({ icon: "" }, props, {
-                                class: "modern-action-btn refresh-btn",
-                                onClick: fetchPveStatus,
-                                size: "small"
-                              }), {
-                                default: _withCtx(() => [
-                                  _createVNode(_component_v_icon, { size: "20" }, {
-                                    default: _withCtx(() => [...(_cache[42] || (_cache[42] = [
-                                      _createTextVNode("mdi-refresh", -1)
-                                    ]))]),
-                                    _: 1
-                                  })
-                                ]),
-                                _: 1
-                              }, 16)
-                            ]),
-                            _: 1
-                          })
-                        ])
+        _createVNode(_component_v_col, {
+          cols: "12",
+          md: "6"
+        }, {
+          default: _withCtx(() => [
+            _createVNode(_component_v_card, {
+              class: _normalizeClass([{ 'card-collapsed': collapsed.tasks }, collapsed.tasks ? '' : 'fill-height'])
+            }, {
+              default: _withCtx(() => [
+                _createVNode(_component_v_card_title, {
+                  class: "d-flex align-center cursor-pointer",
+                  onClick: _cache[7] || (_cache[7] = $event => (collapsed.tasks = !collapsed.tasks))
+                }, {
+                  default: _withCtx(() => [
+                    _createVNode(_component_v_icon, {
+                      color: "indigo",
+                      size: "22",
+                      class: "mr-2"
+                    }, {
+                      default: _withCtx(() => [...(_cache[58] || (_cache[58] = [
+                        _createTextVNode("mdi-format-list-bulleted", -1)
+                      ]))]),
+                      _: 1
+                    }),
+                    _cache[59] || (_cache[59] = _createElementVNode("span", null, "最近任务", -1)),
+                    _createVNode(_component_v_spacer),
+                    _createVNode(_component_v_icon, { size: "18" }, {
+                      default: _withCtx(() => [
+                        _createTextVNode(_toDisplayString(collapsed.tasks ? 'mdi-chevron-down' : 'mdi-chevron-up'), 1)
                       ]),
-                      _createElementVNode("div", _hoisted_17, [
-                        (pveStatus.value.online)
-                          ? (_openBlock(), _createElementBlock("div", _hoisted_18, [
-                              _createElementVNode("div", _hoisted_19, [
-                                _createElementVNode("div", _hoisted_20, [
-                                  _createElementVNode("div", _hoisted_21, [
-                                    _createVNode(_component_v_icon, {
-                                      size: "16",
-                                      color: "info",
-                                      class: "mr-2"
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[43] || (_cache[43] = [
-                                        _createTextVNode("mdi-chip", -1)
-                                      ]))]),
-                                      _: 1
-                                    }),
-                                    _cache[44] || (_cache[44] = _createElementVNode("span", { class: "status-label" }, "CPU", -1))
-                                  ]),
-                                  _createElementVNode("div", _hoisted_22, [
-                                    _createElementVNode("div", _hoisted_23, [
-                                      _createElementVNode("span", _hoisted_24, _toDisplayString(pveStatus.value.cpu_cores) + "核", 1),
-                                      (pveStatus.value.cpu_temp)
-                                        ? (_openBlock(), _createElementBlock("span", {
-                                            key: 0,
-                                            class: _normalizeClass(["resource-temp-inline", `temp-${getTempColor(pveStatus.value.cpu_temp)}`])
-                                          }, [
-                                            _createVNode(_component_v_icon, {
-                                              size: "12",
-                                              class: "mr-1",
-                                              color: getTempColor(pveStatus.value.cpu_temp)
-                                            }, {
-                                              default: _withCtx(() => [...(_cache[45] || (_cache[45] = [
-                                                _createTextVNode("mdi-thermometer", -1)
-                                              ]))]),
-                                              _: 1
-                                            }, 8, ["color"]),
-                                            _createElementVNode("span", {
-                                              style: _normalizeStyle({ color: getTempColorValue(pveStatus.value.cpu_temp) })
-                                            }, _toDisplayString(pveStatus.value.cpu_temp) + "°C", 5)
-                                          ], 2))
-                                        : _createCommentVNode("", true)
-                                    ]),
-                                    _createElementVNode("div", _hoisted_25, [
-                                      _createVNode(_component_v_progress_linear, {
-                                        "model-value": pveStatus.value.cpu_usage || 0,
-                                        color: getUsageColor(pveStatus.value.cpu_usage || 0),
-                                        height: "6",
-                                        rounded: "",
-                                        class: "resource-progress"
-                                      }, null, 8, ["model-value", "color"]),
-                                      _createElementVNode("span", _hoisted_26, _toDisplayString(pveStatus.value.cpu_usage) + "%", 1)
-                                    ])
-                                  ])
-                                ]),
-                                _createElementVNode("div", _hoisted_27, [
-                                  _createElementVNode("div", _hoisted_28, [
-                                    _createVNode(_component_v_icon, {
-                                      size: "16",
-                                      color: "purple",
-                                      class: "mr-2"
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[46] || (_cache[46] = [
-                                        _createTextVNode("mdi-memory", -1)
-                                      ]))]),
-                                      _: 1
-                                    }),
-                                    _cache[47] || (_cache[47] = _createElementVNode("span", { class: "status-label" }, "内存", -1))
-                                  ]),
-                                  _createElementVNode("div", _hoisted_29, [
-                                    _createElementVNode("div", _hoisted_30, [
-                                      _createElementVNode("span", _hoisted_31, _toDisplayString(pveStatus.value.mem_used) + "/" + _toDisplayString(pveStatus.value.mem_total) + "MB", 1)
-                                    ]),
-                                    _createElementVNode("div", _hoisted_32, [
-                                      _createVNode(_component_v_progress_linear, {
-                                        "model-value": pveStatus.value.mem_usage || 0,
-                                        color: getUsageColor(pveStatus.value.mem_usage || 0),
-                                        height: "6",
-                                        rounded: "",
-                                        class: "resource-progress"
-                                      }, null, 8, ["model-value", "color"]),
-                                      _createElementVNode("span", _hoisted_33, _toDisplayString(pveStatus.value.mem_usage) + "%", 1)
-                                    ])
-                                  ])
-                                ]),
-                                _createElementVNode("div", _hoisted_34, [
-                                  _createElementVNode("div", _hoisted_35, [
-                                    _createVNode(_component_v_icon, {
-                                      size: "16",
-                                      color: "orange",
-                                      class: "mr-2"
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[48] || (_cache[48] = [
-                                        _createTextVNode("mdi-harddisk", -1)
-                                      ]))]),
-                                      _: 1
-                                    }),
-                                    _cache[49] || (_cache[49] = _createElementVNode("span", { class: "status-label" }, "硬盘", -1))
-                                  ]),
-                                  _createElementVNode("div", _hoisted_36, [
-                                    _createElementVNode("div", _hoisted_37, [
-                                      _createElementVNode("span", _hoisted_38, _toDisplayString(pveStatus.value.disk_used) + "/" + _toDisplayString(pveStatus.value.disk_total) + "MB", 1),
-                                      (pveStatus.value.disk_temp)
-                                        ? (_openBlock(), _createElementBlock("span", {
-                                            key: 0,
-                                            class: _normalizeClass(["resource-temp-inline", `temp-${getTempColor(pveStatus.value.disk_temp)}`])
-                                          }, [
-                                            _createVNode(_component_v_icon, {
-                                              size: "12",
-                                              class: "mr-1",
-                                              color: getTempColor(pveStatus.value.disk_temp)
-                                            }, {
-                                              default: _withCtx(() => [...(_cache[50] || (_cache[50] = [
-                                                _createTextVNode("mdi-thermometer", -1)
-                                              ]))]),
-                                              _: 1
-                                            }, 8, ["color"]),
-                                            _createElementVNode("span", {
-                                              style: _normalizeStyle({ color: getTempColorValue(pveStatus.value.disk_temp) })
-                                            }, _toDisplayString(pveStatus.value.disk_temp) + "°C", 5)
-                                          ], 2))
-                                        : _createCommentVNode("", true)
-                                    ]),
-                                    _createElementVNode("div", _hoisted_39, [
-                                      _createVNode(_component_v_progress_linear, {
-                                        "model-value": pveStatus.value.disk_usage || 0,
-                                        color: getDiskUsageColor(pveStatus.value.disk_usage || 0),
-                                        height: "6",
-                                        rounded: "",
-                                        class: "resource-progress"
-                                      }, null, 8, ["model-value", "color"]),
-                                      _createElementVNode("span", _hoisted_40, _toDisplayString(pveStatus.value.disk_usage) + "%", 1)
-                                    ])
-                                  ])
-                                ]),
-                                (pveStatus.value.swap_total)
-                                  ? (_openBlock(), _createElementBlock("div", _hoisted_41, [
-                                      _createElementVNode("div", _hoisted_42, [
-                                        _createVNode(_component_v_icon, {
-                                          size: "16",
-                                          color: "purple",
-                                          class: "mr-2"
-                                        }, {
-                                          default: _withCtx(() => [...(_cache[51] || (_cache[51] = [
-                                            _createTextVNode("mdi-swap-horizontal", -1)
-                                          ]))]),
-                                          _: 1
-                                        }),
-                                        _cache[52] || (_cache[52] = _createElementVNode("span", { class: "status-label" }, "SWAP", -1))
-                                      ]),
-                                      _createElementVNode("div", _hoisted_43, [
-                                        _createElementVNode("div", _hoisted_44, [
-                                          _createElementVNode("span", _hoisted_45, _toDisplayString(pveStatus.value.swap_used || 0) + "/" + _toDisplayString(pveStatus.value.swap_total) + "MB", 1)
-                                        ]),
-                                        _createElementVNode("div", _hoisted_46, [
-                                          _createVNode(_component_v_progress_linear, {
-                                            "model-value": pveStatus.value.swap_usage || 0,
-                                            color: getUsageColor(pveStatus.value.swap_usage || 0),
-                                            height: "6",
-                                            rounded: "",
-                                            class: "resource-progress"
-                                          }, null, 8, ["model-value", "color"]),
-                                          _createElementVNode("span", _hoisted_47, _toDisplayString(pveStatus.value.swap_usage ? pveStatus.value.swap_usage.toFixed(1) : 0) + "%", 1)
-                                        ])
-                                      ])
-                                    ]))
-                                  : _createCommentVNode("", true),
-                                (pveStatus.value.io_delay !== undefined && pveStatus.value.io_delay !== null)
-                                  ? (_openBlock(), _createElementBlock("div", _hoisted_48, [
-                                      _createElementVNode("div", _hoisted_49, [
-                                        _createVNode(_component_v_icon, {
-                                          size: "16",
-                                          color: "red",
-                                          class: "mr-2"
-                                        }, {
-                                          default: _withCtx(() => [...(_cache[53] || (_cache[53] = [
-                                            _createTextVNode("mdi-clock-outline", -1)
-                                          ]))]),
-                                          _: 1
-                                        }),
-                                        _cache[54] || (_cache[54] = _createElementVNode("span", { class: "status-label" }, "IO延迟", -1))
-                                      ]),
-                                      _createElementVNode("div", _hoisted_50, [
-                                        _createElementVNode("div", _hoisted_51, [
-                                          _createElementVNode("span", _hoisted_52, _toDisplayString(formatIODelay(pveStatus.value.io_delay)), 1)
-                                        ]),
-                                        _createElementVNode("div", _hoisted_53, [
-                                          _createVNode(_component_v_progress_linear, {
-                                            "model-value": getIODelayProgress(pveStatus.value.io_delay || 0),
-                                            color: getIODelayColor(pveStatus.value.io_delay || 0),
-                                            height: "6",
-                                            rounded: "",
-                                            class: "resource-progress"
-                                          }, null, 8, ["model-value", "color"]),
-                                          _createElementVNode("span", _hoisted_54, _toDisplayString(formatIODelay(pveStatus.value.io_delay)), 1)
-                                        ])
-                                      ])
-                                    ]))
-                                  : _createCommentVNode("", true)
-                              ])
-                            ]))
-                          : (_openBlock(), _createElementBlock("div", _hoisted_55, [
-                              _createVNode(_component_v_icon, {
-                                size: "56",
-                                color: "error",
-                                class: "mb-3"
-                              }, {
-                                default: _withCtx(() => [...(_cache[55] || (_cache[55] = [
-                                  _createTextVNode("mdi-alert-circle-outline", -1)
-                                ]))]),
-                                _: 1
-                              }),
-                              _cache[56] || (_cache[56] = _createElementVNode("div", { class: "offline-text" }, "主机离线或连接失败", -1)),
-                              _createElementVNode("div", _hoisted_56, _toDisplayString(pveStatus.value.error), 1)
-                            ]))
-                      ])
-                    ]),
-                    _: 1
-                  })
-                ]),
-                _: 1
-              })
-            ]),
-            _: 1
-          }),
-          _createVNode(_component_v_row, { class: "status-main-row" }, {
-            default: _withCtx(() => [
-              _createVNode(_component_v_col, {
-                cols: "12",
-                class: "status-col"
-              }, {
-                default: _withCtx(() => [
-                  _createVNode(_component_v_card, {
-                    class: "modern-status-card",
-                    elevation: "0"
-                  }, {
-                    default: _withCtx(() => [
-                      _createElementVNode("div", _hoisted_57, [
-                        _createElementVNode("div", _hoisted_58, [
-                          _createElementVNode("div", _hoisted_59, [
-                            _createVNode(_component_v_icon, {
-                              size: "24",
-                              color: "info"
-                            }, {
-                              default: _withCtx(() => [...(_cache[57] || (_cache[57] = [
-                                _createTextVNode("mdi-docker", -1)
-                              ]))]),
-                              _: 1
-                            })
-                          ]),
-                          _cache[58] || (_cache[58] = _createElementVNode("div", null, [
-                            _createElementVNode("div", { class: "card-title-modern" }, "容器状态"),
-                            _createElementVNode("div", { class: "card-subtitle-modern" }, "Container Status")
-                          ], -1))
-                        ]),
-                        _createElementVNode("div", _hoisted_60, [
-                          _createElementVNode("div", _hoisted_61, [
-                            _createVNode(_component_v_icon, {
-                              size: "18",
-                              color: "primary",
-                              class: "mr-2"
-                            }, {
-                              default: _withCtx(() => [...(_cache[59] || (_cache[59] = [
-                                _createTextVNode("mdi-docker", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[60] || (_cache[60] = _createElementVNode("span", { class: "header-summary-label" }, "容器总数", -1)),
-                            _createVNode(_component_v_chip, {
-                              size: "x-small",
-                              color: "primary",
-                              class: "ml-2"
-                            }, {
-                              default: _withCtx(() => [
-                                _createTextVNode(_toDisplayString(containerStatus.value.length), 1)
-                              ]),
-                              _: 1
-                            })
-                          ]),
-                          _createElementVNode("div", _hoisted_62, [
-                            _createVNode(_component_v_icon, {
-                              size: "18",
-                              color: "purple",
-                              class: "mr-2"
-                            }, {
-                              default: _withCtx(() => [...(_cache[61] || (_cache[61] = [
-                                _createTextVNode("mdi-server", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[62] || (_cache[62] = _createElementVNode("span", { class: "header-summary-label" }, "QEMU", -1)),
-                            _createVNode(_component_v_chip, {
-                              size: "x-small",
-                              color: "purple",
-                              class: "ml-2"
-                            }, {
-                              default: _withCtx(() => [
-                                _createTextVNode(_toDisplayString(containerStatus.value.filter(c => c.type === 'qemu').length), 1)
-                              ]),
-                              _: 1
-                            })
-                          ]),
-                          _createElementVNode("div", _hoisted_63, [
-                            _createVNode(_component_v_icon, {
-                              size: "18",
-                              color: "info",
-                              class: "mr-2"
-                            }, {
-                              default: _withCtx(() => [...(_cache[63] || (_cache[63] = [
-                                _createTextVNode("mdi-cube-outline", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[64] || (_cache[64] = _createElementVNode("span", { class: "header-summary-label" }, "LXC", -1)),
-                            _createVNode(_component_v_chip, {
-                              size: "x-small",
-                              color: "info",
-                              class: "ml-2"
-                            }, {
-                              default: _withCtx(() => [
-                                _createTextVNode(_toDisplayString(containerStatus.value.filter(c => c.type === 'lxc').length), 1)
-                              ]),
-                              _: 1
-                            })
-                          ]),
-                          _createElementVNode("div", _hoisted_64, [
-                            _createVNode(_component_v_icon, {
-                              size: "18",
-                              color: "success",
-                              class: "mr-2"
-                            }, {
-                              default: _withCtx(() => [...(_cache[65] || (_cache[65] = [
-                                _createTextVNode("mdi-play-circle", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[66] || (_cache[66] = _createElementVNode("span", { class: "header-summary-label" }, "运行中", -1)),
-                            _createVNode(_component_v_chip, {
-                              size: "x-small",
-                              color: "success",
-                              class: "ml-2"
-                            }, {
-                              default: _withCtx(() => [
-                                _createTextVNode(_toDisplayString(containerStatus.value.filter(c => c.status === 'running').length), 1)
-                              ]),
-                              _: 1
-                            })
-                          ]),
-                          _createElementVNode("div", _hoisted_65, [
-                            _createVNode(_component_v_icon, {
-                              size: "18",
-                              color: "grey",
-                              class: "mr-2"
-                            }, {
-                              default: _withCtx(() => [...(_cache[67] || (_cache[67] = [
-                                _createTextVNode("mdi-stop-circle", -1)
-                              ]))]),
-                              _: 1
-                            }),
-                            _cache[68] || (_cache[68] = _createElementVNode("span", { class: "header-summary-label" }, "已停止", -1)),
-                            _createVNode(_component_v_chip, {
-                              size: "x-small",
-                              color: "grey",
-                              class: "ml-2"
-                            }, {
-                              default: _withCtx(() => [
-                                _createTextVNode(_toDisplayString(containerStatus.value.filter(c => c.status !== 'running').length), 1)
-                              ]),
-                              _: 1
-                            })
-                          ])
-                        ]),
-                        _createVNode(_component_v_tooltip, {
-                          text: "刷新容器状态",
-                          location: "bottom"
+                      _: 1
+                    })
+                  ]),
+                  _: 1
+                }),
+                (!collapsed.tasks)
+                  ? (_openBlock(), _createBlock(_component_v_card_text, {
+                      key: 0,
+                      class: "task-list-body"
+                    }, {
+                      default: _withCtx(() => [
+                        _createVNode(_component_v_list, {
+                          density: "compact",
+                          class: "py-0"
                         }, {
-                          activator: _withCtx(({ props }) => [
-                            _createVNode(_component_v_btn, _mergeProps({ icon: "" }, props, {
-                              class: "modern-action-btn refresh-btn",
-                              onClick: fetchContainerStatus,
-                              size: "small"
-                            }), {
-                              default: _withCtx(() => [
-                                _createVNode(_component_v_icon, {
-                                  icon: "mdi-sync",
-                                  size: "20"
-                                })
-                              ]),
-                              _: 1
-                            }, 16)
+                          default: _withCtx(() => [
+                            (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(taskList.value, (t) => {
+                              return (_openBlock(), _createBlock(_component_v_list_item, {
+                                key: t.upid,
+                                class: "px-0"
+                              }, {
+                                prepend: _withCtx(() => [
+                                  _createVNode(_component_v_icon, {
+                                    size: "18",
+                                    color: t.running ? 'warning' : (t.ok ? 'success' : 'error')
+                                  }, {
+                                    default: _withCtx(() => [
+                                      _createTextVNode(_toDisplayString(t.running ? 'mdi-progress-clock' : (t.ok ? 'mdi-check-circle' : 'mdi-alert-circle')), 1)
+                                    ]),
+                                    _: 2
+                                  }, 1032, ["color"])
+                                ]),
+                                append: _withCtx(() => [
+                                  _createElementVNode("span", {
+                                    class: _normalizeClass(["text-caption", t.running ? 'text-warning' : (t.ok ? 'text-success' : 'text-error')])
+                                  }, _toDisplayString(t.statusText), 3)
+                                ]),
+                                default: _withCtx(() => [
+                                  _createElementVNode("div", _hoisted_8, [
+                                    _createElementVNode("span", _hoisted_9, _toDisplayString(t.desc), 1),
+                                    (t.vmid)
+                                      ? (_openBlock(), _createBlock(_component_v_chip, {
+                                          key: 0,
+                                          size: "x-small",
+                                          variant: "tonal",
+                                          color: "info"
+                                        }, {
+                                          default: _withCtx(() => [
+                                            _createTextVNode("#" + _toDisplayString(t.vmid), 1)
+                                          ]),
+                                          _: 2
+                                        }, 1024))
+                                      : _createCommentVNode("", true),
+                                    _createElementVNode("span", _hoisted_10, _toDisplayString(t.timeText), 1)
+                                  ])
+                                ]),
+                                _: 2
+                              }, 1024))
+                            }), 128)),
+                            (!taskList.value.length)
+                              ? (_openBlock(), _createBlock(_component_v_list_item, { key: 0 }, {
+                                  default: _withCtx(() => [
+                                    _createVNode(_component_v_list_item_title, { class: "text-caption text-medium-emphasis text-center py-2" }, {
+                                      default: _withCtx(() => [
+                                        _createTextVNode(_toDisplayString(monitorLoading.value ? '加载中...' : '暂无任务记录'), 1)
+                                      ]),
+                                      _: 1
+                                    })
+                                  ]),
+                                  _: 1
+                                }))
+                              : _createCommentVNode("", true)
                           ]),
                           _: 1
                         })
                       ]),
-                      _createElementVNode("div", _hoisted_66, [
-                        (!isMobile.value)
-                          ? (_openBlock(), _createElementBlock("div", _hoisted_67, [
-                              _createVNode(_component_v_data_table, {
-                                headers: containerHeaders,
-                                items: containerStatus.value,
-                                class: "elevation-0",
-                                "hide-default-footer": "",
-                                density: "compact"
-                              }, {
-                                "item.type": _withCtx(({ item }) => [
-                                  _createVNode(_component_v_chip, {
-                                    size: "x-small",
-                                    color: item.type === 'qemu' ? 'primary' : 'info'
-                                  }, {
-                                    default: _withCtx(() => [
-                                      _createTextVNode(_toDisplayString(item.type === 'qemu' ? 'QEMU' : (item.type === 'lxc' ? 'LXC' : item.type)), 1)
-                                    ]),
-                                    _: 2
-                                  }, 1032, ["color"])
-                                ]),
-                                "item.status": _withCtx(({ item }) => [
-                                  _createVNode(_component_v_chip, {
-                                    color: item.status === 'running' ? 'success' : 'grey',
-                                    size: "x-small"
-                                  }, {
-                                    default: _withCtx(() => [
-                                      _createTextVNode(_toDisplayString(item.status), 1)
-                                    ]),
-                                    _: 2
-                                  }, 1032, ["color"])
-                                ]),
-                                "item.tags": _withCtx(({ item }) => [
-                                  (!item.tags || !item.tags.trim())
-                                    ? (_openBlock(), _createElementBlock("span", _hoisted_68, "-"))
-                                    : (_openBlock(true), _createElementBlock(_Fragment, { key: 1 }, _renderList(item.tags.split(/[,;]+/).map(t => t.trim()).filter(Boolean), (tag) => {
-                                        return (_openBlock(), _createBlock(_component_v_chip, {
-                                          key: tag,
-                                          size: "x-small",
-                                          style: _normalizeStyle({ backgroundColor: getPveTagColor(tag), color: '#fff', fontWeight: 600 }),
-                                          class: "mr-1"
-                                        }, {
-                                          default: _withCtx(() => [
-                                            _createTextVNode(_toDisplayString(tag), 1)
-                                          ]),
-                                          _: 2
-                                        }, 1032, ["style"]))
-                                      }), 128))
-                                ]),
-                                "item.uptime": _withCtx(({ item }) => [
-                                  _createElementVNode("span", {
-                                    innerHTML: formatUptime(item.uptime)
-                                  }, null, 8, _hoisted_69)
-                                ]),
-                                "item.actions": _withCtx(({ item }) => [
-                                  _createElementVNode("div", _hoisted_70, [
-                                    _createVNode(_component_v_btn, {
-                                      size: "x-small",
-                                      color: "success",
-                                      loading: item._actionLoading === 'start',
-                                      disabled: item.status === 'running',
-                                      onClick: $event => (handleVmAction(item, 'start')),
-                                      class: "mr-1"
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[69] || (_cache[69] = [
-                                        _createTextVNode("启动", -1)
-                                      ]))]),
-                                      _: 1
-                                    }, 8, ["loading", "disabled", "onClick"]),
-                                    _createVNode(_component_v_btn, {
-                                      size: "x-small",
-                                      color: "error",
-                                      loading: item._actionLoading === 'stop',
-                                      disabled: item.status !== 'running',
-                                      onClick: $event => (handleVmAction(item, 'stop')),
-                                      class: "mr-1"
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[70] || (_cache[70] = [
-                                        _createTextVNode("关闭", -1)
-                                      ]))]),
-                                      _: 1
-                                    }, 8, ["loading", "disabled", "onClick"]),
-                                    _createVNode(_component_v_btn, {
-                                      size: "x-small",
-                                      color: "info",
-                                      loading: item._actionLoading === 'reboot',
-                                      disabled: item.status !== 'running',
-                                      onClick: $event => (handleVmAction(item, 'reboot')),
-                                      class: "mr-1"
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[71] || (_cache[71] = [
-                                        _createTextVNode("重启", -1)
-                                      ]))]),
-                                      _: 1
-                                    }, 8, ["loading", "disabled", "onClick"]),
-                                    _createVNode(_component_v_btn, {
-                                      size: "x-small",
-                                      color: "primary",
-                                      loading: item._actionLoading === 'snapshot',
-                                      onClick: $event => (handleVmSnapshot(item))
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[72] || (_cache[72] = [
-                                        _createTextVNode("创建快照", -1)
-                                      ]))]),
-                                      _: 1
-                                    }, 8, ["loading", "onClick"])
-                                  ])
-                                ]),
-                                _: 1
-                              }, 8, ["items"])
-                            ]))
-                          : (_openBlock(), _createElementBlock("div", _hoisted_71, [
-                              (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(containerStatus.value, (item) => {
+                      _: 1
+                    }))
+                  : _createCommentVNode("", true)
+              ]),
+              _: 1
+            }, 8, ["class"])
+          ]),
+          _: 1
+        }),
+        _createVNode(_component_v_col, { cols: "12" }, {
+          default: _withCtx(() => [
+            _createVNode(_component_v_card, {
+              class: _normalizeClass({ 'card-collapsed': collapsed.mon })
+            }, {
+              default: _withCtx(() => [
+                _createVNode(_component_v_card_title, {
+                  class: "d-flex align-center flex-wrap ga-2 cursor-pointer",
+                  onClick: _cache[10] || (_cache[10] = $event => (collapsed.mon = !collapsed.mon))
+                }, {
+                  default: _withCtx(() => [
+                    _createVNode(_component_v_icon, {
+                      color: "primary",
+                      size: "22",
+                      class: "mr-1"
+                    }, {
+                      default: _withCtx(() => [...(_cache[60] || (_cache[60] = [
+                        _createTextVNode("mdi-chart-areaspline", -1)
+                      ]))]),
+                      _: 1
+                    }),
+                    _cache[65] || (_cache[65] = _createElementVNode("span", null, "性能监控", -1)),
+                    _createVNode(_component_v_spacer),
+                    _createVNode(_component_v_btn_toggle, {
+                      modelValue: monitorTf.value,
+                      "onUpdate:modelValue": _cache[8] || (_cache[8] = $event => ((monitorTf).value = $event)),
+                      mandatory: "",
+                      density: "compact",
+                      variant: "outlined",
+                      divided: "",
+                      onClick: _cache[9] || (_cache[9] = _withModifiers(() => {}, ["stop"]))
+                    }, {
+                      default: _withCtx(() => [
+                        _createVNode(_component_v_btn, {
+                          value: "hour",
+                          size: "small"
+                        }, {
+                          default: _withCtx(() => [...(_cache[61] || (_cache[61] = [
+                            _createTextVNode("小时", -1)
+                          ]))]),
+                          _: 1
+                        }),
+                        _createVNode(_component_v_btn, {
+                          value: "day",
+                          size: "small"
+                        }, {
+                          default: _withCtx(() => [...(_cache[62] || (_cache[62] = [
+                            _createTextVNode("天", -1)
+                          ]))]),
+                          _: 1
+                        }),
+                        _createVNode(_component_v_btn, {
+                          value: "week",
+                          size: "small"
+                        }, {
+                          default: _withCtx(() => [...(_cache[63] || (_cache[63] = [
+                            _createTextVNode("周", -1)
+                          ]))]),
+                          _: 1
+                        }),
+                        _createVNode(_component_v_btn, {
+                          value: "month",
+                          size: "small"
+                        }, {
+                          default: _withCtx(() => [...(_cache[64] || (_cache[64] = [
+                            _createTextVNode("月", -1)
+                          ]))]),
+                          _: 1
+                        })
+                      ]),
+                      _: 1
+                    }, 8, ["modelValue"]),
+                    _createVNode(_component_v_icon, { size: "18" }, {
+                      default: _withCtx(() => [
+                        _createTextVNode(_toDisplayString(collapsed.mon ? 'mdi-chevron-down' : 'mdi-chevron-up'), 1)
+                      ]),
+                      _: 1
+                    })
+                  ]),
+                  _: 1
+                }),
+                (!collapsed.mon)
+                  ? (_openBlock(), _createBlock(_component_v_card_text, { key: 0 }, {
+                      default: _withCtx(() => [
+                        (monitorLoading.value)
+                          ? (_openBlock(), _createBlock(_component_v_progress_linear, {
+                              key: 0,
+                              indeterminate: "",
+                              height: "2",
+                              color: "primary",
+                              class: "mb-2"
+                            }))
+                          : _createCommentVNode("", true),
+                        (monCharts.value.length)
+                          ? (_openBlock(), _createElementBlock("div", _hoisted_11, [
+                              (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(monCharts.value, (ch) => {
                                 return (_openBlock(), _createElementBlock("div", {
-                                  key: item.vmid,
-                                  class: "mobile-card"
+                                  key: ch.key,
+                                  class: "chart-cell"
                                 }, [
-                                  _createElementVNode("div", _hoisted_72, [
-                                    _createElementVNode("span", _hoisted_73, _toDisplayString(item.displayName || item.description || item.hostname || item.name || '-'), 1),
-                                    _createVNode(_component_v_chip, {
-                                      size: "x-small",
-                                      color: item.type === 'qemu' ? 'primary' : 'info',
-                                      class: "ml-2"
-                                    }, {
-                                      default: _withCtx(() => [
-                                        _createTextVNode(_toDisplayString(item.type === 'qemu' ? 'QEMU' : (item.type === 'lxc' ? 'LXC' : item.type)), 1)
-                                      ]),
-                                      _: 2
-                                    }, 1032, ["color"]),
-                                    _createVNode(_component_v_chip, {
-                                      color: item.status === 'running' ? 'success' : 'grey',
-                                      size: "x-small",
-                                      class: "ml-2"
-                                    }, {
-                                      default: _withCtx(() => [
-                                        _createTextVNode(_toDisplayString(item.status), 1)
-                                      ]),
-                                      _: 2
-                                    }, 1032, ["color"])
-                                  ]),
-                                  _createElementVNode("div", _hoisted_74, [
-                                    _createElementVNode("span", null, "ID: " + _toDisplayString(item.vmid), 1)
-                                  ]),
-                                  _createElementVNode("div", _hoisted_75, [
-                                    _createVNode(_component_v_icon, {
-                                      size: "18",
-                                      color: "success",
-                                      class: "mr-1"
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[73] || (_cache[73] = [
-                                        _createTextVNode("mdi-timer-outline", -1)
-                                      ]))]),
-                                      _: 1
-                                    }),
+                                  _createElementVNode("div", _hoisted_12, [
+                                    _createElementVNode("span", null, _toDisplayString(ch.title), 1),
                                     _createElementVNode("span", {
-                                      innerHTML: formatUptime(item.uptime)
-                                    }, null, 8, _hoisted_76)
+                                      class: "font-weight-bold",
+                                      style: _normalizeStyle({ color: ch.lines.length > 1 ? '' : ch.lines[0].color })
+                                    }, _toDisplayString(ch.last), 5)
                                   ]),
-                                  _createElementVNode("div", _hoisted_77, [
-                                    _createVNode(_component_v_btn, {
-                                      size: "small",
-                                      color: "success",
-                                      loading: item._actionLoading === 'start',
-                                      disabled: item.status === 'running',
-                                      onClick: $event => (handleVmAction(item, 'start'))
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[74] || (_cache[74] = [
-                                        _createTextVNode("启动", -1)
-                                      ]))]),
-                                      _: 1
-                                    }, 8, ["loading", "disabled", "onClick"]),
-                                    _createVNode(_component_v_btn, {
-                                      size: "small",
-                                      color: "error",
-                                      loading: item._actionLoading === 'stop',
-                                      disabled: item.status !== 'running',
-                                      onClick: $event => (handleVmAction(item, 'stop'))
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[75] || (_cache[75] = [
-                                        _createTextVNode("关闭", -1)
-                                      ]))]),
-                                      _: 1
-                                    }, 8, ["loading", "disabled", "onClick"]),
-                                    _createVNode(_component_v_btn, {
-                                      size: "small",
-                                      color: "info",
-                                      loading: item._actionLoading === 'reboot',
-                                      disabled: item.status !== 'running',
-                                      onClick: $event => (handleVmAction(item, 'reboot'))
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[76] || (_cache[76] = [
-                                        _createTextVNode("重启", -1)
-                                      ]))]),
-                                      _: 1
-                                    }, 8, ["loading", "disabled", "onClick"]),
-                                    _createVNode(_component_v_btn, {
-                                      size: "small",
-                                      color: "primary",
-                                      loading: item._actionLoading === 'snapshot',
-                                      onClick: $event => (handleVmSnapshot(item))
-                                    }, {
-                                      default: _withCtx(() => [...(_cache[77] || (_cache[77] = [
-                                        _createTextVNode("快照", -1)
-                                      ]))]),
-                                      _: 1
-                                    }, 8, ["loading", "onClick"])
-                                  ])
+                                  (_openBlock(), _createElementBlock("svg", _hoisted_13, [
+                                    (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(ch.lines, (ln, i) => {
+                                      return (_openBlock(), _createElementBlock(_Fragment, { key: i }, [
+                                        _createElementVNode("polygon", {
+                                          points: ln.areaPoints,
+                                          fill: ln.color,
+                                          opacity: "0.12",
+                                          stroke: "none"
+                                        }, null, 8, _hoisted_14),
+                                        _createElementVNode("polyline", {
+                                          points: ln.points,
+                                          fill: "none",
+                                          stroke: ln.color,
+                                          "stroke-width": "1.6"
+                                        }, null, 8, _hoisted_15)
+                                      ], 64))
+                                    }), 128))
+                                  ]))
                                 ]))
                               }), 128))
                             ]))
-                      ])
-                    ]),
-                    _: 1
-                  })
-                ]),
-                _: 1
-              })
-            ]),
-            _: 1
-          })
-        ]),
-        _createVNode(_component_v_card_actions, { class: "px-2 py-1 footer-btns" }, {
+                          : (_openBlock(), _createElementBlock("div", _hoisted_16, _toDisplayString(monitorLoading.value ? '加载中...' : '暂无监控数据（请检查 PVE API 端口 8006 是否可达）'), 1))
+                      ]),
+                      _: 1
+                    }))
+                  : _createCommentVNode("", true)
+              ]),
+              _: 1
+            }, 8, ["class"])
+          ]),
+          _: 1
+        }),
+        _createVNode(_component_v_col, { cols: "12" }, {
           default: _withCtx(() => [
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-blue",
-              size: "small",
-              "prepend-icon": "mdi-history",
-              onClick: _cache[3] || (_cache[3] = $event => (showHistoryDialog.value = true))
+            _createVNode(_component_v_card, {
+              class: _normalizeClass({ 'card-collapsed': collapsed.vm })
             }, {
-              default: _withCtx(() => [...(_cache[78] || (_cache[78] = [
-                _createTextVNode("任务历史", -1)
-              ]))]),
+              default: _withCtx(() => [
+                _createVNode(_component_v_card_title, {
+                  class: "d-flex align-center flex-wrap ga-2 cursor-pointer",
+                  onClick: _cache[14] || (_cache[14] = $event => (collapsed.vm = !collapsed.vm))
+                }, {
+                  default: _withCtx(() => [
+                    _createVNode(_component_v_icon, {
+                      color: "teal",
+                      size: "22",
+                      class: "mr-1"
+                    }, {
+                      default: _withCtx(() => [...(_cache[66] || (_cache[66] = [
+                        _createTextVNode("mdi-monitor-multiple", -1)
+                      ]))]),
+                      _: 1
+                    }),
+                    _cache[69] || (_cache[69] = _createElementVNode("span", null, "虚拟机 / 容器", -1)),
+                    _createVNode(_component_v_chip, {
+                      size: "x-small",
+                      color: "success",
+                      variant: "tonal"
+                    }, {
+                      default: _withCtx(() => [
+                        _createTextVNode("运行 " + _toDisplayString(vmRunning.value), 1)
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_chip, {
+                      size: "x-small",
+                      color: "grey",
+                      variant: "tonal"
+                    }, {
+                      default: _withCtx(() => [
+                        _createTextVNode("停止 " + _toDisplayString(vmStopped.value), 1)
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_spacer),
+                    _createVNode(_component_v_text_field, {
+                      modelValue: vmSearch.value,
+                      "onUpdate:modelValue": _cache[11] || (_cache[11] = $event => ((vmSearch).value = $event)),
+                      density: "compact",
+                      variant: "outlined",
+                      "hide-details": "",
+                      clearable: "",
+                      placeholder: "搜索 ID / 名称 / 标签",
+                      "prepend-inner-icon": "mdi-magnify",
+                      style: {"max-width":"220px"},
+                      onClick: _cache[12] || (_cache[12] = _withModifiers(() => {}, ["stop"]))
+                    }, null, 8, ["modelValue"]),
+                    _createVNode(_component_v_btn, {
+                      size: "small",
+                      variant: "text",
+                      color: "error",
+                      loading: busy.stopAll,
+                      onClick: _cache[13] || (_cache[13] = _withModifiers($event => (askConfirm('stopAll', '停止所有任务', '确认停止 PVE 上所有正在运行的任务？')), ["stop"]))
+                    }, {
+                      default: _withCtx(() => [
+                        _createVNode(_component_v_icon, {
+                          size: "16",
+                          class: "mr-1"
+                        }, {
+                          default: _withCtx(() => [...(_cache[67] || (_cache[67] = [
+                            _createTextVNode("mdi-stop-circle-outline", -1)
+                          ]))]),
+                          _: 1
+                        }),
+                        _cache[68] || (_cache[68] = _createTextVNode("全部停止 ", -1))
+                      ]),
+                      _: 1
+                    }, 8, ["loading"]),
+                    _createVNode(_component_v_icon, { size: "18" }, {
+                      default: _withCtx(() => [
+                        _createTextVNode(_toDisplayString(collapsed.vm ? 'mdi-chevron-down' : 'mdi-chevron-up'), 1)
+                      ]),
+                      _: 1
+                    })
+                  ]),
+                  _: 1
+                }),
+                (!collapsed.vm)
+                  ? (_openBlock(), _createBlock(_component_v_card_text, { key: 0 }, {
+                      default: _withCtx(() => [
+                        _createVNode(_component_v_list, {
+                          density: "compact",
+                          class: "py-0"
+                        }, {
+                          default: _withCtx(() => [
+                            (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(filteredVms.value, (vm) => {
+                              return (_openBlock(), _createBlock(_component_v_list_item, {
+                                key: vm.vmid + vm.type,
+                                class: "px-0 vm-row"
+                              }, {
+                                prepend: _withCtx(() => [
+                                  _createVNode(_component_v_icon, {
+                                    size: "20",
+                                    color: vm.status === 'running' ? 'success' : 'grey'
+                                  }, {
+                                    default: _withCtx(() => [
+                                      _createTextVNode(_toDisplayString(vm.type === 'LXC' ? 'mdi-cube-outline' : 'mdi-server'), 1)
+                                    ]),
+                                    _: 2
+                                  }, 1032, ["color"])
+                                ]),
+                                append: _withCtx(() => [
+                                  _createElementVNode("div", _hoisted_21, [
+                                    _createVNode(_component_v_tooltip, {
+                                      text: "noVNC 控制台",
+                                      location: "top"
+                                    }, {
+                                      activator: _withCtx(({ props: tip }) => [
+                                        _createVNode(_component_v_btn, _mergeProps({ ref_for: true }, tip, {
+                                          size: "x-small",
+                                          variant: "text",
+                                          color: "deep-purple",
+                                          onClick: $event => (openConsole(vm))
+                                        }), {
+                                          default: _withCtx(() => [
+                                            _createVNode(_component_v_icon, { size: "16" }, {
+                                              default: _withCtx(() => [...(_cache[70] || (_cache[70] = [
+                                                _createTextVNode("mdi-console", -1)
+                                              ]))]),
+                                              _: 1
+                                            })
+                                          ]),
+                                          _: 1
+                                        }, 16, ["onClick"])
+                                      ]),
+                                      _: 2
+                                    }, 1024),
+                                    _createVNode(_component_v_tooltip, {
+                                      text: "监控图表",
+                                      location: "top"
+                                    }, {
+                                      activator: _withCtx(({ props: tip }) => [
+                                        _createVNode(_component_v_btn, _mergeProps({ ref_for: true }, tip, {
+                                          size: "x-small",
+                                          variant: "text",
+                                          color: "primary",
+                                          onClick: $event => (openGuest(vm))
+                                        }), {
+                                          default: _withCtx(() => [
+                                            _createVNode(_component_v_icon, { size: "16" }, {
+                                              default: _withCtx(() => [...(_cache[71] || (_cache[71] = [
+                                                _createTextVNode("mdi-chart-line", -1)
+                                              ]))]),
+                                              _: 1
+                                            })
+                                          ]),
+                                          _: 1
+                                        }, 16, ["onClick"])
+                                      ]),
+                                      _: 2
+                                    }, 1024),
+                                    (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(vmActions(vm), (act) => {
+                                      return (_openBlock(), _createBlock(_component_v_tooltip, {
+                                        key: act.action,
+                                        text: act.label,
+                                        location: "top"
+                                      }, {
+                                        activator: _withCtx(({ props: tip }) => [
+                                          _createVNode(_component_v_btn, _mergeProps({ ref_for: true }, tip, {
+                                            size: "x-small",
+                                            variant: "text",
+                                            color: act.color,
+                                            loading: vm._actionLoading === act.action,
+                                            onClick: $event => (onVmAction(vm, act.action))
+                                          }), {
+                                            default: _withCtx(() => [
+                                              _createVNode(_component_v_icon, { size: "16" }, {
+                                                default: _withCtx(() => [
+                                                  _createTextVNode(_toDisplayString(act.icon), 1)
+                                                ]),
+                                                _: 2
+                                              }, 1024)
+                                            ]),
+                                            _: 2
+                                          }, 1040, ["color", "loading", "onClick"])
+                                        ]),
+                                        _: 2
+                                      }, 1032, ["text"]))
+                                    }), 128))
+                                  ])
+                                ]),
+                                default: _withCtx(() => [
+                                  _createElementVNode("div", _hoisted_17, [
+                                    _createElementVNode("span", _hoisted_18, _toDisplayString(vm.displayName || vm.name || vm.vmid), 1),
+                                    _createElementVNode("span", _hoisted_19, "#" + _toDisplayString(vm.vmid) + " · " + _toDisplayString(vm.type), 1),
+                                    _createVNode(_component_v_chip, {
+                                      size: "x-small",
+                                      color: vm.status === 'running' ? 'success' : 'grey',
+                                      variant: "tonal"
+                                    }, {
+                                      default: _withCtx(() => [
+                                        _createTextVNode(_toDisplayString(vm.status === 'running' ? '运行中' : '已停止'), 1)
+                                      ]),
+                                      _: 2
+                                    }, 1032, ["color"]),
+                                    (vm.status === 'running' && vm.uptime)
+                                      ? (_openBlock(), _createElementBlock("span", _hoisted_20, _toDisplayString(fmtUptime(vm.uptime)), 1))
+                                      : _createCommentVNode("", true)
+                                  ])
+                                ]),
+                                _: 2
+                              }, 1024))
+                            }), 128)),
+                            (!filteredVms.value.length)
+                              ? (_openBlock(), _createBlock(_component_v_list_item, { key: 0 }, {
+                                  default: _withCtx(() => [
+                                    _createVNode(_component_v_list_item_title, { class: "text-caption text-medium-emphasis text-center py-2" }, {
+                                      default: _withCtx(() => [
+                                        _createTextVNode(_toDisplayString(vmList.value.length ? '没有匹配的虚拟机 / 容器' : '暂无数据'), 1)
+                                      ]),
+                                      _: 1
+                                    })
+                                  ]),
+                                  _: 1
+                                }))
+                              : _createCommentVNode("", true)
+                          ]),
+                          _: 1
+                        })
+                      ]),
+                      _: 1
+                    }))
+                  : _createCommentVNode("", true)
+              ]),
               _: 1
-            }),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-cyan",
-              size: "small",
-              "prepend-icon": "mdi-file-document-multiple",
-              onClick: openBackupFilesDialog
+            }, 8, ["class"])
+          ]),
+          _: 1
+        }),
+        _createVNode(_component_v_col, { cols: "12" }, {
+          default: _withCtx(() => [
+            _createVNode(_component_v_card, {
+              class: _normalizeClass({ 'card-collapsed': collapsed.files })
             }, {
-              default: _withCtx(() => [...(_cache[79] || (_cache[79] = [
-                _createTextVNode("备份文件", -1)
-              ]))]),
+              default: _withCtx(() => [
+                _createVNode(_component_v_card_title, {
+                  class: "d-flex align-center flex-wrap ga-2 cursor-pointer",
+                  onClick: _cache[20] || (_cache[20] = $event => (collapsed.files = !collapsed.files))
+                }, {
+                  default: _withCtx(() => [
+                    _createVNode(_component_v_icon, {
+                      color: "amber-darken-2",
+                      size: "22",
+                      class: "mr-1"
+                    }, {
+                      default: _withCtx(() => [...(_cache[72] || (_cache[72] = [
+                        _createTextVNode("mdi-file-multiple-outline", -1)
+                      ]))]),
+                      _: 1
+                    }),
+                    _cache[76] || (_cache[76] = _createElementVNode("span", null, "备份文件", -1)),
+                    _createVNode(_component_v_chip, {
+                      size: "x-small",
+                      variant: "tonal",
+                      color: "info"
+                    }, {
+                      default: _withCtx(() => [
+                        _createTextVNode("本地 " + _toDisplayString(backupCounts.value.local), 1)
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_chip, {
+                      size: "x-small",
+                      variant: "tonal",
+                      color: "deep-purple"
+                    }, {
+                      default: _withCtx(() => [
+                        _createTextVNode("WebDAV " + _toDisplayString(backupCounts.value.webdav), 1)
+                      ]),
+                      _: 1
+                    }),
+                    (status.value.backup_activity || status.value.restore_activity)
+                      ? (_openBlock(), _createBlock(_component_v_chip, {
+                          key: 0,
+                          size: "x-small",
+                          color: "warning",
+                          variant: "tonal"
+                        }, {
+                          default: _withCtx(() => [
+                            _createVNode(_component_v_icon, {
+                              size: "12",
+                              class: "mr-1"
+                            }, {
+                              default: _withCtx(() => [...(_cache[73] || (_cache[73] = [
+                                _createTextVNode("mdi-progress-clock", -1)
+                              ]))]),
+                              _: 1
+                            }),
+                            _createTextVNode(_toDisplayString(status.value.backup_activity ? '备份中' : '恢复中'), 1)
+                          ]),
+                          _: 1
+                        }))
+                      : (status.value.enabled && status.value.next_run_time)
+                        ? (_openBlock(), _createBlock(_component_v_chip, {
+                            key: 1,
+                            size: "x-small",
+                            color: "success",
+                            variant: "tonal",
+                            "prepend-icon": "mdi-clock-outline"
+                          }, {
+                            default: _withCtx(() => [
+                              _createTextVNode(" 下次：" + _toDisplayString(status.value.next_run_time), 1)
+                            ]),
+                            _: 1
+                          }))
+                        : _createCommentVNode("", true),
+                    _createVNode(_component_v_spacer),
+                    _createVNode(_component_v_btn, {
+                      size: "small",
+                      variant: "tonal",
+                      color: "primary",
+                      loading: busy.backup,
+                      onClick: _withModifiers(runBackup, ["stop"])
+                    }, {
+                      default: _withCtx(() => [
+                        _createVNode(_component_v_icon, {
+                          size: "16",
+                          class: "mr-1"
+                        }, {
+                          default: _withCtx(() => [...(_cache[74] || (_cache[74] = [
+                            _createTextVNode("mdi-play-circle-outline", -1)
+                          ]))]),
+                          _: 1
+                        }),
+                        _cache[75] || (_cache[75] = _createTextVNode("立即备份 ", -1))
+                      ]),
+                      _: 1
+                    }, 8, ["loading"]),
+                    _createVNode(_component_v_tooltip, {
+                      text: "清空备份/恢复历史",
+                      location: "top"
+                    }, {
+                      activator: _withCtx(({ props: tip }) => [
+                        _createVNode(_component_v_btn, _mergeProps(tip, {
+                          size: "small",
+                          variant: "text",
+                          color: "error",
+                          icon: "mdi-history",
+                          loading: busy.clearHistory,
+                          onClick: _cache[15] || (_cache[15] = _withModifiers($event => (askConfirm('clearHistory', '清空历史记录', '确认清空所有备份与恢复历史记录？')), ["stop"]))
+                        }), null, 16, ["loading"])
+                      ]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_select, {
+                      modelValue: fileSource.value,
+                      "onUpdate:modelValue": _cache[16] || (_cache[16] = $event => ((fileSource).value = $event)),
+                      items: ['全部', '本地备份', 'WebDAV备份'],
+                      density: "compact",
+                      variant: "outlined",
+                      "hide-details": "",
+                      style: {"max-width":"140px"},
+                      onClick: _cache[17] || (_cache[17] = _withModifiers(() => {}, ["stop"]))
+                    }, null, 8, ["modelValue"]),
+                    _createVNode(_component_v_text_field, {
+                      modelValue: fileSearch.value,
+                      "onUpdate:modelValue": _cache[18] || (_cache[18] = $event => ((fileSearch).value = $event)),
+                      density: "compact",
+                      variant: "outlined",
+                      "hide-details": "",
+                      clearable: "",
+                      placeholder: "搜索文件名",
+                      "prepend-inner-icon": "mdi-magnify",
+                      style: {"max-width":"200px"},
+                      onClick: _cache[19] || (_cache[19] = _withModifiers(() => {}, ["stop"]))
+                    }, null, 8, ["modelValue"]),
+                    _createVNode(_component_v_icon, { size: "18" }, {
+                      default: _withCtx(() => [
+                        _createTextVNode(_toDisplayString(collapsed.files ? 'mdi-chevron-down' : 'mdi-chevron-up'), 1)
+                      ]),
+                      _: 1
+                    })
+                  ]),
+                  _: 1
+                }),
+                (!collapsed.files)
+                  ? (_openBlock(), _createBlock(_component_v_card_text, { key: 0 }, {
+                      default: _withCtx(() => [
+                        _createVNode(_component_v_list, {
+                          density: "compact",
+                          class: "py-0"
+                        }, {
+                          default: _withCtx(() => [
+                            (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(filteredFiles.value, (f) => {
+                              return (_openBlock(), _createBlock(_component_v_list_item, {
+                                key: f.source + f.filename,
+                                class: "px-0"
+                              }, {
+                                prepend: _withCtx(() => [
+                                  _createVNode(_component_v_icon, {
+                                    size: "20",
+                                    color: f.source === 'WebDAV备份' ? 'deep-purple' : 'primary'
+                                  }, {
+                                    default: _withCtx(() => [
+                                      _createTextVNode(_toDisplayString(f.source === 'WebDAV备份' ? 'mdi-cloud-outline' : 'mdi-harddisk'), 1)
+                                    ]),
+                                    _: 2
+                                  }, 1032, ["color"])
+                                ]),
+                                append: _withCtx(() => [
+                                  _createElementVNode("div", _hoisted_25, [
+                                    _createVNode(_component_v_tooltip, {
+                                      text: "下载",
+                                      location: "top"
+                                    }, {
+                                      activator: _withCtx(({ props: tip }) => [
+                                        _createVNode(_component_v_btn, _mergeProps({ ref_for: true }, tip, {
+                                          size: "x-small",
+                                          variant: "text",
+                                          color: "primary",
+                                          loading: busy.dl === f.filename,
+                                          onClick: $event => (downloadBackup(f))
+                                        }), {
+                                          default: _withCtx(() => [
+                                            _createVNode(_component_v_icon, { size: "16" }, {
+                                              default: _withCtx(() => [...(_cache[77] || (_cache[77] = [
+                                                _createTextVNode("mdi-download", -1)
+                                              ]))]),
+                                              _: 1
+                                            })
+                                          ]),
+                                          _: 1
+                                        }, 16, ["loading", "onClick"])
+                                      ]),
+                                      _: 2
+                                    }, 1024),
+                                    _createVNode(_component_v_tooltip, {
+                                      text: "恢复",
+                                      location: "top"
+                                    }, {
+                                      activator: _withCtx(({ props: tip }) => [
+                                        _createVNode(_component_v_btn, _mergeProps({ ref_for: true }, tip, {
+                                          size: "x-small",
+                                          variant: "text",
+                                          color: "deep-purple",
+                                          onClick: $event => (askRestore(f))
+                                        }), {
+                                          default: _withCtx(() => [
+                                            _createVNode(_component_v_icon, { size: "16" }, {
+                                              default: _withCtx(() => [...(_cache[78] || (_cache[78] = [
+                                                _createTextVNode("mdi-restore", -1)
+                                              ]))]),
+                                              _: 1
+                                            })
+                                          ]),
+                                          _: 1
+                                        }, 16, ["onClick"])
+                                      ]),
+                                      _: 2
+                                    }, 1024),
+                                    _createVNode(_component_v_tooltip, {
+                                      text: "删除",
+                                      location: "top"
+                                    }, {
+                                      activator: _withCtx(({ props: tip }) => [
+                                        _createVNode(_component_v_btn, _mergeProps({ ref_for: true }, tip, {
+                                          size: "x-small",
+                                          variant: "text",
+                                          color: "error",
+                                          loading: busy.del === f.filename,
+                                          onClick: $event => (askConfirm('delete', '删除备份', `确认删除 ${f.source} 中的 ${f.filename}？此操作不可恢复！`, f))
+                                        }), {
+                                          default: _withCtx(() => [
+                                            _createVNode(_component_v_icon, { size: "16" }, {
+                                              default: _withCtx(() => [...(_cache[79] || (_cache[79] = [
+                                                _createTextVNode("mdi-delete-outline", -1)
+                                              ]))]),
+                                              _: 1
+                                            })
+                                          ]),
+                                          _: 1
+                                        }, 16, ["loading", "onClick"])
+                                      ]),
+                                      _: 2
+                                    }, 1024)
+                                  ])
+                                ]),
+                                default: _withCtx(() => [
+                                  _createElementVNode("div", _hoisted_22, [
+                                    _createElementVNode("span", {
+                                      class: "text-body-2 text-truncate",
+                                      title: f.filename
+                                    }, _toDisplayString(f.filename), 9, _hoisted_23),
+                                    _createElementVNode("span", _hoisted_24, _toDisplayString(f.size_mb) + " MB · " + _toDisplayString(f.date) + " " + _toDisplayString(f.time), 1)
+                                  ])
+                                ]),
+                                _: 2
+                              }, 1024))
+                            }), 128)),
+                            (!filteredFiles.value.length)
+                              ? (_openBlock(), _createBlock(_component_v_list_item, { key: 0 }, {
+                                  default: _withCtx(() => [
+                                    _createVNode(_component_v_list_item_title, { class: "text-caption text-medium-emphasis text-center py-2" }, {
+                                      default: _withCtx(() => [
+                                        _createTextVNode(_toDisplayString(backupFiles.value.length ? '没有匹配的备份文件' : '暂无备份文件'), 1)
+                                      ]),
+                                      _: 1
+                                    })
+                                  ]),
+                                  _: 1
+                                }))
+                              : _createCommentVNode("", true)
+                          ]),
+                          _: 1
+                        })
+                      ]),
+                      _: 1
+                    }))
+                  : _createCommentVNode("", true)
+              ]),
               _: 1
-            }),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-purple",
-              size: "small",
-              "prepend-icon": "mdi-cube-outline",
-              onClick: openTemplateImagesDialog,
-              disabled: !cleanupTemplateImagesEnabled.value
-            }, {
-              default: _withCtx(() => [...(_cache[80] || (_cache[80] = [
-                _createTextVNode("镜像模板", -1)
-              ]))]),
-              _: 1
-            }, 8, ["disabled"]),
-            _createVNode(_component_v_spacer),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-red",
-              size: "small",
-              "prepend-icon": "mdi-delete-sweep",
-              disabled: !status.value.enabled || !status.value.auto_cleanup_tmp,
-              loading: loadingCleanupTempSpace.value,
-              onClick: handleCleanupTempSpace
-            }, {
-              default: _withCtx(() => [...(_cache[81] || (_cache[81] = [
-                _createTextVNode("清理临时空间", -1)
-              ]))]),
-              _: 1
-            }, 8, ["disabled", "loading"]),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-gold",
-              size: "small",
-              "prepend-icon": "mdi-broom",
-              disabled: !status.value.enabled || !status.value.enable_log_cleanup,
-              loading: loadingCleanupLogs.value,
-              onClick: handleCleanupLogs
-            }, {
-              default: _withCtx(() => [...(_cache[82] || (_cache[82] = [
-                _createTextVNode("清理系统日志", -1)
-              ]))]),
-              _: 1
-            }, 8, ["disabled", "loading"]),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-orange",
-              size: "small",
-              "prepend-icon": "mdi-broom",
-              loading: loadingClear.value,
-              onClick: clearHistory
-            }, {
-              default: _withCtx(() => [...(_cache[83] || (_cache[83] = [
-                _createTextVNode("清理历史记录", -1)
-              ]))]),
-              _: 1
-            }, 8, ["loading"]),
-            _createVNode(_component_v_spacer),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-purple",
-              size: "small",
-              "prepend-icon": "mdi-restore",
-              loading: loadingRestore.value,
-              disabled: !status.value.enabled || !status.value.enable_restore,
-              onClick: _cache[4] || (_cache[4] = $event => (openRestoreDialog()))
-            }, {
-              default: _withCtx(() => [...(_cache[84] || (_cache[84] = [
-                _createTextVNode("立即恢复", -1)
-              ]))]),
-              _: 1
-            }, 8, ["loading", "disabled"]),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-green",
-              size: "small",
-              "prepend-icon": "mdi-database-arrow-up",
-              loading: loadingBackup.value,
-              disabled: !status.value.enabled,
-              onClick: runBackup
-            }, {
-              default: _withCtx(() => [...(_cache[85] || (_cache[85] = [
-                _createTextVNode("立即备份", -1)
-              ]))]),
-              _: 1
-            }, 8, ["loading", "disabled"]),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn",
-              size: "small",
-              "prepend-icon": "mdi-stop-circle",
-              loading: loadingStopTasks.value,
-              onClick: stopAllTasks
-            }, {
-              default: _withCtx(() => [...(_cache[86] || (_cache[86] = [
-                _createTextVNode("停止任务", -1)
-              ]))]),
-              _: 1
-            }, 8, ["loading"]),
-            _createVNode(_component_v_spacer),
-            _createVNode(_component_v_btn, {
-              class: "glow-btn glow-btn-pink",
-              size: "small",
-              "prepend-icon": "mdi-cog",
-              onClick: _cache[5] || (_cache[5] = $event => (_ctx.$emit('switch')))
-            }, {
-              default: _withCtx(() => [...(_cache[87] || (_cache[87] = [
-                _createTextVNode("配置", -1)
-              ]))]),
-              _: 1
-            })
+            }, 8, ["class"])
           ]),
           _: 1
         })
@@ -8277,75 +8467,138 @@ return (_ctx, _cache) => {
       _: 1
     }),
     _createVNode(_component_v_dialog, {
-      modelValue: showRestoreDialog.value,
-      "onUpdate:modelValue": _cache[12] || (_cache[12] = $event => ((showRestoreDialog).value = $event)),
-      "max-width": "500"
+      modelValue: tplDialog.value,
+      "onUpdate:modelValue": _cache[22] || (_cache[22] = $event => ((tplDialog).value = $event)),
+      "max-width": "760",
+      scrollable: ""
     }, {
       default: _withCtx(() => [
         _createVNode(_component_v_card, null, {
           default: _withCtx(() => [
-            _createVNode(_component_v_card_title, null, {
-              default: _withCtx(() => [...(_cache[88] || (_cache[88] = [
-                _createTextVNode("选择要恢复的备份文件", -1)
-              ]))]),
-              _: 1
-            }),
-            _createVNode(_component_v_card_text, null, {
+            _createVNode(_component_v_card_title, { class: "d-flex align-center flex-wrap ga-2" }, {
               default: _withCtx(() => [
-                _createVNode(_component_v_select, {
-                  modelValue: selectedRestoreFile.value,
-                  "onUpdate:modelValue": _cache[6] || (_cache[6] = $event => ((selectedRestoreFile).value = $event)),
-                  items: backupFiles.value,
-                  "item-title": item => item.filename + ' (' + item.source + ')',
-                  "item-value": "filename",
-                  label: "备份文件"
-                }, null, 8, ["modelValue", "items", "item-title"]),
-                _createVNode(_component_v_text_field, {
-                  modelValue: restoreDisk.value,
-                  "onUpdate:modelValue": _cache[7] || (_cache[7] = $event => ((restoreDisk).value = $event)),
-                  label: "恢复存储硬盘",
-                  placeholder: "请输入存储池"
-                }, null, 8, ["modelValue"]),
-                _createVNode(_component_v_text_field, {
-                  modelValue: restoreVmid.value,
-                  "onUpdate:modelValue": _cache[8] || (_cache[8] = $event => ((restoreVmid).value = $event)),
-                  label: "目标VMID(可选)"
-                }, null, 8, ["modelValue"]),
-                _createVNode(_component_v_switch, {
-                  modelValue: restoreForce.value,
-                  "onUpdate:modelValue": _cache[9] || (_cache[9] = $event => ((restoreForce).value = $event)),
-                  label: "强制恢复(覆盖现有VM)"
-                }, null, 8, ["modelValue"]),
-                _createVNode(_component_v_switch, {
-                  modelValue: restoreSkipExisting.value,
-                  "onUpdate:modelValue": _cache[10] || (_cache[10] = $event => ((restoreSkipExisting).value = $event)),
-                  label: "跳过已存在的VM"
-                }, null, 8, ["modelValue"])
-              ]),
-              _: 1
-            }),
-            _createVNode(_component_v_card_actions, null, {
-              default: _withCtx(() => [
-                _createVNode(_component_v_btn, {
-                  color: "grey",
-                  onClick: _cache[11] || (_cache[11] = $event => (showRestoreDialog.value = false))
+                _createVNode(_component_v_icon, {
+                  color: "deep-purple",
+                  size: "20",
+                  class: "mr-1"
                 }, {
-                  default: _withCtx(() => [...(_cache[89] || (_cache[89] = [
-                    _createTextVNode("取消", -1)
+                  default: _withCtx(() => [...(_cache[80] || (_cache[80] = [
+                    _createTextVNode("mdi-cube-outline", -1)
                   ]))]),
                   _: 1
                 }),
-                _createVNode(_component_v_btn, {
-                  color: "success",
-                  loading: loadingRestore.value,
-                  onClick: runRestore,
-                  disabled: !selectedRestoreFile.value
+                _cache[81] || (_cache[81] = _createElementVNode("span", null, "镜像模板", -1)),
+                _createVNode(_component_v_chip, {
+                  size: "x-small",
+                  variant: "tonal",
+                  color: "info"
                 }, {
-                  default: _withCtx(() => [...(_cache[90] || (_cache[90] = [
-                    _createTextVNode("确认恢复", -1)
-                  ]))]),
+                  default: _withCtx(() => [
+                    _createTextVNode("ISO " + _toDisplayString(tplCounts.value.iso), 1)
+                  ]),
                   _: 1
-                }, 8, ["loading", "disabled"])
+                }),
+                _createVNode(_component_v_chip, {
+                  size: "x-small",
+                  variant: "tonal",
+                  color: "deep-purple"
+                }, {
+                  default: _withCtx(() => [
+                    _createTextVNode("CT 模板 " + _toDisplayString(tplCounts.value.ct), 1)
+                  ]),
+                  _: 1
+                }),
+                _createVNode(_component_v_spacer),
+                _createVNode(_component_v_btn, {
+                  icon: "mdi-refresh",
+                  size: "small",
+                  variant: "text",
+                  loading: tplLoading.value,
+                  onClick: fetchTplImages
+                }, null, 8, ["loading"]),
+                _createVNode(_component_v_btn, {
+                  icon: "mdi-close",
+                  size: "small",
+                  variant: "text",
+                  onClick: _cache[21] || (_cache[21] = $event => (tplDialog.value = false))
+                })
+              ]),
+              _: 1
+            }),
+            _createVNode(_component_v_divider),
+            _createVNode(_component_v_card_text, {
+              class: "pa-0",
+              style: {"max-height":"480px","overflow-y":"auto"}
+            }, {
+              default: _withCtx(() => [
+                _createVNode(_component_v_list, {
+                  density: "compact",
+                  class: "py-0"
+                }, {
+                  default: _withCtx(() => [
+                    (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(tplList.value, (f) => {
+                      return (_openBlock(), _createBlock(_component_v_list_item, {
+                        key: f.filenameWithType,
+                        class: "px-4"
+                      }, {
+                        prepend: _withCtx(() => [
+                          _createVNode(_component_v_icon, {
+                            size: "20",
+                            color: f.type === 'iso' ? 'info' : 'deep-purple'
+                          }, {
+                            default: _withCtx(() => [
+                              _createTextVNode(_toDisplayString(f.type === 'iso' ? 'mdi-disc' : 'mdi-cube-outline'), 1)
+                            ]),
+                            _: 2
+                          }, 1032, ["color"])
+                        ]),
+                        append: _withCtx(() => [
+                          _createElementVNode("span", _hoisted_28, [
+                            _createTextVNode(_toDisplayString(f.size_mb != null ? f.size_mb.toFixed(2) + ' MB' : '-') + " ", 1),
+                            (f.date)
+                              ? (_openBlock(), _createElementBlock(_Fragment, { key: 0 }, [
+                                  _createTextVNode(" · " + _toDisplayString(f.date), 1)
+                                ], 64))
+                              : _createCommentVNode("", true)
+                          ])
+                        ]),
+                        default: _withCtx(() => [
+                          _createElementVNode("div", _hoisted_26, [
+                            _createElementVNode("span", {
+                              class: "text-body-2 text-truncate",
+                              title: f.filename
+                            }, _toDisplayString(f.filename), 9, _hoisted_27),
+                            _createVNode(_component_v_chip, {
+                              size: "x-small",
+                              color: f.type === 'iso' ? 'info' : 'deep-purple',
+                              variant: "tonal"
+                            }, {
+                              default: _withCtx(() => [
+                                _createTextVNode(_toDisplayString(f.type === 'iso' ? 'ISO 镜像' : 'CT 模板'), 1)
+                              ]),
+                              _: 2
+                            }, 1032, ["color"])
+                          ])
+                        ]),
+                        _: 2
+                      }, 1024))
+                    }), 128)),
+                    (!tplList.value.length)
+                      ? (_openBlock(), _createBlock(_component_v_list_item, { key: 0 }, {
+                          default: _withCtx(() => [
+                            _createVNode(_component_v_list_item_title, { class: "text-caption text-medium-emphasis text-center py-4" }, {
+                              default: _withCtx(() => [
+                                _createTextVNode(_toDisplayString(tplLoading.value ? '加载中...' : '暂无 ISO 镜像 / CT 模板'), 1)
+                              ]),
+                              _: 1
+                            })
+                          ]),
+                          _: 1
+                        }))
+                      : _createCommentVNode("", true)
+                  ]),
+                  _: 1
+                })
               ]),
               _: 1
             })
@@ -8355,53 +8608,397 @@ return (_ctx, _cache) => {
       ]),
       _: 1
     }, 8, ["modelValue"]),
-    _createVNode(_component_v_snackbar, {
-      modelValue: snackbar.value.show,
-      "onUpdate:modelValue": _cache[13] || (_cache[13] = $event => ((snackbar.value.show) = $event)),
-      color: snackbar.value.color,
-      timeout: snackbar.value.timeout
+    _createVNode(_component_v_dialog, {
+      modelValue: screenDialog.show,
+      "onUpdate:modelValue": _cache[29] || (_cache[29] = $event => ((screenDialog.show) = $event)),
+      "max-width": "960",
+      onAfterLeave: _cache[30] || (_cache[30] = $event => (stopScreenTimer()))
     }, {
       default: _withCtx(() => [
-        _createTextVNode(_toDisplayString(snackbar.value.text), 1)
+        _createVNode(_component_v_card, null, {
+          default: _withCtx(() => [
+            _createVNode(_component_v_card_title, { class: "d-flex align-center flex-wrap ga-2 py-3" }, {
+              default: _withCtx(() => [
+                _createVNode(_component_v_icon, {
+                  color: "deep-purple",
+                  size: "20"
+                }, {
+                  default: _withCtx(() => [...(_cache[82] || (_cache[82] = [
+                    _createTextVNode("mdi-monitor-shimmer", -1)
+                  ]))]),
+                  _: 1
+                }),
+                _createElementVNode("span", _hoisted_29, "实时画面 · " + _toDisplayString(screenDialog.name) + " (#" + _toDisplayString(screenDialog.vmid) + ")", 1),
+                _createVNode(_component_v_spacer),
+                _createVNode(_component_v_select, {
+                  modelValue: screenRate.value,
+                  "onUpdate:modelValue": _cache[23] || (_cache[23] = $event => ((screenRate).value = $event)),
+                  items: [
+            { title: '1 秒', value: 1 }, { title: '2 秒', value: 2 }, { title: '3 秒', value: 3 },
+            { title: '5 秒', value: 5 }, { title: '暂停', value: 0 }],
+                  density: "compact",
+                  variant: "outlined",
+                  "hide-details": "",
+                  label: "刷新",
+                  style: {"max-width":"110px"}
+                }, null, 8, ["modelValue"]),
+                _createVNode(_component_v_btn, {
+                  size: "small",
+                  variant: "text",
+                  color: "grey",
+                  icon: "mdi-refresh",
+                  title: "立即刷新",
+                  onClick: _cache[24] || (_cache[24] = $event => (screenTick.value++))
+                }),
+                _createVNode(_component_v_btn, {
+                  size: "small",
+                  variant: "tonal",
+                  color: "info",
+                  "prepend-icon": "mdi-console",
+                  title: "完整图形控制台（需登录 PVE）",
+                  onClick: _cache[25] || (_cache[25] = $event => (openNovnc({ vmid: screenDialog.vmid, type: 'qemu', displayName: screenDialog.name })))
+                }, {
+                  default: _withCtx(() => [...(_cache[83] || (_cache[83] = [
+                    _createTextVNode(" noVNC ", -1)
+                  ]))]),
+                  _: 1
+                }),
+                _createVNode(_component_v_btn, {
+                  size: "small",
+                  variant: "text",
+                  color: "grey",
+                  icon: "mdi-close",
+                  onClick: _cache[26] || (_cache[26] = $event => (screenDialog.show = false))
+                })
+              ]),
+              _: 1
+            }),
+            _createVNode(_component_v_divider),
+            _createVNode(_component_v_card_text, { class: "pa-0" }, {
+              default: _withCtx(() => [
+                _createElementVNode("div", _hoisted_30, [
+                  (screenError.value)
+                    ? (_openBlock(), _createElementBlock("div", _hoisted_31, " 获取画面失败：虚机可能未运行，或显示设备不支持截图。可稍后重试或使用 noVNC 完整控制台。 "))
+                    : _createCommentVNode("", true),
+                  (screenSrc.value)
+                    ? (_openBlock(), _createElementBlock("img", {
+                        key: 1,
+                        src: screenSrc.value,
+                        class: "screen-img",
+                        alt: "虚机画面",
+                        onError: _cache[27] || (_cache[27] = $event => (screenError.value = true)),
+                        onLoad: _cache[28] || (_cache[28] = $event => (screenError.value = false))
+                      }, null, 40, _hoisted_32))
+                    : _createCommentVNode("", true)
+                ]),
+                _createVNode(_component_v_alert, {
+                  type: "info",
+                  variant: "tonal",
+                  density: "compact",
+                  class: "ma-2 text-caption"
+                }, {
+                  default: _withCtx(() => [...(_cache[84] || (_cache[84] = [
+                    _createTextVNode(" 实时画面为只读监视（每 1~5 秒截图，无需登录 PVE）；需要键鼠操作请点上方「noVNC」打开完整控制台，或在「主机概况 → 宿主机终端」用命令操作。 ", -1)
+                  ]))]),
+                  _: 1
+                })
+              ]),
+              _: 1
+            })
+          ]),
+          _: 1
+        })
       ]),
       _: 1
-    }, 8, ["modelValue", "color", "timeout"]),
+    }, 8, ["modelValue"]),
     _createVNode(_component_v_dialog, {
-      modelValue: showDeleteDialog.value,
-      "onUpdate:modelValue": _cache[15] || (_cache[15] = $event => ((showDeleteDialog).value = $event)),
+      modelValue: termDialog.value,
+      "onUpdate:modelValue": _cache[38] || (_cache[38] = $event => ((termDialog).value = $event)),
+      "max-width": "860",
+      scrollable: "",
+      onAfterLeave: _cache[39] || (_cache[39] = $event => (termOutput.value = ''))
+    }, {
+      default: _withCtx(() => [
+        _createVNode(_component_v_card, { class: "terminal-card" }, {
+          default: _withCtx(() => [
+            _createVNode(_component_v_card_title, { class: "d-flex align-center ga-2 py-3" }, {
+              default: _withCtx(() => [
+                _createVNode(_component_v_icon, {
+                  color: "deep-purple",
+                  size: "20"
+                }, {
+                  default: _withCtx(() => [...(_cache[85] || (_cache[85] = [
+                    _createTextVNode("mdi-console", -1)
+                  ]))]),
+                  _: 1
+                }),
+                _createElementVNode("span", _hoisted_33, "宿主机终端 · root@" + _toDisplayString(host.value.hostname || monitorData.value?.node || 'PVE'), 1),
+                _createVNode(_component_v_spacer),
+                _createVNode(_component_v_btn, {
+                  size: "small",
+                  variant: "text",
+                  color: "grey",
+                  icon: "mdi-delete-outline",
+                  title: "清屏",
+                  onClick: _cache[31] || (_cache[31] = $event => (termOutput.value = ''))
+                }),
+                _createVNode(_component_v_btn, {
+                  size: "small",
+                  variant: "text",
+                  color: "grey",
+                  icon: "mdi-close",
+                  onClick: _cache[32] || (_cache[32] = $event => (termDialog.value = false))
+                })
+              ]),
+              _: 1
+            }),
+            _createVNode(_component_v_divider),
+            _createVNode(_component_v_card_text, { class: "pa-0" }, {
+              default: _withCtx(() => [
+                _createElementVNode("div", {
+                  ref_key: "termBox",
+                  ref: termBox,
+                  class: "terminal-box"
+                }, [
+                  (!termOutput.value)
+                    ? (_openBlock(), _createElementBlock("div", _hoisted_34, " 输入命令回车执行（非交互模式，单次超时 20 秒；不支持 top/vim 等全屏程序，请用 top -bn1 等） "))
+                    : (_openBlock(), _createElementBlock("pre", _hoisted_35, _toDisplayString(termOutput.value), 1)),
+                  (termBusy.value)
+                    ? (_openBlock(), _createElementBlock("div", _hoisted_36, [
+                        _createVNode(_component_v_icon, {
+                          size: "14",
+                          class: "mr-1"
+                        }, {
+                          default: _withCtx(() => [...(_cache[86] || (_cache[86] = [
+                            _createTextVNode("mdi-progress-clock", -1)
+                          ]))]),
+                          _: 1
+                        }),
+                        _cache[87] || (_cache[87] = _createTextVNode("执行中... ", -1))
+                      ]))
+                    : _createCommentVNode("", true)
+                ], 512),
+                _createElementVNode("div", _hoisted_37, [
+                  (_openBlock(), _createElementBlock(_Fragment, null, _renderList(quickCmds, (c) => {
+                    return _createVNode(_component_v_chip, {
+                      key: c,
+                      size: "x-small",
+                      variant: "tonal",
+                      color: "deep-purple",
+                      style: {"cursor":"pointer"},
+                      onClick: $event => (runCommand(c))
+                    }, {
+                      default: _withCtx(() => [
+                        _createTextVNode(_toDisplayString(c), 1)
+                      ]),
+                      _: 2
+                    }, 1032, ["onClick"])
+                  }), 64))
+                ])
+              ]),
+              _: 1
+            }),
+            _createVNode(_component_v_divider),
+            _createVNode(_component_v_card_text, { class: "py-2" }, {
+              default: _withCtx(() => [
+                _createElementVNode("div", _hoisted_38, [
+                  _cache[89] || (_cache[89] = _createElementVNode("span", { class: "terminal-prompt" }, "$", -1)),
+                  _createVNode(_component_v_text_field, {
+                    modelValue: termInput.value,
+                    "onUpdate:modelValue": _cache[33] || (_cache[33] = $event => ((termInput).value = $event)),
+                    variant: "plain",
+                    density: "compact",
+                    "hide-details": "",
+                    placeholder: "输入命令，回车执行",
+                    style: {"font-family":"monospace"},
+                    disabled: termBusy.value,
+                    onKeyup: [
+                      _cache[34] || (_cache[34] = _withKeys($event => (runCommand()), ["enter"])),
+                      _cache[35] || (_cache[35] = _withKeys($event => (termHistoryNav(-1)), ["up"])),
+                      _cache[36] || (_cache[36] = _withKeys($event => (termHistoryNav(1)), ["down"]))
+                    ]
+                  }, null, 8, ["modelValue", "disabled"]),
+                  _createVNode(_component_v_btn, {
+                    color: "deep-purple",
+                    variant: "tonal",
+                    size: "small",
+                    loading: termBusy.value,
+                    onClick: _cache[37] || (_cache[37] = $event => (runCommand()))
+                  }, {
+                    default: _withCtx(() => [...(_cache[88] || (_cache[88] = [
+                      _createTextVNode(" 执行 ", -1)
+                    ]))]),
+                    _: 1
+                  }, 8, ["loading"])
+                ])
+              ]),
+              _: 1
+            })
+          ]),
+          _: 1
+        })
+      ]),
+      _: 1
+    }, 8, ["modelValue"]),
+    _createVNode(_component_v_dialog, {
+      modelValue: guestDialog.show,
+      "onUpdate:modelValue": _cache[42] || (_cache[42] = $event => ((guestDialog.show) = $event)),
+      "max-width": "760",
+      scrollable: ""
+    }, {
+      default: _withCtx(() => [
+        _createVNode(_component_v_card, null, {
+          default: _withCtx(() => [
+            _createVNode(_component_v_card_title, { class: "d-flex align-center flex-wrap ga-2" }, {
+              default: _withCtx(() => [
+                _createVNode(_component_v_icon, {
+                  color: "primary",
+                  size: "20",
+                  class: "mr-1"
+                }, {
+                  default: _withCtx(() => [...(_cache[90] || (_cache[90] = [
+                    _createTextVNode("mdi-chart-line", -1)
+                  ]))]),
+                  _: 1
+                }),
+                _createElementVNode("span", null, _toDisplayString(guestDialog.name), 1),
+                _createElementVNode("span", _hoisted_39, "#" + _toDisplayString(guestDialog.vmid) + " · " + _toDisplayString(guestDialog.type === 'lxc' ? 'LXC' : 'VM'), 1),
+                _createVNode(_component_v_spacer),
+                _createVNode(_component_v_btn_toggle, {
+                  modelValue: guestTf.value,
+                  "onUpdate:modelValue": _cache[40] || (_cache[40] = $event => ((guestTf).value = $event)),
+                  mandatory: "",
+                  density: "compact",
+                  variant: "outlined",
+                  divided: ""
+                }, {
+                  default: _withCtx(() => [
+                    _createVNode(_component_v_btn, {
+                      value: "hour",
+                      size: "small"
+                    }, {
+                      default: _withCtx(() => [...(_cache[91] || (_cache[91] = [
+                        _createTextVNode("小时", -1)
+                      ]))]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_btn, {
+                      value: "day",
+                      size: "small"
+                    }, {
+                      default: _withCtx(() => [...(_cache[92] || (_cache[92] = [
+                        _createTextVNode("天", -1)
+                      ]))]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_btn, {
+                      value: "week",
+                      size: "small"
+                    }, {
+                      default: _withCtx(() => [...(_cache[93] || (_cache[93] = [
+                        _createTextVNode("周", -1)
+                      ]))]),
+                      _: 1
+                    }),
+                    _createVNode(_component_v_btn, {
+                      value: "month",
+                      size: "small"
+                    }, {
+                      default: _withCtx(() => [...(_cache[94] || (_cache[94] = [
+                        _createTextVNode("月", -1)
+                      ]))]),
+                      _: 1
+                    })
+                  ]),
+                  _: 1
+                }, 8, ["modelValue"]),
+                _createVNode(_component_v_btn, {
+                  icon: "mdi-close",
+                  size: "small",
+                  variant: "text",
+                  onClick: _cache[41] || (_cache[41] = $event => (guestDialog.show = false))
+                })
+              ]),
+              _: 1
+            }),
+            _createVNode(_component_v_card_text, null, {
+              default: _withCtx(() => [
+                (guestCharts.value.length)
+                  ? (_openBlock(), _createElementBlock("div", _hoisted_40, [
+                      (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(guestCharts.value, (ch) => {
+                        return (_openBlock(), _createElementBlock("div", {
+                          key: ch.key,
+                          class: "chart-cell"
+                        }, [
+                          _createElementVNode("div", _hoisted_41, [
+                            _createElementVNode("span", null, _toDisplayString(ch.title), 1),
+                            _createElementVNode("span", {
+                              class: "font-weight-bold",
+                              style: _normalizeStyle({ color: ch.lines.length > 1 ? '' : ch.lines[0].color })
+                            }, _toDisplayString(ch.last), 5)
+                          ]),
+                          (_openBlock(), _createElementBlock("svg", _hoisted_42, [
+                            (_openBlock(true), _createElementBlock(_Fragment, null, _renderList(ch.lines, (ln, i) => {
+                              return (_openBlock(), _createElementBlock(_Fragment, { key: i }, [
+                                _createElementVNode("polygon", {
+                                  points: ln.areaPoints,
+                                  fill: ln.color,
+                                  opacity: "0.12",
+                                  stroke: "none"
+                                }, null, 8, _hoisted_43),
+                                _createElementVNode("polyline", {
+                                  points: ln.points,
+                                  fill: "none",
+                                  stroke: ln.color,
+                                  "stroke-width": "1.6"
+                                }, null, 8, _hoisted_44)
+                              ], 64))
+                            }), 128))
+                          ]))
+                        ]))
+                      }), 128))
+                    ]))
+                  : (_openBlock(), _createElementBlock("div", _hoisted_45, _toDisplayString(guestLoading.value ? '加载中...' : '暂无监控数据'), 1))
+              ]),
+              _: 1
+            })
+          ]),
+          _: 1
+        })
+      ]),
+      _: 1
+    }, 8, ["modelValue"]),
+    _createVNode(_component_v_dialog, {
+      modelValue: restoreDialog.show,
+      "onUpdate:modelValue": _cache[45] || (_cache[45] = $event => ((restoreDialog.show) = $event)),
       "max-width": "420"
     }, {
       default: _withCtx(() => [
         _createVNode(_component_v_card, null, {
           default: _withCtx(() => [
-            _createVNode(_component_v_card_title, { class: "text-h6" }, {
-              default: _withCtx(() => [...(_cache[91] || (_cache[91] = [
-                _createTextVNode("删除确认", -1)
+            _createVNode(_component_v_card_title, { class: "text-subtitle-1" }, {
+              default: _withCtx(() => [...(_cache[95] || (_cache[95] = [
+                _createTextVNode("恢复备份", -1)
               ]))]),
               _: 1
             }),
             _createVNode(_component_v_card_text, null, {
               default: _withCtx(() => [
-                _createElementVNode("div", _hoisted_78, [
-                  _cache[92] || (_cache[92] = _createTextVNode(" 确定要删除备份文件 ", -1)),
-                  _createElementVNode("span", _hoisted_79, _toDisplayString(deleteTarget.value?.filename), 1),
-                  _cache[93] || (_cache[93] = _createTextVNode(" 吗？ ", -1))
-                ]),
-                (deleteTarget.value)
-                  ? (_openBlock(), _createElementBlock("div", _hoisted_80, [
-                      _createVNode(_component_v_chip, {
-                        size: "small",
-                        color: "primary",
-                        class: "mr-2"
-                      }, {
-                        default: _withCtx(() => [
-                          _createTextVNode(_toDisplayString(deleteTarget.value.source), 1)
-                        ]),
-                        _: 1
-                      }),
-                      _createElementVNode("span", _hoisted_81, _toDisplayString(deleteTarget.value.size_mb ? (deleteTarget.value.size_mb.toFixed(2) + ' MB') : '-'), 1)
-                    ]))
-                  : _createCommentVNode("", true)
+                _createElementVNode("div", {
+                  class: "text-body-2 mb-3 text-truncate",
+                  title: restoreDialog.item?.filename
+                }, [
+                  _createTextVNode(_toDisplayString(restoreDialog.item?.filename) + " ", 1),
+                  _createElementVNode("span", _hoisted_47, "（" + _toDisplayString(restoreDialog.item?.source) + "）", 1)
+                ], 8, _hoisted_46),
+                _createVNode(_component_v_text_field, {
+                  modelValue: restoreDialog.vmid,
+                  "onUpdate:modelValue": _cache[43] || (_cache[43] = $event => ((restoreDialog.vmid) = $event)),
+                  label: "目标 VMID（可选，默认恢复到原机）",
+                  density: "compact",
+                  variant: "outlined",
+                  "hide-details": ""
+                }, null, 8, ["modelValue"])
               ]),
               _: 1
             }),
@@ -8409,23 +9006,22 @@ return (_ctx, _cache) => {
               default: _withCtx(() => [
                 _createVNode(_component_v_spacer),
                 _createVNode(_component_v_btn, {
-                  text: "",
-                  color: "grey",
-                  onClick: _cache[14] || (_cache[14] = $event => (showDeleteDialog.value = false)),
-                  disabled: deleteLoading.value
+                  variant: "text",
+                  onClick: _cache[44] || (_cache[44] = $event => (restoreDialog.show = false))
                 }, {
-                  default: _withCtx(() => [...(_cache[94] || (_cache[94] = [
+                  default: _withCtx(() => [...(_cache[96] || (_cache[96] = [
                     _createTextVNode("取消", -1)
                   ]))]),
                   _: 1
-                }, 8, ["disabled"]),
+                }),
                 _createVNode(_component_v_btn, {
-                  color: "error",
-                  loading: deleteLoading.value === (deleteTarget.value?.filename + deleteTarget.value?.source),
-                  onClick: handleDeleteConfirm
+                  color: "deep-purple",
+                  variant: "tonal",
+                  loading: busy.restore,
+                  onClick: doRestore
                 }, {
-                  default: _withCtx(() => [...(_cache[95] || (_cache[95] = [
-                    _createTextVNode(" 删除 ", -1)
+                  default: _withCtx(() => [...(_cache[97] || (_cache[97] = [
+                    _createTextVNode("开始恢复", -1)
                   ]))]),
                   _: 1
                 }, 8, ["loading"])
@@ -8439,62 +9035,22 @@ return (_ctx, _cache) => {
       _: 1
     }, 8, ["modelValue"]),
     _createVNode(_component_v_dialog, {
-      modelValue: showHistoryDialog.value,
-      "onUpdate:modelValue": _cache[17] || (_cache[17] = $event => ((showHistoryDialog).value = $event)),
-      "max-width": "900"
+      modelValue: confirmDialog.show,
+      "onUpdate:modelValue": _cache[48] || (_cache[48] = $event => ((confirmDialog.show) = $event)),
+      "max-width": "380"
     }, {
       default: _withCtx(() => [
         _createVNode(_component_v_card, null, {
           default: _withCtx(() => [
-            _createVNode(_component_v_card_title, { class: "text-h6" }, {
-              default: _withCtx(() => [...(_cache[96] || (_cache[96] = [
-                _createTextVNode("任务历史", -1)
-              ]))]),
+            _createVNode(_component_v_card_title, { class: "text-subtitle-1" }, {
+              default: _withCtx(() => [
+                _createTextVNode(_toDisplayString(confirmDialog.title), 1)
+              ]),
               _: 1
             }),
-            _createVNode(_component_v_card_text, null, {
+            _createVNode(_component_v_card_text, { class: "text-body-2" }, {
               default: _withCtx(() => [
-                _createVNode(_component_v_data_table, {
-                  headers: [
-              { text: '时间', value: 'timestamp' },
-              { text: '类型', value: 'type' },
-              { text: '状态', value: 'success' },
-              { text: '详情', value: 'message' },
-              { text: '消息', value: 'details' }
-            ],
-                  items: history.value,
-                  class: "elevation-0",
-                  "hide-default-footer": "",
-                  density: "compact",
-                  style: {"max-height":"500px","overflow-y":"auto"}
-                }, {
-                  "item.timestamp": _withCtx(({ item }) => [
-                    _createTextVNode(_toDisplayString(formatTime(item.timestamp)), 1)
-                  ]),
-                  "item.success": _withCtx(({ item }) => [
-                    _createVNode(_component_v_chip, {
-                      color: item.success ? 'success' : 'error',
-                      size: "small"
-                    }, {
-                      default: _withCtx(() => [
-                        _createTextVNode(_toDisplayString(item.success ? '成功' : '失败'), 1)
-                      ]),
-                      _: 2
-                    }, 1032, ["color"])
-                  ]),
-                  "item.type": _withCtx(({ item }) => [
-                    _createVNode(_component_v_chip, {
-                      color: item.type === '备份' ? 'primary' : 'purple',
-                      size: "small"
-                    }, {
-                      default: _withCtx(() => [
-                        _createTextVNode(_toDisplayString(item.type), 1)
-                      ]),
-                      _: 2
-                    }, 1032, ["color"])
-                  ]),
-                  _: 1
-                }, 8, ["items"])
+                _createTextVNode(_toDisplayString(confirmDialog.text), 1)
               ]),
               _: 1
             }),
@@ -8502,324 +9058,21 @@ return (_ctx, _cache) => {
               default: _withCtx(() => [
                 _createVNode(_component_v_spacer),
                 _createVNode(_component_v_btn, {
-                  color: "primary",
-                  onClick: _cache[16] || (_cache[16] = $event => (showHistoryDialog.value = false))
+                  variant: "text",
+                  onClick: _cache[46] || (_cache[46] = $event => (confirmDialog.show = false))
                 }, {
-                  default: _withCtx(() => [...(_cache[97] || (_cache[97] = [
-                    _createTextVNode("关闭", -1)
-                  ]))]),
-                  _: 1
-                })
-              ]),
-              _: 1
-            })
-          ]),
-          _: 1
-        })
-      ]),
-      _: 1
-    }, 8, ["modelValue"]),
-    _createVNode(_component_v_dialog, {
-      modelValue: showBackupFilesDialog.value,
-      "onUpdate:modelValue": _cache[19] || (_cache[19] = $event => ((showBackupFilesDialog).value = $event)),
-      "max-width": "1400"
-    }, {
-      default: _withCtx(() => [
-        _createVNode(_component_v_card, null, {
-          default: _withCtx(() => [
-            _createVNode(_component_v_card_title, {
-              class: "text-h6",
-              style: {"padding":"8px 16px 0 16px","font-size":"18px"}
-            }, {
-              default: _withCtx(() => [...(_cache[98] || (_cache[98] = [
-                _createTextVNode("备份文件", -1)
-              ]))]),
-              _: 1
-            }),
-            _createVNode(_component_v_card_text, { style: {"padding":"0 16px 8px 16px"} }, {
-              default: _withCtx(() => [
-                _createVNode(_component_v_data_table, {
-                  headers: backupFileHeaders,
-                  items: backupFiles.value,
-                  "item-key": "filenameWithSource",
-                  class: "elevation-0",
-                  "hide-default-footer": "",
-                  density: "compact",
-                  style: {"margin":"0","padding":"0"}
-                }, {
-                  "item.filename": _withCtx(({ item }) => [
-                    _createTextVNode(_toDisplayString(item.filename), 1)
-                  ]),
-                  "item.size_mb": _withCtx(({ item }) => [
-                    _createTextVNode(_toDisplayString(item.size_mb ? item.size_mb.toFixed(2) : '-'), 1)
-                  ]),
-                  "item.date": _withCtx(({ item }) => [
-                    _createTextVNode(_toDisplayString(item.time_str ? item.time_str.split(' ')[0] : '-'), 1)
-                  ]),
-                  "item.time": _withCtx(({ item }) => [
-                    _createTextVNode(_toDisplayString(item.time_str ? (item.time_str.split(' ')[1] || '-') : '-'), 1)
-                  ]),
-                  "item.actions": _withCtx(({ item }) => [
-                    _createElementVNode("div", _hoisted_82, [
-                      (!status.value.enabled)
-                        ? (_openBlock(), _createBlock(_component_v_tooltip, {
-                            key: 0,
-                            text: "请先启用插件"
-                          }, {
-                            activator: _withCtx(({ props }) => [
-                              _createVNode(_component_v_btn, _mergeProps({
-                                icon: "",
-                                size: "x-small",
-                                disabled: !status.value.enabled
-                              }, props), {
-                                default: _withCtx(() => [
-                                  _createVNode(_component_v_icon, { icon: "mdi-download" })
-                                ]),
-                                _: 1
-                              }, 16, ["disabled"])
-                            ]),
-                            _: 1
-                          }))
-                        : (_openBlock(), _createBlock(_component_v_btn, {
-                            key: 1,
-                            icon: "",
-                            size: "x-small",
-                            onClick: $event => (downloadBackup(item))
-                          }, {
-                            default: _withCtx(() => [
-                              _createVNode(_component_v_icon, { icon: "mdi-download" })
-                            ]),
-                            _: 1
-                          }, 8, ["onClick"])),
-                      (!status.value.enabled || !status.value.enable_restore)
-                        ? (_openBlock(), _createBlock(_component_v_tooltip, {
-                            key: 2,
-                            text: "请先启用插件并开启恢复功能"
-                          }, {
-                            activator: _withCtx(({ props }) => [
-                              _createVNode(_component_v_btn, _mergeProps({
-                                icon: "",
-                                size: "x-small",
-                                color: "success",
-                                disabled: !status.value.enabled || !status.value.enable_restore
-                              }, props), {
-                                default: _withCtx(() => [
-                                  _createVNode(_component_v_icon, { icon: "mdi-restore" })
-                                ]),
-                                _: 1
-                              }, 16, ["disabled"])
-                            ]),
-                            _: 1
-                          }))
-                        : (_openBlock(), _createBlock(_component_v_btn, {
-                            key: 3,
-                            icon: "",
-                            size: "x-small",
-                            color: "success",
-                            onClick: $event => (openRestoreDialog(item))
-                          }, {
-                            default: _withCtx(() => [
-                              _createVNode(_component_v_icon, { icon: "mdi-restore" })
-                            ]),
-                            _: 1
-                          }, 8, ["onClick"])),
-                      (!status.value.enabled)
-                        ? (_openBlock(), _createBlock(_component_v_tooltip, {
-                            key: 4,
-                            text: "请先启用插件"
-                          }, {
-                            activator: _withCtx(({ props }) => [
-                              _createVNode(_component_v_btn, _mergeProps({
-                                icon: "",
-                                size: "x-small",
-                                color: "error",
-                                disabled: !status.value.enabled
-                              }, props), {
-                                default: _withCtx(() => [
-                                  _createVNode(_component_v_icon, { icon: "mdi-delete" })
-                                ]),
-                                _: 1
-                              }, 16, ["disabled"])
-                            ]),
-                            _: 1
-                          }))
-                        : (_openBlock(), _createBlock(_component_v_btn, {
-                            key: 5,
-                            icon: "",
-                            size: "x-small",
-                            color: "error",
-                            onClick: $event => (confirmDelete(item))
-                          }, {
-                            default: _withCtx(() => [
-                              _createVNode(_component_v_icon, { icon: "mdi-delete" })
-                            ]),
-                            _: 1
-                          }, 8, ["onClick"]))
-                    ])
-                  ]),
-                  _: 1
-                }, 8, ["items"])
-              ]),
-              _: 1
-            }),
-            _createVNode(_component_v_card_actions, null, {
-              default: _withCtx(() => [
-                _createVNode(_component_v_spacer),
-                _createVNode(_component_v_btn, {
-                  color: "primary",
-                  onClick: _cache[18] || (_cache[18] = $event => (showBackupFilesDialog.value = false))
-                }, {
-                  default: _withCtx(() => [...(_cache[99] || (_cache[99] = [
-                    _createTextVNode("关闭", -1)
-                  ]))]),
-                  _: 1
-                })
-              ]),
-              _: 1
-            })
-          ]),
-          _: 1
-        })
-      ]),
-      _: 1
-    }, 8, ["modelValue"]),
-    _createVNode(_component_v_dialog, {
-      modelValue: showHostActionDialog.value,
-      "onUpdate:modelValue": _cache[21] || (_cache[21] = $event => ((showHostActionDialog).value = $event)),
-      "max-width": "400"
-    }, {
-      default: _withCtx(() => [
-        _createVNode(_component_v_card, null, {
-          default: _withCtx(() => [
-            _createVNode(_component_v_card_title, {
-              class: "d-flex align-center",
-              style: _normalizeStyle(`color:${pendingHostAction.value==='shutdown'?'#d32f2f':'#1976d2'};font-weight:600;`)
-            }, {
-              default: _withCtx(() => [
-                _createVNode(_component_v_icon, {
-                  color: pendingHostAction.value==='shutdown'?'error':'info',
-                  size: "32",
-                  class: "mr-2"
-                }, {
-                  default: _withCtx(() => [
-                    _createTextVNode(_toDisplayString(pendingHostAction.value==='shutdown' ? 'mdi-power' : 'mdi-restart'), 1)
-                  ]),
-                  _: 1
-                }, 8, ["color"]),
-                _createTextVNode(" " + _toDisplayString(pendingHostAction.value==='shutdown' ? '关机主机' : '重启主机'), 1)
-              ]),
-              _: 1
-            }, 8, ["style"]),
-            _createVNode(_component_v_card_text, null, {
-              default: _withCtx(() => [
-                _createElementVNode("div", _hoisted_83, [
-                  _cache[100] || (_cache[100] = _createTextVNode(" 确定要", -1)),
-                  _createElementVNode("strong", null, _toDisplayString(pendingHostAction.value==='shutdown' ? '关机' : '重启'), 1),
-                  _cache[101] || (_cache[101] = _createTextVNode("当前PVE主机吗？", -1)),
-                  _cache[102] || (_cache[102] = _createElementVNode("br", null, null, -1)),
-                  (pendingHostAction.value==='shutdown')
-                    ? (_openBlock(), _createElementBlock("span", _hoisted_84, "关机后需物理开机或远程唤醒！"))
-                    : (_openBlock(), _createElementBlock("span", _hoisted_85, "重启期间主机将短暂不可用。"))
-                ])
-              ]),
-              _: 1
-            }),
-            _createVNode(_component_v_card_actions, null, {
-              default: _withCtx(() => [
-                _createVNode(_component_v_spacer),
-                _createVNode(_component_v_btn, {
-                  text: "",
-                  color: "grey",
-                  onClick: _cache[20] || (_cache[20] = $event => (showHostActionDialog.value=false)),
-                  disabled: hostActionLoading.value === pendingHostAction.value
-                }, {
-                  default: _withCtx(() => [...(_cache[103] || (_cache[103] = [
+                  default: _withCtx(() => [...(_cache[98] || (_cache[98] = [
                     _createTextVNode("取消", -1)
                   ]))]),
                   _: 1
-                }, 8, ["disabled"]),
+                }),
                 _createVNode(_component_v_btn, {
-                  color: pendingHostAction.value==='shutdown'?'error':'info',
-                  loading: hostActionLoading.value === pendingHostAction.value,
-                  onClick: doHostAction
+                  color: "error",
+                  variant: "tonal",
+                  onClick: _cache[47] || (_cache[47] = $event => (confirmDialog.confirm && confirmDialog.confirm()))
                 }, {
-                  default: _withCtx(() => [
-                    _createTextVNode(" 确认" + _toDisplayString(pendingHostAction.value==='shutdown' ? '关机' : '重启'), 1)
-                  ]),
-                  _: 1
-                }, 8, ["color", "loading"])
-              ]),
-              _: 1
-            })
-          ]),
-          _: 1
-        })
-      ]),
-      _: 1
-    }, 8, ["modelValue"]),
-    _createVNode(_component_v_dialog, {
-      modelValue: showTemplateImagesDialog.value,
-      "onUpdate:modelValue": _cache[23] || (_cache[23] = $event => ((showTemplateImagesDialog).value = $event)),
-      "max-width": "1400"
-    }, {
-      default: _withCtx(() => [
-        _createVNode(_component_v_card, null, {
-          default: _withCtx(() => [
-            _createVNode(_component_v_card_title, {
-              class: "text-h6",
-              style: {"padding":"8px 16px 0 16px","font-size":"18px"}
-            }, {
-              default: _withCtx(() => [...(_cache[104] || (_cache[104] = [
-                _createTextVNode("镜像模板管理", -1)
-              ]))]),
-              _: 1
-            }),
-            _createVNode(_component_v_card_text, { style: {"padding":"0 16px 8px 16px"} }, {
-              default: _withCtx(() => [
-                _createVNode(_component_v_data_table, {
-                  headers: templateImageHeaders.filter(h => h.value !== 'actions'),
-                  items: templateImages.value,
-                  "item-key": "filenameWithType",
-                  class: "elevation-0",
-                  "hide-default-footer": "",
-                  density: "compact",
-                  style: {"margin":"0","padding":"0"}
-                }, {
-                  "item.filename": _withCtx(({ item }) => [
-                    _createTextVNode(_toDisplayString(item.filename), 1)
-                  ]),
-                  "item.type": _withCtx(({ item }) => [
-                    _createVNode(_component_v_chip, {
-                      size: "x-small",
-                      color: item.type === 'iso' ? 'info' : 'purple'
-                    }, {
-                      default: _withCtx(() => [
-                        _createTextVNode(_toDisplayString(item.type === 'iso' ? 'ISO镜像' : 'CT模板'), 1)
-                      ]),
-                      _: 2
-                    }, 1032, ["color"])
-                  ]),
-                  "item.size_mb": _withCtx(({ item }) => [
-                    _createTextVNode(_toDisplayString(item.size_mb ? item.size_mb.toFixed(2) : '-'), 1)
-                  ]),
-                  "item.date": _withCtx(({ item }) => [
-                    _createTextVNode(_toDisplayString(item.date || '-'), 1)
-                  ]),
-                  _: 1
-                }, 8, ["headers", "items"])
-              ]),
-              _: 1
-            }),
-            _createVNode(_component_v_card_actions, null, {
-              default: _withCtx(() => [
-                _createVNode(_component_v_spacer),
-                _createVNode(_component_v_btn, {
-                  color: "primary",
-                  class: "ml-2",
-                  onClick: _cache[22] || (_cache[22] = $event => (showTemplateImagesDialog.value = false))
-                }, {
-                  default: _withCtx(() => [...(_cache[105] || (_cache[105] = [
-                    _createTextVNode("关闭", -1)
+                  default: _withCtx(() => [...(_cache[99] || (_cache[99] = [
+                    _createTextVNode("确认执行", -1)
                   ]))]),
                   _: 1
                 })
@@ -8831,12 +9084,23 @@ return (_ctx, _cache) => {
         })
       ]),
       _: 1
-    }, 8, ["modelValue"])
-  ], 64))
+    }, 8, ["modelValue"]),
+    _createVNode(_component_v_snackbar, {
+      modelValue: snackbar.value.show,
+      "onUpdate:modelValue": _cache[49] || (_cache[49] = $event => ((snackbar.value.show) = $event)),
+      color: snackbar.value.color,
+      timeout: "3000"
+    }, {
+      default: _withCtx(() => [
+        _createTextVNode(_toDisplayString(snackbar.value.text), 1)
+      ]),
+      _: 1
+    }, 8, ["modelValue", "color"])
+  ]))
 }
 }
 
 };
-const Page = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-1382b90e"]]);
+const AppPage = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-ecb8b42c"]]);
 
-export { Page as default };
+export { AppPage as default };

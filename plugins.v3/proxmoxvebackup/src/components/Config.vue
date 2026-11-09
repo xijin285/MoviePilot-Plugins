@@ -21,7 +21,7 @@
         </div>
       </transition>
     </div>
-    <div class="plugin-title">PVE虚拟机守护神 - 备份插件</div>
+    <div class="plugin-title">PVE 守护神 - 备份插件</div>
   </div>
 
   <!-- 基本设置：玻璃拟态/发光卡片 -->
@@ -154,11 +154,35 @@
       </v-row>
     </div>
     <div v-else-if="activeNode === 'local-backup'">
+      <!-- 备份存储（本地磁盘 / MP 存储网盘，可多目标同时备份） -->
       <v-row dense>
-        <v-col cols='12' md='3'><v-switch v-model='config.enable_local_backup' label='启用本地备份' color='primary' prepend-icon='mdi-folder' class='tight-switch' @change="onFeatureSwitch('enable_local_backup', $event)" /></v-col>
-        <v-col cols='12' md='6'><v-text-field v-model='config.backup_path' label='备份文件存储路径' prepend-inner-icon='mdi-folder-open' dense /></v-col>
-        <v-col cols='12' md='3'><v-text-field v-model.number='config.keep_backup_num' label='本地备份保留数量' type='number' min='0' prepend-inner-icon='mdi-counter' hint='设置为0或留空表示保留全部备份' persistent-hint dense /></v-col>
+        <v-col cols='12' md='4'><v-switch v-model='config.storage_backup_enable' label='备份存储（本地磁盘 / MP 存储）' color='success' prepend-icon='mdi-database-outline' class='tight-switch' /></v-col>
       </v-row>
+      <template v-if="config.storage_backup_enable">
+        <v-row v-for="(t, idx) in config.storage_targets" :key="'ptarget-' + idx" dense align="center">
+          <v-col cols='12' md='3'>
+            <v-select v-model='t.type' :items='storageOptions' label='选择存储' dense hide-details no-data-text='未找到可用存储'
+              @update:model-value='v => onTargetTypeChange(t, v)' />
+          </v-col>
+          <v-col cols='12' md='5'>
+            <v-text-field v-model='t.path' :label="t.type === 'local' ? '备份路径（默认本地备份目录）' : '远端目录'" prepend-inner-icon='mdi-folder-network' dense hide-details>
+              <template #append-inner>
+                <v-icon icon='mdi-folder-open' size='18' color='primary' style='cursor:pointer' title='浏览目录' @click='openDirPicker(idx)' />
+              </template>
+            </v-text-field>
+          </v-col>
+          <v-col cols='12' md='3'><v-text-field v-model.number='t.keep_backup_num' label='备份保留数量' type='number' min='0' dense hide-details /></v-col>
+          <v-col cols='12' md='1' class="text-center">
+            <v-btn icon='mdi-trash-can-outline' variant='text' color='error' size='small' :disabled='config.storage_targets.length <= 1' title='删除该目标' @click='config.storage_targets.splice(idx, 1)' />
+          </v-col>
+        </v-row>
+        <v-row dense>
+          <v-col cols='12' class="d-flex align-center flex-wrap ga-2">
+            <v-btn size='small' variant='tonal' color='primary' prepend-icon='mdi-plus' @click='addStorageTarget'>添加备份目标</v-btn>
+            <span class='text-caption text-medium-emphasis'>可同时添加多个存储目标，备份时同时保存到所有目标；备份保留数量为 0 表示保留全部</span>
+          </v-col>
+        </v-row>
+      </template>
       <v-divider class="my-2" />
       <v-row dense>
         <v-col cols='12' md='3'><v-switch v-model='config.enable_webdav' label='启用WebDAV备份' color='info' prepend-icon='mdi-cloud-upload' class='tight-switch' @change="onFeatureSwitch('enable_webdav', $event)" /></v-col>
@@ -270,7 +294,7 @@
       <!-- 欢迎信息 -->
       <div class="declaration-section">
         <div class="declaration-text">
-          欢迎使用 <b>PVE虚拟机守护神 - 备份插件</b>！本插件旨在为你的PVE环境提供便捷、安全的备份与恢复体验。
+          欢迎使用 <b>PVE 守护神 - 备份插件</b>！本插件旨在为你的PVE环境提供便捷、安全的备份与恢复体验。
         </div>
       </div>
 
@@ -349,6 +373,34 @@
       </div>
     </div>
   </div>
+  <!-- 目录浏览对话框（本地磁盘 / MP 存储） -->
+  <v-dialog v-model="dirPicker.show" max-width="500">
+    <v-card>
+      <v-card-title class="text-subtitle-1 d-flex align-center flex-wrap ga-2">
+        <v-icon size="18">mdi-folder-open</v-icon>选择目录
+        <v-chip v-if="dirPicker.storage && dirPicker.storage !== 'local'" size="x-small" variant="tonal" color="deep-purple">{{ dirPicker.storageName || dirPicker.storage }}</v-chip>
+        <v-spacer />
+        <v-text-field v-model="dirPicker.input" density="compact" variant="outlined" hide-details
+          style="max-width: 230px" placeholder="直接输入路径后回车" @keyup.enter="browseTo(dirPicker.input)" />
+      </v-card-title>
+      <v-card-text style="max-height: 360px; overflow-y: auto">
+        <div v-if="dirPicker.loading" class="text-center py-4"><v-progress-circular indeterminate size="24" /></div>
+        <template v-else>
+          <v-list v-if="dirPicker.dirs.length" density="compact" class="py-0">
+            <v-list-item v-if="dirPicker.parent" prepend-icon="mdi-arrow-up" title="..（上级目录）" @click="browseTo(dirPicker.parent)" />
+            <v-list-item v-for="d in dirPicker.dirs" :key="d" :title="d" prepend-icon="mdi-folder-outline" @click="browseTo(dirJoin(d))" />
+          </v-list>
+          <div v-else class="text-caption text-medium-emphasis text-center py-4">此目录没有子目录</div>
+        </template>
+      </v-card-text>
+      <v-card-actions>
+        <span class="text-caption text-medium-emphasis text-truncate">{{ dirPicker.path }}</span>
+        <v-spacer />
+        <v-btn variant="text" @click="dirPicker.show = false">取消</v-btn>
+        <v-btn color="primary" variant="tonal" @click="chooseCurrent">选择此目录</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
   <!-- 徽章渐变定义 -->
   <svg width="0" height="0">
     <defs>
@@ -361,7 +413,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed, watch } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 onMounted(() => {
   document.body.classList.add('theme-light');
 });
@@ -415,7 +467,7 @@ const config = reactive({
   ssh_username: '',
   ssh_password: '',
   ssh_key_file: '',
-  enable_local_backup: true,
+  enable_local_backup: false,
   backup_path: '/config/plugins/ProxmoxVEBackup/actual_backups',
   keep_backup_num: 0,
   enable_webdav: false,
@@ -424,6 +476,10 @@ const config = reactive({
   webdav_password: '',
   webdav_path: '',
   webdav_keep_backup_num: 0,
+  // 备份存储（本地磁盘 / MP 存储网盘，可多目标）
+  storage_backup_enable: true,
+  storage_targets: [{ type: 'local', path: '', keep_backup_num: 0 }],
+  mp_storages: [],
   storage_name: 'local',
   backup_vmid: '',
   backup_mode: 'snapshot',
@@ -454,6 +510,81 @@ const config = reactive({
   container_poll_interval: 30000, // 默认30秒
 });
 
+// ===== MP 存储备份 =====
+const storageOptions = computed(() => [
+  { title: '本地磁盘', value: 'local' },
+  ...(config.mp_storages || []).map(s => ({ title: s.name || s.type, value: s.type })),
+]);
+
+function addStorageTarget() {
+  if (!Array.isArray(config.storage_targets)) config.storage_targets = [];
+  // 新增行默认本地磁盘，预填之前的本地备份路径
+  config.storage_targets.push({ type: 'local', path: String(config.backup_path || ''), keep_backup_num: 0 });
+}
+
+// 切换目标存储类型：从本地切到网盘时清掉本地路径残留
+function onTargetTypeChange(t, v) {
+  if (v !== 'local' && t.path === String(config.backup_path || '')) {
+    t.path = '';
+  }
+}
+
+// 目录浏览（本地磁盘 / MP 存储）
+const dirPicker = reactive({
+  show: false, loading: false, targetIdx: 0,
+  storage: 'local', storageName: '',
+  path: '', input: '', parent: '', dirs: [],
+});
+
+function pickerStorage() {
+  const t = config.storage_targets?.[dirPicker.targetIdx] || {};
+  return t.type === 'local' || !t.type ? 'local' : t.type;
+}
+
+function openDirPicker(idx = 0) {
+  dirPicker.targetIdx = idx;
+  const t = config.storage_targets?.[idx] || {};
+  dirPicker.storage = t.type === 'local' || !t.type ? 'local' : t.type;
+  dirPicker.storageName = (config.mp_storages || []).find(s => s.type === dirPicker.storage)?.name || dirPicker.storage;
+  dirPicker.show = true;
+  browseTo(t.path || (dirPicker.storage === 'local' ? config.backup_path || '' : '/'));
+}
+
+async function browseTo(path) {
+  dirPicker.loading = true;
+  try {
+    const data = await props.api.get('plugin/ProxmoxVEBackup/list_dir', {
+      params: { path: path || '', storage: dirPicker.storage },
+    });
+    if (data?.ok) {
+      dirPicker.path = data.path;
+      dirPicker.input = data.path;
+      dirPicker.parent = data.parent || '';
+      dirPicker.dirs = data.dirs || [];
+    } else {
+      dirPicker.dirs = [];
+      dirPicker.parent = '';
+      if (data?.error) error.value = data.error;
+    }
+  } catch (e) {
+    /* 静默 */
+  } finally {
+    dirPicker.loading = false;
+  }
+}
+
+function dirJoin(name) {
+  const base = (dirPicker.path || '').replace(/[\\/]+$/, '');
+  const sep = dirPicker.storage === 'local' && base && !base.includes('/') ? '\\' : '/';
+  return base ? `${base}${sep}${name}` : `/${name}`;
+}
+
+function chooseCurrent() {
+  const t = config.storage_targets?.[dirPicker.targetIdx];
+  if (t) t.path = dirPicker.path;
+  dirPicker.show = false;
+}
+
 async function fetchConfig() {
   loading.value = true;
   error.value = null;
@@ -470,6 +601,16 @@ async function fetchConfig() {
       if (typeof config.log_pve_keep === 'undefined') config.log_pve_keep = 0;
       if (typeof config.log_dpkg_keep === 'undefined') config.log_dpkg_keep = 0;
       if (typeof config.cleanup_template_images === 'undefined') config.cleanup_template_images = false;
+      // 备份存储目标：确保是数组且至少有一行（本地行默认预填之前的备份路径）
+      if (!Array.isArray(config.storage_targets) || !config.storage_targets.length) {
+        config.storage_targets = [{ type: 'local', path: String(config.backup_path || ''), keep_backup_num: 0 }];
+      }
+      // 旧版「启用本地备份」配置迁移：转为存储目标中的本地磁盘行
+      if (!config.storage_backup_enable && config.enable_local_backup) {
+        config.storage_backup_enable = true;
+        config.storage_targets = [{ type: 'local', path: String(config.backup_path || ''), keep_backup_num: Number(config.keep_backup_num) || 0 }];
+      }
+      if (!Array.isArray(config.mp_storages)) config.mp_storages = [];
       // 状态页轮询配置：确保是数字类型，并设置推荐默认值
       if (typeof config.status_poll_interval === 'undefined' || config.status_poll_interval === 0 || config.status_poll_interval === null) {
         config.status_poll_interval = 30000; // 推荐30秒
@@ -510,15 +651,19 @@ async function saveConfig() {
       ssh_username: String(config.ssh_username || ''),
       ssh_password: String(config.ssh_password || ''),
       ssh_key_file: String(config.ssh_key_file || ''),
-      enable_local_backup: Boolean(config.enable_local_backup),
       backup_path: String(config.backup_path || ''),
-      keep_backup_num: Number(config.keep_backup_num) || 0,
       enable_webdav: Boolean(config.enable_webdav),
       webdav_url: String(config.webdav_url || ''),
       webdav_username: String(config.webdav_username || ''),
       webdav_password: String(config.webdav_password || ''),
       webdav_path: String(config.webdav_path || ''),
       webdav_keep_backup_num: Number(config.webdav_keep_backup_num) || 0,
+      storage_backup_enable: Boolean(config.storage_backup_enable),
+      storage_targets: (Array.isArray(config.storage_targets) ? config.storage_targets : []).map(t => ({
+        type: String(t.type || ''),
+        path: String(t.path || ''),
+        keep_backup_num: Number(t.keep_backup_num) || 0,
+      })),
       storage_name: String(config.storage_name || ''),
       backup_vmid: String(config.backup_vmid || ''),
       backup_mode: String(config.backup_mode || ''),
@@ -581,7 +726,7 @@ function resetConfig() {
     ssh_username: '',
     ssh_password: '',
     ssh_key_file: '',
-    enable_local_backup: true,
+    enable_local_backup: false,
     backup_path: '/config/plugins/ProxmoxVEBackup/actual_backups',
     keep_backup_num: 0,
     enable_webdav: false,
@@ -590,6 +735,8 @@ function resetConfig() {
     webdav_password: '',
     webdav_path: '',
     webdav_keep_backup_num: 0,
+    storage_backup_enable: true,
+    storage_targets: [{ type: 'local', path: '', keep_backup_num: 0 }],
     storage_name: 'local',
     backup_vmid: '',
     backup_mode: 'snapshot',
@@ -1140,22 +1287,8 @@ function cleanupTmp() {
     })
 }
 
-// 新增：切换清理系统日志开关后立即生效
-watch(() => config.enable_log_cleanup, async (val, oldVal) => {
-  if (val === oldVal) return;
-  try {
-    await props.api.post('plugin/ProxmoxVEBackup/save_config', { enable_log_cleanup: val });
-    // 可选：emit 事件通知父组件刷新状态
-    emit && emit('refreshStatus');
-    if (typeof $snackbar !== 'undefined') {
-      $snackbar.success('清理系统日志开关已生效');
-    }
-  } catch (e) {
-    if (typeof $snackbar !== 'undefined') {
-      $snackbar.error('保存清理系统日志开关失败');
-    }
-  }
-});
+// 说明：「启用系统日志」等开关随页面底部「保存」按钮统一持久化。
+// 之前此处的自动保存 watch 会在 MP 保存后刷新配置时再次触发，形成保存死循环，已移除。
 </script>
 
 <style scoped>

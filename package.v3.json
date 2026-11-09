@@ -69,32 +69,31 @@
     "name": "夸克网盘存储",
     "description": "使存储支持夸克网盘",
     "labels": "存储,网盘",
-    "version": "3.1.1",
+    "version": "3.1.2",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/vuequarkdisk.png",
     "author": "xijin285",
     "level": 1,
     "release": true,
     "system_version": ">=3.0.0",
     "history": {
+      "v3.1.2": "本次更新\n• ⚡ 优化多分片上传哈希计算：改用 OpenSSL C 库单遍流式预计算分片 SHA1 上下文，修复大文件上传 CPU 占满、速度极慢的问题",
       "v3.1.1": "本次更新\n• 🐛 修复媒体整理失败：补齐整理链覆盖检查所需的 get_item_strict 严格查询接口\n",
       "v3.1.0": "本次更新\n• 🐛 修复存储页「不支持的存储类型」报错：接入统一存储管理动作（配置保存 / 存储用量 / 整理方式）\n• ✨ 新增 get_folder：媒体整理时目标目录不存在可自动递归创建\n",
       "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本，保留 V2 分支兼容\n• 🏷️ 显示名变更：「Vue-夸克网盘存储」→「夸克网盘存储」\n• 🎨 前端去除 Vuetify 全局样式打包，界面跟随主程序主题"
     }
   },
   "ProxmoxVEBackup": {
-    "name": "PVE虚拟机守护神",
+    "name": "PVE 守护神",
     "description": "一站式PVE虚拟化管理：虚拟机/容器备份、下载、WebDAV 与恢复，Vue 状态页可视化运维",
     "labels": "备份,虚拟机",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp",
     "author": "xijin285",
     "level": 1,
     "release": true,
-    "requirements": [
-      "redis>=5.0.1"
-    ],
     "system_version": ">=3.0.0",
     "history": {
+      "v3.1.0": "本次更新\n• 🎛️ 新增侧边栏仪表盘：主机监控曲线、虚机/容器列表、备份文件、最近任务\n• 🖥️ 新增免登录实时画面、宿主机终端与 noVNC 控制台\n• 💾 备份支持 MP 存储多目标，并按虚拟机/容器自动分目录",
       "v3.0.0": "本次更新\n• 🧩 迁移为 MoviePilot V3 独立插件版本"
     }
   }

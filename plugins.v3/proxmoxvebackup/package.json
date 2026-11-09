@@ -1,7 +1,7 @@
 {
   "name": "proxmoxvebackup-vue",
   "version": "1.0.0",
-  "description": "PVE虚拟机守护神 Vue 界面",
+  "description": "PVE 守护神 Vue 界面",
   "type": "module",
   "scripts": {
     "dev": "vite",

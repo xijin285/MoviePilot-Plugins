@@ -37,6 +37,7 @@ export default defineConfig({
       name: 'ProxmoxVEBackup',
       filename: 'remoteEntry.js',
       exposes: {
+        './AppPage': './src/components/AppPage.vue',
         './Page': './src/components/Page.vue',
         './Config': './src/components/Config.vue',
         './Dashboard': './src/components/Dashboard.vue',

@@ -49,15 +49,21 @@ class ConfigLoader:
         self.plugin._auto_delete_after_download = bool(saved_config.get("auto_delete_after_download", False))
         self.plugin._download_all_backups = bool(saved_config.get("download_all_backups", True))
         
-        # 备份路径配置
+        # 备份路径配置（未配置时默认使用插件数据目录，如 /config/plugins/ProxmoxVEBackup）
         configured_backup_path = str(saved_config.get("backup_path", "")).strip()
         if not configured_backup_path:
-            self.plugin._backup_path = str(self.plugin.get_data_path() / "actual_backups")
+            self.plugin._backup_path = str(self.plugin.get_data_path())
             logger.info(f"{self.plugin_name} 备份文件存储路径未配置，使用默认: {self.plugin._backup_path}")
         else:
+            # 兼容迁移：旧版本默认路径带 actual_backups 子目录，统一退回插件数据目录（备份已改为按 VMID 自动分子文件夹）
+            if configured_backup_path.rstrip("/\\").endswith("actual_backups"):
+                migrated = configured_backup_path.rstrip("/\\")[: -len("actual_backups")].rstrip("/\\")
+                if migrated:
+                    logger.info(f"{self.plugin_name} 备份路径由 {configured_backup_path} 迁移为 {migrated}")
+                    configured_backup_path = migrated
             self.plugin._backup_path = configured_backup_path
         
-        self.plugin._keep_backup_num = int(saved_config.get("keep_backup_num", 5))
+        self.plugin._keep_backup_num = int(saved_config.get("keep_backup_num", 0))
         
         # WebDAV配置
         self.plugin._enable_webdav = bool(saved_config.get("enable_webdav", False))
@@ -67,6 +73,11 @@ class ConfigLoader:
         self.plugin._webdav_path = str(saved_config.get("webdav_path", ""))
         self.plugin._webdav_keep_backup_num = int(saved_config.get("webdav_keep_backup_num", 7))
         self.plugin._clear_history = bool(saved_config.get("clear_history", False))
+
+        # MP 存储备份配置（多目标）
+        self.plugin._storage_backup_enable = bool(saved_config.get("storage_backup_enable", False))
+        targets = saved_config.get("storage_targets", [])
+        self.plugin._storage_targets = [t for t in targets if isinstance(t, dict)] if isinstance(targets, list) else []
         
         # 恢复配置
         self.plugin._enable_restore = bool(saved_config.get("enable_restore", False))
