@@ -35,9 +35,9 @@ from app.schemas.types import EventType
 
 class IkuaiRouterBackup(_PluginBase):
     # 插件名称
-    plugin_name = "爱快路由时光机"
+    plugin_name = "爱快时光机"
     # 插件描述
-    plugin_desc = "轻松配置您的爱快路由，Vue 仪表盘实时监控负载/设备/日志，备份支持本地/WebDAV/网盘"
+    plugin_desc = "爱快路由配置备份与实时监控"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png"
     # 插件版本

@@ -1,7 +1,7 @@
 {
   "IkuaiRouterBackup": {
-    "name": "爱快路由时光机",
-    "description": "轻松配置您的爱快路由，让路由管理更简单",
+    "name": "爱快时光机",
+    "description": "爱快配置时光回溯",
     "labels": "备份,路由器",
     "version": "1.4.1",
     "icon": "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/ikuai.png",

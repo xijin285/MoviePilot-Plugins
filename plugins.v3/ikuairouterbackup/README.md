@@ -1,4 +1,4 @@
-# 🌐 爱快路由时光机 (IkuaiRouterBackup)
+# 🌐 爱快时光机 (IkuaiRouterBackup)
 
 爱快路由（iKuai OS 3.x / 4.x）配置备份与恢复插件，附带 Vue 实时监控仪表盘。
 
@@ -24,7 +24,7 @@ v3.1.0 起为 MoviePilot **V3 独立版本**，前端使用 Vue 联邦组件渲�
 ## 📦 安装与配置
 
 1. 在 MoviePilot 插件商店添加第三方仓库 `https://github.com/xijin285/MoviePilot-Plugins`
-2. 安装「爱快路由时光机」并启用
+2. 安装「爱快时光机」并启用
 3. 打开插件配置页，按下述五个分区填写
 
 ### 一、基本设置

@@ -11,7 +11,7 @@ const outputFilePath = path.join(__dirname, `${pluginName}.zip`)
 // 自动收集插件根目录下所有 Python 文件
 const requiredFiles = fs
   .readdirSync(__dirname)
-  .filter((file) => file.endsWith('.py'))
+  .filter((file) => file.endsWith('.py') || file === 'requirements.txt')
   .sort()
 
 if (!requiredFiles.includes('__init__.py')) {

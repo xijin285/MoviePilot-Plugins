@@ -7,7 +7,7 @@
           <v-icon icon="mdi-router-network" size="24" />
         </div>
         <div class="ikuai-topbar__meta">
-          <div class="ikuai-topbar__title">爱快路由时光机</div>
+          <div class="ikuai-topbar__title">爱快时光机</div>
           <div class="ikuai-topbar__sub">
             {{ status.hostname ? `${status.hostname} ${status.version || ''}` : '配置备份 · 实时监控 · 负载告警' }}
           </div>

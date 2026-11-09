@@ -1,7 +1,7 @@
 {
   "name": "ikuairouterbackup-vue",
   "version": "1.0.0",
-  "description": "爱快路由时光机 Vue 界面",
+  "description": "爱快时光机 Vue 界面",
   "type": "module",
   "scripts": {
     "dev": "vite",

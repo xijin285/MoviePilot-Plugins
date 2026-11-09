@@ -71,7 +71,7 @@ def get_plugin_commands() -> List[Dict[str, Any]]:
         }
     ]
     
-    logger.debug(f"爱快路由时光机 注册了 {len(commands)} 个命令（仅带斜杠格式）")
+    logger.debug(f"爱快时光机 注册了 {len(commands)} 个命令（仅带斜杠格式）")
     
     return commands
 

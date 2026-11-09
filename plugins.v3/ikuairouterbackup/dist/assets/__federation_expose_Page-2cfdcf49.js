@@ -1,7 +1,7 @@
 import { importShared } from './__federation_fn_import-054b33c3.js';
 import { _ as _export_sfc } from './_plugin-vue_export-helper-c4c0bc37.js';
 
-const Page_vue_vue_type_style_index_0_scoped_865c4628_lang = '';
+const Page_vue_vue_type_style_index_0_scoped_85f3b621_lang = '';
 
 const {resolveComponent:_resolveComponent,createVNode:_createVNode,createElementVNode:_createElementVNode,toDisplayString:_toDisplayString,withCtx:_withCtx,createTextVNode:_createTextVNode,normalizeClass:_normalizeClass,openBlock:_openBlock,createElementBlock:_createElementBlock,createCommentVNode:_createCommentVNode,Transition:_Transition,createBlock:_createBlock,renderList:_renderList,Fragment:_Fragment,normalizeStyle:_normalizeStyle} = await importShared('vue');
 
@@ -519,7 +519,7 @@ return (_ctx, _cache) => {
           })
         ]),
         _createElementVNode("div", _hoisted_5, [
-          _cache[8] || (_cache[8] = _createElementVNode("div", { class: "ikuai-topbar__title" }, "爱快路由时光机", -1)),
+          _cache[8] || (_cache[8] = _createElementVNode("div", { class: "ikuai-topbar__title" }, "爱快时光机", -1)),
           _createElementVNode("div", _hoisted_6, _toDisplayString(status.hostname ? `${status.hostname} ${status.version || ''}` : '配置备份 · 实时监控 · 负载告警'), 1)
         ])
       ]),
@@ -1195,6 +1195,6 @@ return (_ctx, _cache) => {
 }
 
 };
-const Page = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-865c4628"]]);
+const Page = /*#__PURE__*/_export_sfc(_sfc_main, [['__scopeId',"data-v-85f3b621"]]);
 
 export { Page as default };

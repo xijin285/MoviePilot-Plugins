@@ -7,7 +7,7 @@
           <v-icon icon="mdi-router-network" size="24" />
         </div>
         <div class="ikuai-cfg-topbar__meta">
-          <div class="ikuai-cfg-topbar__title">爱快路由时光机 · 配置</div>
+          <div class="ikuai-cfg-topbar__title">爱快时光机 · 配置</div>
           <div class="ikuai-cfg-topbar__sub">备份恢复 · 实时监控 · 负载告警</div>
         </div>
       </div>

@@ -70,7 +70,7 @@ return (_ctx, _cache) => {
         default: _withCtx(() => [
           _createVNode$26(_component_v_container, { fluid: "" }, {
             default: _withCtx(() => [
-              _cache[0] || (_cache[0] = _createElementVNode$1L("div", { class: "text-h6 mb-3" }, "爱快路由时光机 · 本地预览", -1)),
+              _cache[0] || (_cache[0] = _createElementVNode$1L("div", { class: "text-h6 mb-3" }, "爱快时光机 · 本地预览", -1)),
               _createVNode$26(_component_Config, {
                 "initial-config": {},
                 api: mockApi
