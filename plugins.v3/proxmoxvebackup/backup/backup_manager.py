@@ -25,61 +25,60 @@ class BackupManager:
     
     def cleanup_old_backups(self):
         """清理本地旧备份文件"""
-        if not self.plugin._backup_path:
+        local_cfg = self.get_local_backup_settings()
+        if not local_cfg["enabled"]:
             return
         # 如果保留数量为0，表示保留全部备份，不进行清理
-        if self.plugin._keep_backup_num <= 0:
+        if local_cfg["keep"] <= 0:
             logger.info(f"{self.plugin_name} 保留数量设置为0，保留全部本地备份文件")
             return
         try:
-            logger.info(f"{self.plugin_name} 开始清理本地备份目录: {self.plugin._backup_path}")
-            backup_dir = Path(self.plugin._backup_path)
+            logger.info(f"{self.plugin_name} 开始清理本地备份目录: {local_cfg['path']}")
+            backup_dir = Path(local_cfg["path"])
             if not backup_dir.is_dir():
-                logger.warning(f"{self.plugin_name} 本地备份目录 {self.plugin._backup_path} 不存在，无需清理。")
+                logger.warning(f"{self.plugin_name} 本地备份目录 {local_cfg['path']} 不存在，无需清理。")
                 return
 
-            files = []
-            for f_path_obj in backup_dir.iterdir():
-                if f_path_obj.is_file() and (
-                    f_path_obj.name.endswith('.tar.gz') or 
-                    f_path_obj.name.endswith('.tar.lzo') or 
-                    f_path_obj.name.endswith('.tar.zst') or
-                    f_path_obj.name.endswith('.vma.gz') or 
-                    f_path_obj.name.endswith('.vma.lzo') or 
-                    f_path_obj.name.endswith('.vma.zst')
-                ):
-                    try:
-                        match = re.search(r'(\d{4}\d{2}\d{2}[_]?\d{2}\d{2}\d{2})', f_path_obj.stem)
-                        file_time = None
-                        if match:
-                            time_str = match.group(1).replace('_','')
-                            try:
-                                file_time = datetime.strptime(time_str, '%Y%m%d%H%M%S').timestamp()
-                            except ValueError:
-                                pass 
-                        if file_time is None:
-                           file_time = f_path_obj.stat().st_mtime
-                        files.append({'path': f_path_obj, 'name': f_path_obj.name, 'time': file_time})
-                    except Exception as e:
-                        logger.error(f"{self.plugin_name} 处理文件 {f_path_obj.name} 时出错: {e}")
-                        try:
-                            files.append({'path': f_path_obj, 'name': f_path_obj.name, 'time': f_path_obj.stat().st_mtime})
-                        except Exception as stat_e:
-                            logger.error(f"{self.plugin_name} 无法获取文件状态 {f_path_obj.name}: {stat_e}")
+            backup_exts = ('.tar.gz', '.tar.lzo', '.tar.zst', '.vma.gz', '.vma.lzo', '.vma.zst')
 
-            files.sort(key=lambda x: x['time'], reverse=True)
-            
-            if len(files) > self.plugin._keep_backup_num:
-                files_to_delete = files[self.plugin._keep_backup_num:]
-                logger.info(f"{self.plugin_name} 找到 {len(files_to_delete)} 个旧 Proxmox 备份文件需要删除。")
-                for f_info in files_to_delete:
+            # 按文件夹分组（根目录一组，各虚拟机/容器子文件夹各一组），每组内保留最新 N 份
+            groups = {}
+            for f_path_obj in backup_dir.iterdir():
+                if f_path_obj.is_dir():
                     try:
-                        f_info['path'].unlink()
-                        logger.info(f"{self.plugin_name} 已删除旧备份文件: {f_info['name']}")
-                    except OSError as e:
-                        logger.error(f"{self.plugin_name} 删除旧备份文件 {f_info['name']} 失败: {e}")
-            else:
-                logger.info(f"{self.plugin_name} 当前 Proxmox 备份文件数量 ({len(files)}) 未超过保留限制 ({self.plugin._keep_backup_num})，无需清理。")
+                        for sub in f_path_obj.iterdir():
+                            if sub.is_file() and sub.name.endswith(backup_exts):
+                                groups.setdefault(f_path_obj.name, []).append(sub)
+                    except Exception as e:
+                        logger.error(f"{self.plugin_name} 扫描子文件夹 {f_path_obj.name} 时出错: {e}")
+                elif f_path_obj.is_file() and f_path_obj.name.endswith(backup_exts):
+                    groups.setdefault('', []).append(f_path_obj)
+
+            def _file_time(p: Path):
+                try:
+                    match = re.search(r'(\d{8}[_]?\d{6})', p.stem)
+                    if match:
+                        return datetime.strptime(match.group(1).replace('_', ''), '%Y%m%d%H%M%S').timestamp()
+                except Exception:
+                    pass
+                return p.stat().st_mtime
+
+            deleted_total = 0
+            for gname, gfiles in groups.items():
+                gfiles.sort(key=_file_time, reverse=True)
+                if len(gfiles) > local_cfg["keep"]:
+                    files_to_delete = gfiles[local_cfg["keep"]:]
+                    label = f"虚拟机/容器 {gname}" if gname else "备份根目录"
+                    logger.info(f"{self.plugin_name} {label} 找到 {len(files_to_delete)} 个旧备份文件需要删除。")
+                    for f_path in files_to_delete:
+                        try:
+                            f_path.unlink()
+                            deleted_total += 1
+                            logger.info(f"{self.plugin_name} 已删除旧备份文件: {f_path.name}")
+                        except OSError as e:
+                            logger.error(f"{self.plugin_name} 删除旧备份文件 {f_path} 失败: {e}")
+            if deleted_total == 0:
+                logger.info(f"{self.plugin_name} 各文件夹备份数量均未超过保留限制 ({local_cfg['keep']})，无需清理。")
         except Exception as e:
             logger.error(f"{self.plugin_name} 清理旧备份文件时发生错误: {e}")
 
@@ -163,27 +162,32 @@ class BackupManager:
         backups = []
         
         # 获取本地备份文件
-        if self.plugin._enable_local_backup:
+        local_cfg = self.get_local_backup_settings()
+        if local_cfg["enabled"]:
             try:
-                # 如果_backup_path为空，使用默认路径
-                backup_dir = Path(self.plugin._backup_path) if self.plugin._backup_path else Path(self.plugin.get_data_path()) / "actual_backups"
+                backup_dir = Path(local_cfg["path"])
                 if backup_dir.is_dir():
-                    for file_path in backup_dir.iterdir():
-                        if file_path.is_file() and (
-                            file_path.name.endswith('.tar.gz') or 
-                            file_path.name.endswith('.tar.lzo') or 
-                            file_path.name.endswith('.tar.zst') or
-                            file_path.name.endswith('.vma.gz') or 
-                            file_path.name.endswith('.vma.lzo') or 
-                            file_path.name.endswith('.vma.zst')
-                        ):
+                    # 扫描根目录及各虚拟机/容器子文件夹（vzdump 按vmid自动分子文件夹）
+                    candidates = []
+                    for p in backup_dir.iterdir():
+                        if p.is_dir():
+                            try:
+                                candidates.extend([c for c in p.iterdir() if c.is_file()])
+                            except Exception:
+                                continue
+                        else:
+                            candidates.append(p)
+                    for file_path in candidates:
+                        exts = ('.tar.gz', '.tar.lzo', '.tar.zst', '.vma.gz', '.vma.lzo', '.vma.zst')
+                        if file_path.name.endswith(exts):
                             try:
                                 stat = file_path.stat()
                                 size_mb = stat.st_size / (1024 * 1024)
                                 time_str = datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S')
-                                
+
                                 backups.append({
-                                    'filename': file_path.name,
+                                    # filename 为相对路径（如 100/vzdump-xxx.tar.zst），删除/下载/恢复接口直接可用
+                                    'filename': file_path.relative_to(backup_dir).as_posix(),
                                     'path': str(file_path),
                                     'size_mb': size_mb,
                                     'time_str': time_str,
@@ -207,9 +211,95 @@ class BackupManager:
                 else:
                     logger.error(f"{self.plugin_name} 获取WebDAV备份文件列表失败: {e}")
         
+        # 获取网盘（MP 存储）备份：遍历所有启用的网盘目标
+        try:
+            cloud_entries = self.get_cloud_backups()
+            backups.extend(cloud_entries)
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 获取网盘备份文件列表时发生错误: {e}")
+
         # 按时间排序（最新的在前）
         backups.sort(key=lambda x: datetime.strptime(x['time_str'], '%Y-%m-%d %H:%M:%S'), reverse=True)
-        
+
+        return backups
+
+    def get_local_backup_settings(self) -> Dict[str, Any]:
+        """
+        本地备份有效配置（以存储目标列表中 type=local 的目标为准）
+        - 存储备份启用且包含「本地磁盘」目标 -> 启用，路径/保留份数取该目标
+        - 其余情况（未启用存储备份或无本地目标）-> 本地备份关闭
+        :return: {'enabled': bool, 'path': str, 'keep': int}
+        """
+        default_dir = self.plugin._backup_path or str(Path(self.plugin.get_data_path()) / "actual_backups")
+        if not getattr(self.plugin, "_storage_backup_enable", False):
+            return {"enabled": False, "path": default_dir, "keep": 0}
+        for t in (getattr(self.plugin, "_storage_targets", None) or []):
+            if isinstance(t, dict) and str(t.get("type") or "").strip() == "local":
+                try:
+                    keep = int(t.get("keep_backup_num", 0) or 0)
+                except (TypeError, ValueError):
+                    keep = 0
+                return {"enabled": True, "path": str(t.get("path") or "").strip() or default_dir, "keep": keep}
+        return {"enabled": False, "path": default_dir, "keep": 0}
+
+    def get_cloud_targets(self) -> List[Dict[str, Any]]:
+        """
+        获取已启用的 MP 存储网盘目标（去重、带显示名）
+        :return: [{'type': 'quark', 'name': '夸克网盘', 'path': '/pve_backups', 'keep': 7}]
+        """
+        targets = []
+        if not getattr(self.plugin, "_storage_backup_enable", False):
+            return targets
+        from ..storage import cloud_storage
+        storage_names = {s.get('type'): s.get('name') for s in (cloud_storage.list_mp_storages() or [])}
+        seen = set()
+        for t in (getattr(self.plugin, "_storage_targets", None) or []):
+            if not isinstance(t, dict):
+                continue
+            t_type = str(t.get("type") or "").strip()
+            if not t_type or t_type == "local" or t_type in seen:
+                continue
+            seen.add(t_type)
+            try:
+                t_keep = int(t.get("keep_backup_num", 7) or 7)
+            except (TypeError, ValueError):
+                t_keep = 7
+            targets.append({
+                "type": t_type,
+                "name": storage_names.get(t_type) or t_type,
+                "path": str(t.get("path") or "").strip(),
+                "keep": t_keep,
+            })
+        return targets
+
+    def get_cloud_backups(self) -> List[Dict[str, Any]]:
+        """获取网盘（MP 存储）上的备份文件列表"""
+        backups = []
+        from ..storage import cloud_storage
+        for target in self.get_cloud_targets():
+            t_type = target["type"]
+            remote_dir = target["path"] or "/pve_backups"
+            try:
+                cloud_files = cloud_storage.list_cloud_backups(t_type, remote_dir)
+            except Exception as e:
+                logger.error(f"{self.plugin_name} 列出网盘 {target['name']} 备份失败: {e}")
+                continue
+            for fi in cloud_files:
+                time_str = "未知"
+                try:
+                    if fi.get("time"):
+                        time_str = datetime.fromtimestamp(fi["time"]).strftime('%Y-%m-%d %H:%M:%S')
+                except Exception:
+                    pass
+                backups.append({
+                    'filename': fi['filename'],
+                    'path': remote_dir,
+                    'size_mb': round((fi.get('size') or 0) / (1024 * 1024), 2),
+                    'time_str': time_str,
+                    'source': f"{target['name']}网盘",
+                    'storage': t_type,
+                    'remote_dir': remote_dir,
+                })
         return backups
 
     def get_webdav_backups(self) -> List[Dict[str, Any]]:
@@ -280,12 +370,15 @@ class BackupManager:
         :return: (是否成功, 错误消息, 备份文件名, 备份详情)
         """
         try:
+            local_cfg = self.get_local_backup_settings()
+            local_enabled = local_cfg["enabled"]
+            local_dir = local_cfg["path"]
             # 构建备份详情
             backup_details = {
                 "local_backup": {
-                    "enabled": self.plugin._enable_local_backup,
+                    "enabled": local_enabled,
                     "success": False,
-                    "path": self.plugin._backup_path,
+                    "path": local_dir,
                     "filename": backup_filename
                 },
                 "webdav_backup": {
@@ -301,10 +394,13 @@ class BackupManager:
             local_path = None
             
             # 如果启用了本地备份，先下载到本地
-            if self.plugin._enable_local_backup:
+            if local_enabled:
                 try:
-                    # 确保备份目录存在
-                    backup_dir = Path(self.plugin._backup_path)
+                    # 确保备份目录存在（按虚拟机/容器自动分配子文件夹：vzdump-qemu-100-... -> <路径>/100/）
+                    backup_dir = Path(local_dir)
+                    m = re.match(r'vzdump-(?:qemu|lxc)-(\d+)-', backup_filename)
+                    if m:
+                        backup_dir = backup_dir / m.group(1)
                     backup_dir.mkdir(parents=True, exist_ok=True)
                     local_path = str(backup_dir / backup_filename)
                     
@@ -372,14 +468,67 @@ class BackupManager:
                     self.plugin._backup_activity = f"WebDAV上传异常: {str(e)[:50]}..."
                     backup_details["webdav_backup"]["success"] = False
                     backup_details["webdav_backup"]["error"] = error_msg
-                
-                # 如果是临时文件且WebDAV成功，删除临时文件
-                if local_path and str(local_path).startswith(str(Path(tempfile.gettempdir()))):
+
+            # 如果启用了 MP 存储备份，上传到各网盘存储目标
+            storage_results = []
+            storage_targets = []
+            try:
+                storage_targets = self.get_cloud_targets()
+            except Exception as e:
+                logger.error(f"{self.plugin_name} 获取网盘存储目标失败: {e}")
+            if storage_targets:
+                # 没有本地文件（本地与WebDAV都未启用）时先下载到临时位置
+                if not local_path:
+                    import tempfile
+                    temp_dir = Path(tempfile.gettempdir()) / "proxmoxvebackup_temp"
+                    temp_dir.mkdir(parents=True, exist_ok=True)
+                    local_path = str(temp_dir / backup_filename)
                     try:
+                        self.plugin._backup_activity = f"下载临时文件: {backup_filename}"
+                        logger.info(f"{self.plugin_name} 开始下载备份文件到临时位置: {remote_file} -> {local_path}")
+                        sftp.get(remote_file, local_path)
+                    except Exception as e:
+                        error_msg = f"临时下载失败: {str(e)}"
+                        logger.error(f"{self.plugin_name} {error_msg}")
+                        return False, error_msg, None, {}
+
+                from ..storage import cloud_storage
+                for target in storage_targets:
+                    t_type, t_name = target["type"], target["name"]
+                    remote_dir = target["path"] or "/pve_backups"
+                    entry = {"name": t_name, "storage": t_type, "path": remote_dir, "success": False, "error": None}
+                    try:
+                        self.plugin._backup_activity = f"上传网盘 {t_name}: {backup_filename}"
+                        logger.info(f"{self.plugin_name} 开始上传到网盘存储 {t_name}: {remote_dir}/{backup_filename}")
+                        up_ok, up_err = cloud_storage.upload_backup_file(t_type, remote_dir, local_path, backup_filename)
+                        entry["success"] = up_ok
+                        entry["error"] = up_err
+                        if up_ok:
+                            logger.info(f"{self.plugin_name} 网盘存储 {t_name} 备份成功: {backup_filename}")
+                            deleted, clean_err = cloud_storage.cleanup_cloud_backups(t_type, remote_dir, target["keep"])
+                            if clean_err:
+                                logger.warning(f"{self.plugin_name} 清理网盘 {t_name} 旧备份失败: {clean_err}")
+                            elif deleted:
+                                logger.info(f"{self.plugin_name} 网盘 {t_name} 清理完成，删除了 {deleted} 个旧备份")
+                        else:
+                            logger.error(f"{self.plugin_name} 网盘存储 {t_name} 备份失败: {backup_filename} - {up_err}")
+                    except Exception as e:
+                        entry["error"] = str(e)
+                        logger.error(f"{self.plugin_name} 网盘存储 {t_name} 上传异常: {e}")
+                    storage_results.append(entry)
+                self.plugin._backup_activity = "网盘上传完成"
+            backup_details["storage_backup"] = storage_results
+
+            # 所有分发完成后，若文件仅存在于临时目录（本地备份未启用），删除临时文件
+            if local_path and not local_enabled:
+                import tempfile
+                try:
+                    if str(local_path).startswith(str(Path(tempfile.gettempdir()))):
                         os.remove(local_path)
                         logger.info(f"{self.plugin_name} 已删除临时文件: {local_path}")
-                    except Exception as e:
-                        logger.warning(f"{self.plugin_name} 删除临时文件失败: {e}")
+                        local_path = None
+                except Exception as e:
+                    logger.warning(f"{self.plugin_name} 删除临时文件失败: {e}")
             
             # 上传完成后，如果配置了自动删除，再删除PVE上的备份文件
             if self.plugin._auto_delete_after_download:

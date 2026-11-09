@@ -3,7 +3,7 @@
     <v-main>
       <v-container fluid>
         <!-- 本地预览壳：联邦模式下由宿主直接加载 components 下的组件 -->
-        <div class="text-h6 mb-3">PVE虚拟机守护神 · 本地预览</div>
+        <div class="text-h6 mb-3">PVE 守护神 · 本地预览</div>
         <v-tabs v-model="tab" class="mb-3">
           <v-tab value="page">状态页</v-tab>
           <v-tab value="config">配置</v-tab>

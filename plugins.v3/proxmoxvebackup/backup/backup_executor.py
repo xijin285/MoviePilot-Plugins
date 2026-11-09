@@ -68,23 +68,18 @@ class BackupExecutor:
                 self.plugin._history_handler.save_backup_history_entry(history_entry)
                 return
 
-            if not self.plugin._backup_path:
-                error_msg = "备份路径未配置且无法设置默认路径。"
-                logger.error(f"{self.plugin_name} {error_msg}")
-                self.plugin._notification_handler.send_backup_notification(success=False, message=error_msg, backup_details={})
-                history_entry["message"] = error_msg
-                self.plugin._history_handler.save_backup_history_entry(history_entry)
-                return
-
-            try:
-                Path(self.plugin._backup_path).mkdir(parents=True, exist_ok=True)
-            except Exception as e:
-                error_msg = f"创建本地备份目录 {self.plugin._backup_path} 失败: {e}"
-                logger.error(f"{self.plugin_name} {error_msg}")
-                self.plugin._notification_handler.send_backup_notification(success=False, message=error_msg, backup_details={})
-                history_entry["message"] = error_msg
-                self.plugin._history_handler.save_backup_history_entry(history_entry)
-                return
+            # 本地备份启用时确保目录存在（本地为存储目标之一，未启用则跳过）
+            local_cfg = self.plugin._backup_manager.get_local_backup_settings()
+            if local_cfg["enabled"]:
+                try:
+                    Path(local_cfg["path"]).mkdir(parents=True, exist_ok=True)
+                except Exception as e:
+                    error_msg = f"创建本地备份目录 {local_cfg['path']} 失败: {e}"
+                    logger.error(f"{self.plugin_name} {error_msg}")
+                    self.plugin._notification_handler.send_backup_notification(success=False, message=error_msg, backup_details={})
+                    history_entry["message"] = error_msg
+                    self.plugin._history_handler.save_backup_history_entry(history_entry)
+                    return
             
             success_final = False
             error_msg_final = "未知错误"
@@ -313,7 +308,7 @@ class BackupExecutor:
                     all_downloads_successful = False
 
             # --- 所有容器处理完成后，统一执行清理 ---
-            if self.plugin._enable_local_backup:
+            if self.plugin._backup_manager.get_local_backup_settings()["enabled"]:
                 self.plugin._backup_manager.cleanup_old_backups()
             if self.plugin._enable_webdav and self.plugin._webdav_url:
                 logger.info(f"{self.plugin_name} 开始清理WebDAV旧备份...")

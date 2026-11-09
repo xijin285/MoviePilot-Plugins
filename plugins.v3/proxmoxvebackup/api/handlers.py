@@ -8,6 +8,8 @@ import time
 import threading
 import tempfile
 from pathlib import Path
+from typing import Optional
+from fastapi.responses import JSONResponse, Response
 import paramiko
 import pytz
 from app.core.config import settings
@@ -27,8 +29,61 @@ class APIHandler:
         self.plugin_name = plugin_instance.plugin_name
     
     def _get_config(self):
-        """API处理函数：返回当前配置"""
-        return self.plugin.get_config() or {}
+        """API处理函数：返回当前配置（附带 MP 存储列表供前端选择）"""
+        config = self.plugin.get_config() or {}
+        # 本地磁盘目标：路径留空时预填默认备份路径（原「本地备份路径」配置），便于直接查看与修改
+        default_path = str(getattr(self.plugin, "_backup_path", "") or "")
+        targets = config.get("storage_targets")
+        if not isinstance(targets, list) or not targets:
+            # 尚未配置存储目标：直接给一行预填好的本地磁盘目标
+            if default_path:
+                config["storage_targets"] = [{"type": "local", "path": default_path, "keep_backup_num": 0}]
+        else:
+            for t in targets:
+                if not isinstance(t, dict):
+                    continue
+                ttype = str(t.get("type") or "").strip()
+                tpath = str(t.get("path") or "").strip()
+                if ttype in ("", "local") and not tpath and default_path:
+                    t["path"] = default_path
+                    if not ttype:
+                        t["type"] = "local"
+        try:
+            from ..storage import cloud_storage
+            config['mp_storages'] = cloud_storage.list_mp_storages()
+        except Exception as e:
+            logger.warning(f"{self.plugin_name} 枚举 MP 存储失败: {e}")
+            config['mp_storages'] = []
+        return config
+
+    def _list_dir(self, path: str = "", storage: str = ""):
+        """浏览目录（目录选择器）：storage 为 local/空时浏览 MP 本地磁盘，否则浏览对应 MP 存储"""
+        try:
+            if storage and storage != "local":
+                from ..storage import cloud_storage
+                return cloud_storage.list_storage_dir(storage, path or "/")
+            target = Path(path) if path else Path("/")
+            if not target.exists():
+                return {"ok": False, "error": f"路径不存在: {path}", "path": "", "parent": "", "dirs": []}
+            if not target.is_dir():
+                target = target.parent
+            dirs = []
+            try:
+                for child in target.iterdir():
+                    try:
+                        if child.is_dir():
+                            dirs.append(child.name)
+                    except Exception:
+                        continue
+            except Exception as e:
+                return {"ok": False, "error": str(e), "path": "", "parent": "", "dirs": []}
+            dirs.sort(key=str.lower)
+            clean = "/" + str(target).replace("\\", "/").strip("/")
+            parts = [p for p in clean.split("/") if p]
+            parent = "/" + "/".join(parts[:-1]) if len(parts) > 1 else "/"
+            return {"ok": True, "path": str(target), "parent": parent, "dirs": dirs}
+        except Exception as e:
+            return {"ok": False, "error": str(e), "path": "", "parent": "", "dirs": []}
     
     def _get_status(self):
         """API处理函数：返回插件状态"""
@@ -56,7 +111,7 @@ class APIHandler:
         }
     
     def _save_config(self, data: dict = None):
-        """API处理函数：保存配置"""
+        """API处理函数：保存配置（部分字段保存时与现有配置合并，防止未传字段被重置为默认值）"""
         if not data:
             # 尝试从请求中获取数据
             if 'flask' in sys.modules:
@@ -64,7 +119,13 @@ class APIHandler:
                 data = request.json or {}
             else:
                 data = {}
-        self.plugin.init_plugin(data)
+        try:
+            current = self.plugin.get_config() or {}
+        except Exception:
+            current = {}
+        merged = dict(current)
+        merged.update(data or {})
+        self.plugin.init_plugin(merged)
         return {"success": True, "message": "配置已保存"}
     
     def _get_backup_history(self):
@@ -122,6 +183,209 @@ class APIHandler:
             }
         }
     
+    def _get_api_client(self):
+        """构造 PVE REST API 客户端（复用实例以复用登录票据，配置变化时重建）"""
+        config = self.plugin.get_config() or {}
+        try:
+            api_port = int(config.get("pve_api_port") or 8006)
+        except (TypeError, ValueError):
+            api_port = 8006
+        key = (self.plugin._pve_host, api_port, self.plugin._ssh_username, self.plugin._ssh_password)
+        client = getattr(self.plugin, "_pve_api_client", None)
+        if client is not None and getattr(self.plugin, "_pve_api_client_key", None) == key:
+            return client
+        from ..pve.api_client import PveApiClient
+        client = PveApiClient(
+            host=self.plugin._pve_host, port=api_port,
+            username=self.plugin._ssh_username,
+            password=self.plugin._ssh_password)
+        self.plugin._pve_api_client = client
+        self.plugin._pve_api_client_key = key
+        return client
+
+    def _local_backup_dir(self) -> str:
+        """本地备份有效目录（存储目标中本地磁盘的路径，留空回落默认目录）"""
+        try:
+            return self.plugin._backup_manager.get_local_backup_settings()["path"]
+        except Exception:
+            return self.plugin._backup_path
+
+    def _get_monitor_api(self, timeframe: str = "hour"):
+        """API处理函数：节点监控（状态 + RRD 曲线 + 存储 + 最近任务）
+        GET 端点必须用简单类型签名，FastAPI 才会从 query 参数注入 timeframe"""
+        timeframe = str(timeframe or "hour")
+        try:
+            client = self._get_api_client()
+            result = client.node_monitor(timeframe)
+            if isinstance(result, dict):
+                # 前端构建 noVNC 控制台链接用
+                result["api_host"] = self.plugin._pve_host
+            return result
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 获取PVE监控数据失败: {e}")
+            return {"error": str(e)}
+
+    def _get_guest_monitor_api(self, vmid: int = None, type: str = "qemu", timeframe: str = "hour"):
+        """API处理函数：单虚机/容器监控（当前状态 + RRD 曲线）"""
+        if vmid is None:
+            return {"error": "缺少 vmid 参数"}
+        gtype = str(type or "qemu")
+        if gtype not in ("qemu", "lxc"):
+            gtype = "qemu"
+        try:
+            client = self._get_api_client()
+            return client.guest_monitor(int(vmid), gtype, str(timeframe or "hour"))
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 获取虚机监控数据失败: {e}")
+            return {"error": str(e)}
+
+    def _terminal_api(self, data: dict = None):
+        """API处理函数：宿主机控制台（SSH 执行单条命令并返回输出）
+
+        注意：非交互式执行，每次新建 SSH 连接，命令超时 20 秒。
+        """
+        if not data:
+            if 'flask' in sys.modules:
+                from flask import request
+                data = request.json or {}
+            else:
+                data = {}
+        command = str(data.get("command", "")).strip()
+        if not command:
+            return {"success": False, "output": "", "message": "命令为空"}
+        if len(command) > 2000:
+            return {"success": False, "output": "", "message": "命令过长（上限2000字符）"}
+        ssh = paramiko.SSHClient()
+        try:
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            key_file = getattr(self.plugin, "_ssh_key_file", None)
+            connect_kwargs = dict(
+                hostname=self.plugin._pve_host,
+                port=int(self.plugin._ssh_port or 22),
+                username=self.plugin._ssh_username,
+                timeout=10,
+            )
+            if key_file and os.path.exists(str(key_file)):
+                connect_kwargs.update(key_filename=str(key_file))
+            else:
+                connect_kwargs.update(password=self.plugin._ssh_password,
+                                      allow_agent=False, look_for_keys=False)
+            ssh.connect(**connect_kwargs)
+            stdin, stdout, stderr = ssh.exec_command(command, timeout=20)
+            out = stdout.read().decode("utf-8", "ignore")
+            err = stderr.read().decode("utf-8", "ignore")
+            try:
+                code = stdout.channel.recv_exit_status()
+            except Exception:
+                code = -1
+            output = out
+            if err.strip():
+                output = (output + "\n" + err) if output else err
+            return {"success": True, "output": output, "exit_code": code}
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 控制台执行命令失败: {e}")
+            return {"success": False, "output": "", "message": str(e)}
+        finally:
+            try:
+                ssh.close()
+            except Exception:
+                pass
+
+    @staticmethod
+    def _ppm_to_png(ppm: bytes):
+        """QEMU screendump 的 P6 PPM 转 PNG（纯标准库，避免依赖 PIL）"""
+        import zlib as _zlib
+        import struct as _struct
+        if ppm[:2] != b"P6":
+            raise ValueError("不是 P6 PPM 数据")
+        idx = 2
+        fields = []
+        while len(fields) < 3:
+            while idx < len(ppm) and ppm[idx:idx + 1].isspace():
+                idx += 1
+            if ppm[idx:idx + 1] == b"#":
+                while idx < len(ppm) and ppm[idx:idx + 1] != b"\n":
+                    idx += 1
+                continue
+            start = idx
+            while idx < len(ppm) and not ppm[idx:idx + 1].isspace():
+                idx += 1
+            fields.append(int(ppm[start:idx]))
+        idx += 1
+        w, h, _maxval = fields
+        raw = ppm[idx: idx + w * h * 3]
+        lines = b"".join(b"\x00" + raw[y * w * 3:(y + 1) * w * 3] for y in range(h))
+
+        def chunk(tag, data):
+            c = tag + data
+            return _struct.pack(">I", len(data)) + c + _struct.pack(">I", _zlib.crc32(c) & 0xFFFFFFFF)
+
+        png = b"\x89PNG\r\n\x1a\n"
+        png += chunk(b"IHDR", _struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+        png += chunk(b"IDAT", _zlib.compress(lines, 6))
+        png += chunk(b"IEND", b"")
+        return png, w, h
+
+    # 截图节流缓存：{vmid: (time, png_bytes)}，避免多端同时轮询时重复 screendump
+    _screen_cache = {}
+
+    def _vm_screen_api(self, vmid: int = None, type: str = "qemu"):
+        """API处理函数：虚机实时画面（QEMU screendump + SSH 取回 + PNG），无需浏览器登录 PVE"""
+        if vmid is None:
+            return JSONResponse({"success": False, "message": "缺少 vmid"}, status_code=400)
+        gtype = str(type or "qemu").lower()
+        if gtype != "qemu":
+            return JSONResponse({"success": False, "message": "容器暂不支持实时画面，请使用完整控制台"}, status_code=400)
+
+        # 1.5 秒内的请求直接复用上一张，防止多端轮询打爆 PVE
+        now = time.time()
+        cached = self._screen_cache.get(vmid)
+        if cached and now - cached[0] < 1.5:
+            return Response(content=cached[1], media_type="image/png")
+
+        try:
+            # 1) QEMU screendump 到 /tmp
+            client = self._get_api_client()
+            client.qemu_monitor(vmid, f"screendump /tmp/mp_screen_{vmid}.ppm")
+            time.sleep(0.15)  # 等 QEMU 落盘
+
+            # 2) SSH SFTP 读回并删除
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            connect_kwargs = dict(
+                hostname=self.plugin._pve_host,
+                port=int(self.plugin._ssh_port or 22),
+                username=self.plugin._ssh_username,
+                timeout=8,
+            )
+            key_file = getattr(self.plugin, "_ssh_key_file", None)
+            if key_file and os.path.exists(str(key_file)):
+                connect_kwargs.update(key_filename=str(key_file))
+            else:
+                connect_kwargs.update(password=self.plugin._ssh_password,
+                                      allow_agent=False, look_for_keys=False)
+            ssh.connect(**connect_kwargs)
+            try:
+                sftp = ssh.open_sftp()
+                with sftp.open(f"/tmp/mp_screen_{vmid}.ppm", "rb") as f:
+                    ppm = f.read()
+                try:
+                    sftp.remove(f"/tmp/mp_screen_{vmid}.ppm")
+                except Exception:
+                    pass
+                sftp.close()
+            finally:
+                ssh.close()
+
+            # 3) PPM -> PNG
+            png, w, h = self._ppm_to_png(ppm)
+            self._screen_cache[vmid] = (now, png)
+            return Response(content=png, media_type="image/png",
+                            headers={"Cache-Control": "no-store", "X-Screen-W": str(w), "X-Screen-H": str(h)})
+        except Exception as e:
+            logger.error(f"{self.plugin_name} 获取虚机 {vmid} 实时画面失败: {e}")
+            return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
     def _get_pve_status_api(self):
         # 生成缓存键
         cache_key = "pve_status"
@@ -147,16 +411,11 @@ class APIHandler:
         return status
     
     def _get_container_status_api(self):
-        # 生成缓存键
+        """获取虚拟机/容器状态：30 秒短缓存（避免每次刷新都等 SSH，同时保持准实时）"""
         cache_key = "container_status"
-        
-        # 检查缓存（使用Redis缓存，自动处理过期）
         if hasattr(self.plugin, '_container_status_cache') and cache_key in self.plugin._container_status_cache:
-            logger.debug(f"{self.plugin_name} 使用缓存数据: 容器状态")
             return self.plugin._container_status_cache[cache_key]
-        
         # 合并QEMU和LXC
-        logger.debug(f"{self.plugin_name} 缓存未命中，从PVE获取新数据")
         qemu_list = get_qemu_status(
             self.plugin._pve_host,
             self.plugin._ssh_port,
@@ -173,11 +432,8 @@ class APIHandler:
         )
         # 直接返回，displayName字段已由pve.py补充
         result = qemu_list + lxc_list
-        
-        # 更新缓存
         if hasattr(self.plugin, '_container_status_cache'):
             self.plugin._container_status_cache[cache_key] = result
-            logger.debug(f"{self.plugin_name} 已将容器状态存入缓存")
         return result
     
     def _get_available_backups_api(self):
@@ -199,7 +455,7 @@ class APIHandler:
             return {"success": False, "message": "缺少文件名参数"}
         if source == "本地备份":
             # 防止路径穿越
-            backup_dir = Path(self.plugin._backup_path)
+            backup_dir = Path(self._local_backup_dir())
             file_path = backup_dir / filename
             try:
                 # 只允许删除实际备份目录下的文件
@@ -207,6 +463,20 @@ class APIHandler:
                     return {"success": False, "message": "文件不存在或路径非法"}
                 os.remove(file_path)
                 return {"success": True, "message": f"已删除备份文件: {filename}"}
+            except Exception as e:
+                return {"success": False, "message": f"删除失败: {str(e)}"}
+        elif source.endswith("网盘") and source not in ("本地备份", "WebDAV备份"):
+            # MP 存储网盘删除
+            storage = str(data.get("storage", "")).strip()
+            remote_dir = str(data.get("remote_dir", "")).strip()
+            if not storage:
+                return {"success": False, "message": "缺少存储标识"}
+            try:
+                from ..storage import cloud_storage
+                ok, err = cloud_storage.delete_cloud_backup(storage, remote_dir or "/pve_backups", filename)
+                if ok:
+                    return {"success": True, "message": f"已删除网盘备份: {filename}"}
+                return {"success": False, "message": err or "删除失败"}
             except Exception as e:
                 return {"success": False, "message": f"删除失败: {str(e)}"}
         elif source == "WebDAV备份":
@@ -238,6 +508,17 @@ class APIHandler:
         else:
             return {"success": False, "message": "仅支持本地备份和WebDAV备份删除"}
     
+    def _find_cloud_target(self, source: str) -> Optional[dict]:
+        """根据来源显示名（如「夸克网盘」）匹配已配置的 MP 存储目标"""
+        try:
+            targets = self.plugin._backup_manager.get_cloud_targets()
+        except Exception:
+            return None
+        for t in targets:
+            if source in (f"{t['name']}网盘", t["name"], t["type"]):
+                return t
+        return None
+
     def _restore_backup_api(self, data: dict = None):
         """API处理函数：恢复本地备份文件"""
         if not data:
@@ -254,7 +535,9 @@ class APIHandler:
         restore_skip_existing = data.get("restore_skip_existing", True)
         if not filename:
             return {"success": False, "message": "缺少文件名参数"}
-        if source not in ["本地备份", "WebDAV备份"]:
+        if source == "WebDAV备份" or source == "本地备份":
+            pass
+        elif not source.endswith("网盘"):
             return {"success": False, "message": f"不支持的备份来源: {source}"}
         # 直接参数传递，不再赋值到self
         try:
@@ -277,13 +560,13 @@ class APIHandler:
             if not filename:
                 return JSONResponse({"success": False, "message": "缺少文件名参数"}, status_code=400)
             if source == "本地备份":
-                backup_dir = Path(self.plugin._backup_path)
+                backup_dir = Path(self._local_backup_dir())
                 file_path = backup_dir / filename
                 if not file_path.is_file() or not str(file_path.resolve()).startswith(str(backup_dir.resolve())):
                     return JSONResponse({"success": False, "message": "文件不存在或路径非法"}, status_code=404)
                 return FileResponse(
                     path=str(file_path),
-                    filename=filename,
+                    filename=os.path.basename(filename),
                     media_type="application/octet-stream"
                 )
             elif source == "WebDAV备份":
@@ -307,6 +590,32 @@ class APIHandler:
                         pass
                 threading.Thread(target=cleanup, daemon=True).start()
                 return resp
+            elif source.endswith("网盘"):
+                # MP 存储网盘下载
+                target = self._find_cloud_target(source)
+                if not target:
+                    return JSONResponse({"success": False, "message": f"未找到网盘来源: {source}"}, status_code=400)
+                temp_dir = Path(tempfile.gettempdir()) / "proxmoxvebackup_temp"
+                temp_dir.mkdir(parents=True, exist_ok=True)
+                temp_file = temp_dir / filename
+                from ..storage import cloud_storage
+                success, error = cloud_storage.download_backup_file(
+                    target["type"], target["path"] or "/pve_backups", filename, str(temp_file))
+                if not success:
+                    return JSONResponse({"success": False, "message": f"网盘下载失败: {error}"}, status_code=400)
+                resp = FileResponse(
+                    path=str(temp_file),
+                    filename=filename,
+                    media_type="application/octet-stream"
+                )
+
+                def cleanup():
+                    try:
+                        temp_file.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                threading.Thread(target=cleanup, daemon=True).start()
+                return resp
             else:
                 return JSONResponse({"success": False, "message": "暂不支持该来源的备份文件下载"}, status_code=400)
         # Flask 环境
@@ -321,14 +630,14 @@ class APIHandler:
             if not filename:
                 return abort(400, description="缺少文件名参数")
             if source == "本地备份":
-                backup_dir = Path(self.plugin._backup_path)
+                backup_dir = Path(self._local_backup_dir())
                 file_path = backup_dir / filename
                 if not file_path.is_file() or not str(file_path.resolve()).startswith(str(backup_dir.resolve())):
                     return abort(404, description="文件不存在或路径非法")
                 return send_file(
                     str(file_path),
                     as_attachment=True,
-                    download_name=filename,
+                    download_name=os.path.basename(filename),
                     mimetype="application/octet-stream"
                 )
             elif source == "WebDAV备份":
@@ -345,6 +654,33 @@ class APIHandler:
                     mimetype="application/octet-stream"
                 )
                 import threading
+                def cleanup():
+                    try:
+                        temp_file.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                threading.Thread(target=cleanup, daemon=True).start()
+                return resp
+            elif source.endswith("网盘"):
+                # MP 存储网盘下载（Flask）
+                target = self._find_cloud_target(source)
+                if not target:
+                    return abort(400, description=f"未找到网盘来源: {source}")
+                temp_dir = Path(tempfile.gettempdir()) / "proxmoxvebackup_temp"
+                temp_dir.mkdir(parents=True, exist_ok=True)
+                temp_file = temp_dir / filename
+                from ..storage import cloud_storage
+                success, error = cloud_storage.download_backup_file(
+                    target["type"], target["path"] or "/pve_backups", filename, str(temp_file))
+                if not success:
+                    return abort(400, description=f"网盘下载失败: {error}")
+                resp = send_file(
+                    str(temp_file),
+                    as_attachment=True,
+                    download_name=filename,
+                    mimetype="application/octet-stream"
+                )
+
                 def cleanup():
                     try:
                         temp_file.unlink(missing_ok=True)

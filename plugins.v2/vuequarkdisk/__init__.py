@@ -30,13 +30,13 @@ class VueQuarkDisk(_PluginBase):
     # ==================== 插件元信息 ====================
 
     # 插件名称
-    plugin_name = "Vue-夸克网盘存储"
+    plugin_name = "夸克网盘存储"
     # 插件描述
     plugin_desc = "使存储支持夸克网盘"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/vuequarkdisk.png"
     # 插件版本
-    plugin_version = "1.0.1"
+    plugin_version = "1.0.2"
     # 插件作者
     plugin_author = "xijin285,KoWming"
     # 作者主页

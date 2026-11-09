@@ -709,10 +709,140 @@ class QuarkApi:
         md5_hash = hashlib.md5()
         sha1_hash = hashlib.sha1()
         with open(file_path, "rb") as f:
-            while chunk := f.read(8192):
+            # 1MB 缓冲区：大幅减少全量读取时的系统调用开销（原 8KB）
+            while chunk := f.read(1024 * 1024):
                 md5_hash.update(chunk)
                 sha1_hash.update(chunk)
         return md5_hash.hexdigest(), sha1_hash.hexdigest()
+
+    # ---------- 分片哈希上下文（OpenSSL C 库单遍预计算） ----------
+    # 夸克 OSS 多分片上传要求 x-oss-hash-ctx（前面所有分片拼接的 SHA1 内部状态）。
+    # 原实现每上传一个分片都从头重读 + 纯 Python 软件循环计算，O(N²) 复杂度，
+    # ARM 等弱机上每 4MB 分片卡顿数十秒。这里改为上传前对文件做一次
+    # 单遍顺序流式扫描（OpenSSL C 实现计算 SHA1），在每个 4MB 分片边界
+    # 快照一次 SHA_CTX 内部状态，一次性得到所有分片的 hash-ctx。
+    _libcrypto = None
+    _sha1_ctx_class = None
+    _libcrypto_tried = False
+
+    @classmethod
+    def _load_libcrypto(cls):
+        """加载系统 OpenSSL libcrypto（SHA1_Init/SHA1_Update），失败返回 None"""
+        if cls._libcrypto_tried:
+            return cls._libcrypto
+        cls._libcrypto_tried = True
+        import ctypes
+        import ctypes.util
+
+        candidates = ["libcrypto.so.3", "libcrypto.so.1.1", "libcrypto.so"]
+        try:
+            found = ctypes.util.find_library("crypto")
+            if found and found not in candidates:
+                candidates.insert(0, found)
+        except Exception:
+            pass
+        # Windows 兼容（一般用不到，留作兜底）
+        candidates += ["libcrypto-3-x64.dll", "libcrypto.dll"]
+
+        lib = None
+        for name in candidates:
+            try:
+                lib = ctypes.CDLL(name)
+                break
+            except OSError:
+                continue
+        if not lib:
+            logger.warning("【夸克网盘】未找到系统 OpenSSL libcrypto，分片哈希回退到纯 Python 慢速路径")
+            return None
+
+        class SHA_CTX(ctypes.Structure):
+            # OpenSSL sha.h 中 SHA_CTX 的内存布局（SHA_LONG = unsigned int）
+            _fields_ = [
+                ("h", ctypes.c_uint32 * 5),
+                ("Nl", ctypes.c_uint32),
+                ("Nh", ctypes.c_uint32),
+                ("data", ctypes.c_uint32 * 16),
+                ("num", ctypes.c_uint32),
+                ("md_len", ctypes.c_uint32),
+            ]
+
+        try:
+            lib.SHA1_Init.argtypes = [ctypes.POINTER(SHA_CTX)]
+            lib.SHA1_Init.restype = ctypes.c_int
+            lib.SHA1_Update.argtypes = [ctypes.POINTER(SHA_CTX), ctypes.c_void_p, ctypes.c_size_t]
+            lib.SHA1_Update.restype = ctypes.c_int
+        except AttributeError:
+            logger.warning("【夸克网盘】libcrypto 缺少 SHA1_Init/Update 符号，分片哈希回退慢速路径")
+            return None
+
+        cls._sha1_ctx_class = SHA_CTX
+        cls._libcrypto = lib
+        logger.info("【夸克网盘】已加载 OpenSSL C 库，分片哈希使用单遍流式预计算")
+        return lib
+
+    @staticmethod
+    def _make_hash_ctx_json(ctx) -> str:
+        """从 OpenSSL SHA_CTX 快照构造 x-oss-hash-ctx（与原版 JSON 结构一致）"""
+        import base64
+        import json as json_module
+        hash_context = {
+            "hash_type": "sha1",
+            "h0": str(ctx.h[0]),
+            "h1": str(ctx.h[1]),
+            "h2": str(ctx.h[2]),
+            "h3": str(ctx.h[3]),
+            "h4": str(ctx.h[4]),
+            "Nl": str(ctx.Nl),
+            "Nh": str(ctx.Nh),
+            "data": "",
+            "num": "0",
+        }
+        return base64.b64encode(
+            json_module.dumps(hash_context, separators=(",", ":")).encode("utf-8")
+        ).decode("utf-8")
+
+    @classmethod
+    def _precompute_part_hash_contexts(
+        cls, file_path: Path, part_size: int, total_parts: int
+    ) -> Dict[int, str]:
+        """
+        单遍流式扫描文件，预计算每个分片边界（part_number >= 2 起点）的 SHA1 上下文。
+        返回 {part_number: hash_ctx}；OpenSSL 不可用时返回 {}（由调用方回落慢速路径）。
+        """
+        import ctypes
+
+        lib = cls._load_libcrypto()
+        if not lib:
+            return {}
+
+        SHA_CTX = cls._sha1_ctx_class
+        ctx = SHA_CTX()
+        lib.SHA1_Init(ctypes.byref(ctx))
+
+        # 分片边界：part_number 的起点偏移 = (part_number - 1) * part_size
+        boundary_to_part = {
+            (i - 1) * part_size: i for i in range(2, total_parts + 1)
+        }
+        if not boundary_to_part:
+            return {}
+
+        contexts: Dict[int, str] = {}
+        buf = ctypes.create_string_buffer(1024 * 1024)  # 1MB I/O 缓冲
+        buf_addr = ctypes.addressof(buf)
+        processed = 0
+        with open(file_path, "rb") as f:
+            while True:
+                n = f.readinto(buf)
+                if not n:
+                    break
+                lib.SHA1_Update(ctypes.byref(ctx), buf_addr, n)
+                processed += n
+                part_no = boundary_to_part.pop(processed, None)
+                if part_no is not None:
+                    contexts[part_no] = cls._make_hash_ctx_json(ctx)
+                if not boundary_to_part:
+                    break
+        return contexts
 
     @staticmethod
     def _calculate_incremental_hash_context(
@@ -942,6 +1072,10 @@ class QuarkApi:
         base_progress = 35
         progress_per_part = 45 / max(len(parts), 1)
 
+        # 上传前一次性预计算所有分片的 x-oss-hash-ctx（单遍流式扫描，秒级完成；
+        # OpenSSL 不可用时返回空表，循环内自动回落原逐分片慢速计算）
+        part_hash_ctxs = self._precompute_part_hash_contexts(file_path, chunk_size, len(parts))
+
         for i, (part_number, part_size) in enumerate(parts):
             current_progress = base_progress + int(i * progress_per_part)
             progress_callback(current_progress)
@@ -955,8 +1089,10 @@ class QuarkApi:
                     )
                     hash_ctx = ""
                     if part_number > 1:
-                        hash_ctx = self._calculate_incremental_hash_context(
-                            file_path, part_number, part_size
+                        hash_ctx = part_hash_ctxs.get(part_number) or (
+                            self._calculate_incremental_hash_context(
+                                file_path, part_number, part_size
+                            )
                         )
 
                     if hash_ctx:

@@ -28,13 +28,13 @@ from .api.commands import get_plugin_commands
 
 class ProxmoxVEBackup(_PluginBase):
     # 插件名称
-    plugin_name = "PVE虚拟机守护神"
+    plugin_name = "PVE 守护神"
     # 插件描述
     plugin_desc = "一站式PVE虚拟化管理平台，智能自动化集成可视化界面高效掌控虚拟机与容器"
     # 插件图标
     plugin_icon = "https://raw.githubusercontent.com/xijin285/MoviePilot-Plugins/refs/heads/main/icons/proxmox.webp"
     # 插件版本
-    plugin_version = "3.0.0"
+    plugin_version = "3.1.0"
     # 插件作者
     plugin_author = "xijin285"
     # 作者主页
@@ -48,6 +48,9 @@ class ProxmoxVEBackup(_PluginBase):
 
     # 私有属性
     _scheduler = None  # 调度器实例（由SchedulerManager管理）
+    # MP 存储备份（多目标）—— 预声明以便 apply_config_updates 动态写入
+    _storage_backup_enable = False
+    _storage_targets = []
     _lock: Optional[threading.Lock] = None
     _running: bool = False
     _backup_activity: str = "空闲"
@@ -140,7 +143,7 @@ class ProxmoxVEBackup(_PluginBase):
         # PVE状态缓存：30秒TTL，最大10项
         self._pve_status_cache = TTLCache(region="proxmox_pve_status", maxsize=10, ttl=30)
         # 容器状态缓存：60秒TTL，最大50项
-        self._container_status_cache = TTLCache(region="proxmox_container_status", maxsize=50, ttl=60)
+        self._container_status_cache = TTLCache(region="proxmox_container_status", maxsize=50, ttl=30)
         
         # 检测实际使用的缓存后端并记录日志
         # 系统会根据配置自动选择缓存后端
@@ -328,7 +331,7 @@ class ProxmoxVEBackup(_PluginBase):
         }, {
             "refresh": 30,
             "border": True,
-            "title": "PVE 虚拟机守护神",
+            "title": "PVE 守护神",
             "subtitle": "运行状态 / 备份与恢复",
         }, None
 
@@ -338,3 +341,22 @@ class ProxmoxVEBackup(_PluginBase):
         声明为Vue联邦渲染模式，并指定前端静态资源目录（相对插件目录）
         """
         return "vue", "dist/assets"
+
+    def get_sidebar_nav(self) -> Optional[List[Dict[str, Any]]]:
+        """
+        注册主界面左侧导航「PVE 守护神」入口，
+        前端跳转 #/plugin-app/ProxmoxVEBackup/main 并加载 ./AppPage 组件。
+        插件停用时不显示。
+        """
+        if not getattr(self, "_enabled", True):
+            return None
+        return [
+            {
+                "nav_key": "main",
+                "title": "PVE 守护神",
+                "icon": "mdi-server",
+                "section": "start",
+                "permission": "manage",
+                "order": 17,
+            }
+        ]

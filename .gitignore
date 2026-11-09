@@ -175,3 +175,7 @@ node_modules/
 # 没有 dist 的前端组件装上去会白屏
 !plugins.v3/*/dist/
 !plugins.v3/*/dist/**
+
+# V2 Vue 联邦插件（VueQuarkDisk）同样需要 dist 入库，否则安装后前端白屏
+!plugins.v2/vuequarkdisk/dist/
+!plugins.v2/vuequarkdisk/dist/**
